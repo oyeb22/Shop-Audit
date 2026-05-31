@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Shop Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --paper:#FBF8F1; --card:#FFFFFF; --ink:#17150F; --muted:#6F6A5E; --line:#E8E1D3;
+  --green:#1F5A41; --green-d:#16432F; --gold:#A9772E; --red:#B23A33; --amber:#B5821A;
+  --shadow:0 1px 2px rgba(23,21,15,.05),0 8px 24px -12px rgba(23,21,15,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);color:var(--ink);
+  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(circle at 12% -10%,rgba(31,90,65,.06),transparent 40%),radial-gradient(circle at 100% 0,rgba(169,119,46,.05),transparent 35%);}
+.num{font-variant-numeric:tabular-nums lining-nums}
+h1,h2,h3,.brand{font-family:'Fraunces',serif}
+a{color:var(--green);text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select{font-family:inherit;font-size:15px}
+.hidden{display:none!important}
+
+/* layout */
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
+.topbar{position:sticky;top:0;z-index:40;background:rgba(251,248,241,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:14px;height:62px}
+.brand{font-weight:700;font-size:21px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--green),var(--green-d));display:grid;place-items:center;color:#fff;font-size:14px;font-family:'Hanken Grotesk'}
+.spacer{flex:1}
+.bizsel{display:flex;align-items:center;gap:8px}
+select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);font-weight:600;max-width:180px}
+.rolepill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px;background:#EFE8DA;color:var(--green-d)}
+.rolepill.recept{background:#EAEEF6;color:#2C4A78}
+.iconbtn{padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);font-weight:600;color:var(--ink)}
+.iconbtn:hover{border-color:var(--green)}
+
+/* nav */
+.nav{display:flex;gap:4px;overflow-x:auto;padding:10px 0 0;-webkit-overflow-scrolling:touch}
+.nav button{white-space:nowrap;padding:9px 14px;border-radius:9px;color:var(--muted);font-weight:600;font-size:14px}
+.nav button.active{background:var(--ink);color:var(--paper)}
+.nav button:hover:not(.active){background:#F0EADC}
+
+/* cards & grid */
+.view{padding:22px 0 80px}
+.row{display:flex;gap:14px;flex-wrap:wrap}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
+.stat .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat .value{font-family:'Fraunces';font-weight:600;font-size:26px;margin-top:5px;letter-spacing:-.02em}
+.stat .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
+.stat.good .value{color:var(--green)} .stat.bad .value{color:var(--red)} .stat.warn .value{color:var(--amber)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
+.card .hd{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card .hd h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
+.card .hd .desc{font-size:13px;color:var(--muted);font-weight:400;font-family:'Hanken Grotesk'}
+.card .bd{padding:16px 18px}
+.card .bd.tight{padding:6px 0}
+
+/* table */
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:11px 18px;font-size:14px;border-bottom:1px solid var(--line)}
+th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+tr:last-child td{border-bottom:none}
+td.r,th.r{text-align:right} td.c,th.c{text-align:center}
+.itemname{font-weight:600}
+.cat{font-size:12px;color:var(--muted)}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.badge.low{background:#FBEFD8;color:var(--amber)} .badge.ok{background:#E6F0E9;color:var(--green)} .badge.out{background:#F8E2E0;color:var(--red)}
+.badge.pos{background:#E6F0E9;color:var(--green)} .badge.neg{background:#F8E2E0;color:var(--red)} .badge.zero{background:#EFEBE0;color:var(--muted)}
+
+/* forms */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.field input,.field select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;color:var(--ink)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
+.frow{display:flex;gap:12px;flex-wrap:wrap}.frow>.field{flex:1;min-width:130px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:10px;font-weight:700;font-size:14px;transition:.15s}
+.btn.primary{background:var(--green);color:#fff}.btn.primary:hover{background:var(--green-d)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}.btn.ghost:hover{border-color:var(--green)}
+.btn.danger{background:transparent;color:var(--red);border:1px solid #E8C9C5}.btn.danger:hover{background:#FBEEEC}
+.btn.sm{padding:7px 12px;font-size:13px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* quick sell stepper */
+.qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#FCFAF5}
+.qty button{width:34px;height:38px;font-size:18px;font-weight:700;color:var(--green)}
+.qty input{width:44px;height:38px;border:none;text-align:center;background:transparent;font-weight:700;font-size:15px}
+
+/* auth */
+.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
+.authcard{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:30px 28px}
+.authcard .brand{justify-content:center;margin-bottom:6px;font-size:24px}
+.authcard .tag{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
+.tabs{display:flex;background:#F0EADC;border-radius:11px;padding:4px;margin-bottom:18px}
+.tabs button{flex:1;padding:9px;border-radius:8px;font-weight:600;color:var(--muted)}
+.tabs button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+
+/* misc */
+.empty{padding:40px 18px;text-align:center;color:var(--muted)}
+.empty .big{font-size:40px;margin-bottom:8px}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);
+  padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:100;box-shadow:var(--shadow);max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--red)}
+.code{font-family:ui-monospace,monospace;background:#F0EADC;padding:3px 9px;border-radius:7px;font-weight:700;letter-spacing:.08em}
+.hint{font-size:13px;color:var(--muted)}
+.setup{max-width:620px;margin:60px auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:var(--shadow)}
+.setup code{background:#F0EADC;padding:2px 6px;border-radius:5px;font-family:ui-monospace,monospace;font-size:13px}
+.split{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.split>*{flex:1;min-width:280px}
+@media(max-width:560px){.card .bd{padding:13px}th,td{padding:10px 13px}.stat .value{font-size:22px}}
+</style>
+</head>
+<body>
+
+<!-- ===================== SETUP NOTICE (shown if keys missing) ===================== -->
+<div id="setupNotice" class="setup hidden">
+  <div class="brand" style="font-size:22px;margin-bottom:14px"><span class="mark">SA</span> Shop Audit — one quick step</div>
+  <p class="hint" style="margin-bottom:14px">Open this file in a text editor and paste your Supabase project keys near the top of the script:</p>
+  <p style="margin-bottom:8px"><code>const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";</code></p>
+  <p style="margin-bottom:14px"><code>const SUPABASE_ANON_KEY = "your-anon-public-key";</code></p>
+  <p class="hint">Find them in Supabase → <b>Project Settings → API</b>. Then reload this page. Full steps are in the setup guide.</p>
+</div>
+
+<!-- ===================== AUTH ===================== -->
+<div id="authScreen" class="auth hidden">
+  <div class="authcard">
+    <div class="brand"><span class="mark">SA</span> Shop Audit</div>
+    <div class="tag">Stock, sales & audit for your shops</div>
+    <div class="tabs">
+      <button id="tabSignin" class="active" onclick="setAuthMode('signin')">Sign in</button>
+      <button id="tabSignup" onclick="setAuthMode('signup')">Create account</button>
+    </div>
+    <div id="nameField" class="field hidden">
+      <label>Full name</label><input id="auName" placeholder="e.g. Amaka O.">
+    </div>
+    <div class="field"><label>Email</label><input id="auEmail" type="email" placeholder="you@email.com"></div>
+    <div class="field"><label>Password</label><input id="auPass" type="password" placeholder="At least 6 characters"></div>
+    <button id="auBtn" class="btn primary" style="width:100%;margin-top:6px" onclick="doAuth()">Sign in</button>
+    <p id="authMsg" class="hint" style="text-align:center;margin-top:12px"></p>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="wrap">
+      <div class="brand"><span class="mark">SA</span> Shop Audit</div>
+      <div class="spacer"></div>
+      <div class="bizsel">
+        <select id="bizSelect" class="biz" onchange="switchBiz(this.value)"></select>
+        <span id="rolePill" class="rolepill">—</span>
+      </div>
+      <button class="iconbtn" onclick="signOut()">Sign out</button>
+    </div>
+    <div class="wrap"><div id="nav" class="nav"></div></div>
+  </div>
+  <div class="wrap"><div id="view" class="view"></div></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+/* ============================================================
+   1) CONFIG — paste your Supabase keys here
+   ============================================================ */
+const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
+
+/* ============================================================ */
+let sb = null;
+const S = { user:null, businesses:[], biz:null, role:null, items:[], stock:{}, customers:[], balances:{}, tab:'dashboard' };
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
+const today = () => new Date().toISOString().slice(0,10);
+const monthStart = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); };
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT;
+function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',2600); }
+function err(e){ console.error(e); toast((e&&e.message)||'Something went wrong',true); }
+
+/* ---------- boot ---------- */
+function boot(){
+  if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_ANON_KEY.startsWith('PASTE_')){
+    $('#setupNotice').classList.remove('hidden'); return;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  sb.auth.getSession().then(({data})=>{ if(data.session){ S.user=data.session.user; afterLogin(); } else showAuth(); });
+}
+boot();
+
+/* ---------- auth ---------- */
+let authMode='signin';
+function showAuth(){ $('#app').classList.add('hidden'); $('#authScreen').classList.remove('hidden'); }
+function setAuthMode(m){ authMode=m;
+  $('#tabSignin').classList.toggle('active',m==='signin');
+  $('#tabSignup').classList.toggle('active',m==='signup');
+  $('#nameField').classList.toggle('hidden',m!=='signup');
+  $('#auBtn').textContent = m==='signin'?'Sign in':'Create account';
+  $('#authMsg').textContent='';
+}
+async function doAuth(){
+  const email=$('#auEmail').value.trim(), pass=$('#auPass').value, name=$('#auName').value.trim();
+  if(!email||!pass) return toast('Enter email and password',true);
+  $('#auBtn').disabled=true;
+  try{
+    if(authMode==='signup'){
+      const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
+      if(error) throw error;
+      if(!data.session){ $('#authMsg').textContent='Account created. Check your email to confirm, then sign in.'; setAuthMode('signin'); $('#auBtn').disabled=false; return; }
+      S.user=data.user; afterLogin();
+    }else{
+      const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error) throw error;
+      S.user=data.user; afterLogin();
+    }
+  }catch(e){ err(e); }
+  $('#auBtn').disabled=false;
+}
+async function signOut(){ await sb.auth.signOut(); S.user=null; location.reload(); }
+
+/* ---------- after login: load businesses ---------- */
+async function afterLogin(){
+  $('#authScreen').classList.add('hidden'); $('#app').classList.remove('hidden');
+  await loadBusinesses();
+}
+async function loadBusinesses(){
+  const {data,error}=await sb.from('business_members').select('role,business:businesses(*)').eq('user_id',S.user.id);
+  if(error) return err(error);
+  S.businesses = (data||[]).map(r=>({...r.business, _role:r.role})).filter(b=>b.id).sort((a,b)=>a.name.localeCompare(b.name));
+  const sel=$('#bizSelect'); sel.innerHTML='';
+  S.businesses.forEach(b=>{ const o=document.createElement('option'); o.value=b.id; o.textContent=b.name; sel.appendChild(o); });
+  if(S.businesses.length===0){ S.biz=null; renderNoBiz(); return; }
+  const saved=localStorage.getItem('lastBiz');
+  const pick=S.businesses.find(b=>b.id===saved)||S.businesses[0];
+  sel.value=pick.id; await switchBiz(pick.id);
+}
+async function switchBiz(id){
+  S.biz=S.businesses.find(b=>b.id===id); S.role=S.biz._role; localStorage.setItem('lastBiz',id);
+  $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':'');
+  S.tab = S.role==='admin'?'dashboard':'sell';
+  buildNav(); await loadData(); render();
+}
+async function loadData(){
+  if(!S.biz) return;
+  const [it,stk,cu,cb]=await Promise.all([
+    sb.from('items').select('*').eq('business_id',S.biz.id).order('name'),
+    sb.from('item_stock').select('item_id,on_hand').eq('business_id',S.biz.id),
+    sb.from('customers').select('*').eq('business_id',S.biz.id).order('name'),
+    sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id)
+  ]);
+  if(it.error) return err(it.error);
+  S.items=it.data||[]; S.stock={}; (stk.data||[]).forEach(r=>S.stock[r.item_id]=Number(r.on_hand||0));
+  S.customers=cu.data||[]; S.balances={}; (cb.data||[]).forEach(r=>S.balances[r.customer_id]=Number(r.balance||0));
+}
+const onHand = id => S.stock[id]??0;
+const balanceOf = id => S.balances[id]??0;
+const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
+
+/* ---------- navigation ---------- */
+function buildNav(){
+  const tabs = S.role==='admin'
+    ? [['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['members','Team'],['settings','Settings'],['audit','Audit log']]
+    : [['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
+  $('#nav').innerHTML = tabs.map(([k,l])=>`<button class="${S.tab===k?'active':''}" onclick="go('${k}')">${l}</button>`).join('');
+}
+function go(t){ S.tab=t; buildNav(); render(); }
+
+/* ---------- top-level render ---------- */
+async function render(){
+  if(!S.biz){ renderNoBiz(); return; }
+  const v=$('#view');
+  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,reports:vReports,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList};
+  (map[S.tab]||vDashboard)(v);
+}
+
+/* ============================================================
+   NO BUSINESS YET  (create / join)
+   ============================================================ */
+function renderNoBiz(){
+  $('#bizSelect').innerHTML='<option>No business yet</option>'; $('#rolePill').textContent='—'; $('#nav').innerHTML='';
+  $('#view').innerHTML=`
+  <div class="split">
+    <div class="card"><div class="hd"><h2>Create a business</h2></div><div class="bd">
+      <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b> — set prices, stock and see all reports.</p>
+      <div class="field"><label>Business name</label><input id="nbName" placeholder="e.g. Mama's Provision Store"></div>
+      <button class="btn primary" onclick="createBiz()">Create business</button>
+    </div></div>
+    <div class="card"><div class="hd"><h2>Join a business</h2></div><div class="bd">
+      <p class="hint" style="margin-bottom:12px">Joining with a code makes you a <b>receptionist</b> for that shop.</p>
+      <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
+      <button class="btn primary" onclick="joinBiz()">Join business</button>
+    </div></div>
+  </div>`;
+}
+async function createBiz(){
+  const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
+  const {error}=await sb.from('businesses').insert({name,owner_id:S.user.id});
+  if(error) return err(error);
+  toast('Business created'); await loadBusinesses();
+}
+async function joinBiz(){
+  const code=$('#nbCode')?.value.trim()||$('#mCode')?.value.trim();
+  if(!code) return toast('Enter an invite code',true);
+  const {error}=await sb.rpc('join_business',{code});
+  if(error) return err(error);
+  toast('Joined business'); await loadBusinesses();
+}
+
+/* ============================================================
+   ADMIN — DASHBOARD
+   ============================================================ */
+async function vDashboard(v){
+  v.innerHTML='<div class="empty">Loading…</div>';
+  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id);
+  if(error) return err(error);
+  const t=today(), m=monthStart();
+  const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
+  const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
+  const dayS=sales.filter(s=>s.entry_date===t), monS=sales.filter(s=>s.entry_date>=m);
+  const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
+  const stockValue=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
+
+  // day-by-day
+  const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({u:0,r:0,p:0})); byDay[s.entry_date].u+=s.quantity; byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
+  const days=Object.entries(byDay).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
+
+  // per-item sold + remaining
+  const sold={}; sales.forEach(s=>sold[s.item_id]=(sold[s.item_id]||0)+s.quantity);
+
+  v.innerHTML=`
+    <div class="stats">
+      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${sum(dayS,s=>s.quantity)} sold · profit ${money(sum(dayS,prof))}</div></div>
+      <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">profit ${money(sum(monS,prof))}</div></div>
+      <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
+      <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
+      <div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>
+    </div>
+    ${S.biz.wa_enabled?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px"><b>WhatsApp daily summary</b><div class="hint">Composes today's numbers and opens WhatsApp ready to send.</div></div>
+      <button class="btn primary" onclick="sendWhatsAppSummary()">Send today's summary</button>
+    </div></div>`:''}
+    ${lowItems.length?`<div class="card"><div class="hd"><h2>⚠ Needs restocking</h2></div><div class="bd tight">
+      <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${onHand(i.id)} left</span>`}</td><td class="r hint">reorder at ${i.low_stock_threshold}</td></tr>`).join('')}</tbody></table>
+    </div></div>`:''}
+    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days</span></div><div class="bd tight">
+      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
+      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num">${o.u}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
+      :'<div class="empty">No sales recorded yet.</div>'}
+    </div></div>
+    <div class="card"><div class="hd"><h2>Stock & sales per item</h2></div><div class="bd tight">
+      <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Total sold</th></tr></thead>
+      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r"><span class="badge ${b}">${oh}</span></td><td class="r num">${sold[i.id]||0}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
+    </div></div>`;
+}
+
+/* ============================================================
+   ADMIN — ITEMS  (set prices, stock thresholds)
+   ============================================================ */
+function vItems(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">price & reorder level</span></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Coca-Cola 50cl"></div>
+      <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Cost price (₦)</label><input id="iCost" type="number" min="0" step="1" placeholder="0"></div>
+      <div class="field"><label>Sell price (₦)</label><input id="iSell" type="number" min="0" step="1" placeholder="0"></div>
+      <div class="field"><label>Reorder at</label><input id="iThr" type="number" min="0" step="1" value="5"></div>
+    </div>
+    <button class="btn primary" onclick="addItem()">Add item</button>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap a price to edit</span></div><div class="bd tight">
+    <table><thead><tr><th>Item</th><th class="r">Cost</th><th class="r">Sell</th><th class="r">Margin</th><th class="r">Stock</th><th></th></tr></thead>
+    <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="6" class="empty">No items yet.</td></tr>'}</tbody></table>
+  </div></div>`;
+}
+function rowItem(i){
+  const oh=onHand(i.id), m=Number(i.sell_price)-Number(i.cost_price);
+  const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
+  return `<tr>
+    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div></td>
+    <td class="r num">${money(i.cost_price)}</td>
+    <td class="r num">${money(i.sell_price)}</td>
+    <td class="r num" style="color:${m>=0?'var(--green)':'var(--red)'}">${money(m)}</td>
+    <td class="r"><span class="badge ${b}">${oh}</span></td>
+    <td class="r"><button class="btn ghost sm" onclick='editItem("${i.id}")'>Edit</button></td>
+  </tr>`;
+}
+async function addItem(){
+  const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
+  const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
+    cost_price:+$('#iCost').value||0,sell_price:+$('#iSell').value||0,low_stock_threshold:+$('#iThr').value||0};
+  const {error}=await sb.from('items').insert(rec);
+  if(error) return err(error);
+  toast('Item added'); await loadData(); render();
+}
+function editItem(id){
+  const i=S.items.find(x=>x.id===id);
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="editCard"><div class="hd"><h2>Edit ${esc(i.name)}</h2></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>Name</label><input id="eName" value="${esc(i.name)}"></div>
+      <div class="field"><label>Category</label><input id="eCat" value="${esc(i.category||'')}"></div>
+    </div>
+    <div class="frow">
+      <div class="field"><label>Cost (₦)</label><input id="eCost" type="number" value="${i.cost_price}"></div>
+      <div class="field"><label>Sell (₦)</label><input id="eSell" type="number" value="${i.sell_price}"></div>
+      <div class="field"><label>Reorder at</label><input id="eThr" type="number" value="${i.low_stock_threshold}"></div>
+    </div>
+    <div class="frow"><button class="btn primary" onclick='saveItem("${id}")'>Save</button>
+    <button class="btn ghost" onclick="document.getElementById('editCard').remove()">Cancel</button>
+    <div class="spacer"></div><button class="btn danger" onclick='delItem("${id}")'>Delete</button></div>
+  </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function saveItem(id){
+  const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
+    cost_price:+$('#eCost').value||0,sell_price:+$('#eSell').value||0,low_stock_threshold:+$('#eThr').value||0};
+  const {error}=await sb.from('items').update(rec).eq('id',id);
+  if(error) return err(error);
+  toast('Saved'); await loadData(); render();
+}
+async function delItem(id){
+  if(!confirm('Delete this item and all its history?')) return;
+  const {error}=await sb.from('items').delete().eq('id',id);
+  if(error) return err(error);
+  toast('Item deleted'); await loadData(); render();
+}
+
+/* ============================================================
+   ADMIN — RESTOCK (record stock bought in)
+   ============================================================ */
+function vRestock(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Record stock bought in</h2><span class="desc">increases available stock</span></div><div class="bd">
+    <div class="field"><label>Item</label><select id="rItem">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (now ${onHand(i.id)})</option>`).join('')}</select></div>
+    <div class="frow">
+      <div class="field"><label>Quantity bought</label><input id="rQty" type="number" min="1" step="1" placeholder="0"></div>
+      <div class="field"><label>Unit cost (₦)</label><input id="rCost" type="number" min="0" step="1" placeholder="defaults to item cost"></div>
+      <div class="field"><label>Date</label><input id="rDate" type="date" value="${today()}"></div>
+    </div>
+    <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
+    ${S.items.length?'':'<p class="hint" style="margin-top:10px">Add items first under the Items tab.</p>'}
+  </div></div>`;
+}
+async function addPurchase(){
+  const item_id=$('#rItem').value, qty=+$('#rQty').value;
+  if(!item_id||!qty||qty<1) return toast('Enter a valid quantity',true);
+  const it=S.items.find(i=>i.id===item_id);
+  const rec={business_id:S.biz.id,item_id,quantity:qty,unit_cost:(+$('#rCost').value||it.cost_price||0),entry_date:$('#rDate').value||today(),created_by:S.user.id};
+  const {error}=await sb.from('purchases').insert(rec);
+  if(error) return err(error);
+  toast(`Added ${qty} to stock`); await loadData(); render();
+}
+
+/* ============================================================
+   ADMIN — RECONCILE (physical count vs expected = variance)
+   ============================================================ */
+function vReconcile(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Stock reconciliation</h2><span class="desc">catch shrinkage: count the shelf, compare to the system</span></div><div class="bd">
+    <div class="field"><label>Item</label><select id="cItem" onchange="cExpected()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('')}</select></div>
+    <div class="frow">
+      <div class="field"><label>System says (expected)</label><input id="cExp" type="number" readonly style="background:#F0EADC;font-weight:700"></div>
+      <div class="field"><label>You counted (physical)</label><input id="cCount" type="number" min="0" step="1" oninput="cVar()" placeholder="0"></div>
+      <div class="field"><label>Variance</label><input id="cVarF" readonly style="font-weight:700"></div>
+    </div>
+    <div class="field"><label>Note (optional)</label><input id="cNote" placeholder="e.g. 2 broken bottles, end-of-day count"></div>
+    <label class="hint" style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="cApply" type="checkbox" checked style="width:auto"> Correct the system stock to match my count</label>
+    <button class="btn primary" onclick="saveRecon()" ${S.items.length?'':'disabled'}>Record count</button>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Recent counts</h2></div><div class="bd tight"><div id="recList" class="empty">Loading…</div></div></div>`;
+  cExpected(); loadRecon();
+}
+function cExpected(){ const id=$('#cItem').value; $('#cExp').value=onHand(id); cVar(); }
+function cVar(){ const exp=+$('#cExp').value||0, cnt=+$('#cCount').value||0, vf=$('#cVarF'); const dv=cnt-exp;
+  vf.value=(dv>0?'+':'')+dv; vf.style.color=dv<0?'var(--red)':dv>0?'var(--green)':'var(--muted)'; }
+async function saveRecon(){
+  const item_id=$('#cItem').value, exp=+$('#cExp').value, cnt=$('#cCount').value;
+  if(cnt===''||isNaN(+cnt)) return toast('Enter the counted amount',true);
+  const counted=+cnt, variance=counted-exp;
+  const {error}=await sb.from('reconciliations').insert({business_id:S.biz.id,item_id,expected_qty:exp,counted_qty:counted,variance,note:$('#cNote').value.trim(),created_by:S.user.id});
+  if(error) return err(error);
+  if($('#cApply').checked && variance!==0){
+    await sb.from('adjustments').insert({business_id:S.biz.id,item_id,quantity_delta:variance,reason:'reconciliation correction',created_by:S.user.id});
+  }
+  toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded'); await loadData(); render();
+}
+async function loadRecon(){
+  const {data,error}=await sb.from('reconciliations').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
+  if(error) return;
+  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
+  $('#recList').outerHTML=`<div id="recList">${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th class="r">Expected</th><th class="r">Counted</th><th class="r">Variance</th></tr></thead>
+  <tbody>${data.map(r=>{const b=r.variance<0?'neg':r.variance>0?'pos':'zero';return `<tr><td class="num">${r.entry_date}</td><td class="itemname">${esc(nm(r.item_id))}${r.note?`<div class="cat">${esc(r.note)}</div>`:''}</td><td class="r num">${r.expected_qty}</td><td class="r num">${r.counted_qty}</td><td class="r"><span class="badge ${b}">${r.variance>0?'+':''}${r.variance}</span></td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No counts yet.</div>'}</div>`;
+}
+
+/* ============================================================
+   ADMIN — REPORTS (date range + CSV export)
+   ============================================================ */
+function vReports(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Sales report</h2></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>From</label><input id="repFrom" type="date" value="${monthStart()}"></div>
+      <div class="field"><label>To</label><input id="repTo" type="date" value="${today()}"></div>
+      <div class="field" style="display:flex;align-items:flex-end;gap:8px"><button class="btn primary" onclick="runReport()">Run</button></div>
+    </div>
+  </div></div>
+  <div id="repOut"></div>`;
+  runReport();
+}
+async function runReport(){
+  const from=$('#repFrom').value, to=$('#repTo').value;
+  const {data,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to);
+  if(error) return err(error);
+  const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
+  const totU=data.reduce((a,s)=>a+s.quantity,0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
+  const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=s.quantity;byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
+  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
+  const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
+  S._report={from,to,rows,nm};
+  $('#repOut').innerHTML=`
+    <div class="stats">
+      <div class="stat"><div class="label">Units sold</div><div class="value num">${totU}</div></div>
+      <div class="stat good"><div class="label">Revenue</div><div class="value num">${money(totR)}</div></div>
+      <div class="stat"><div class="label">Profit</div><div class="value num" style="color:var(--green)">${money(totP)}</div></div>
+    </div>
+    <div class="card"><div class="hd"><h2>By item</h2><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight">
+      ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
+      <tbody>${rows.map(([id,o])=>`<tr><td class="itemname">${esc(nm(id))}</td><td class="r num">${o.u}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
+      :'<div class="empty">No sales in this range.</div>'}
+    </div></div>`;
+}
+function exportCSV(){
+  const r=S._report; if(!r) return;
+  let csv=`Item,Units,Revenue,Profit\n`;
+  r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
+  const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`; a.click();
+}
+
+/* ============================================================
+   ADMIN — MEMBERS / TEAM
+   ============================================================ */
+async function vMembers(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
+    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it.</p>
+    <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
+    <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Team</h2></div><div class="bd tight"><div id="memList" class="empty">Loading…</div></div></div>`;
+  const {data,error}=await sb.rpc('list_members',{b:S.biz.id});
+  if(error) return err(error);
+  $('#memList').outerHTML=`<div id="memList"><table><tbody>${data.map(m=>`<tr>
+    <td class="itemname">${esc(m.full_name||'(no name)')}${m.is_owner?' <span class="cat">owner</span>':''}</td>
+    <td><span class="rolepill ${m.role==='receptionist'?'recept':''}">${m.role}</span></td>
+    <td class="r">${m.is_owner?'':`<button class="btn danger sm" onclick='removeMember("${m.user_id}")'>Remove</button>`}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+async function removeMember(uid){
+  if(!confirm('Remove this team member?')) return;
+  const {error}=await sb.from('business_members').delete().eq('business_id',S.biz.id).eq('user_id',uid);
+  if(error) return err(error);
+  toast('Removed'); vMembers($('#view'));
+}
+
+/* ============================================================
+   ADMIN — AUDIT LOG
+   ============================================================ */
+async function vAudit(v){
+  v.innerHTML='<div class="card"><div class="hd"><h2>Audit log</h2><span class="desc">every important change, automatically recorded</span></div><div class="bd tight"><div id="auList" class="empty">Loading…</div></div></div>';
+  const {data,error}=await sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200);
+  if(error) return err(error);
+  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  $('#auList').outerHTML=`<div id="auList">${data.length?`<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead>
+  <tbody>${data.map(a=>`<tr><td class="num hint">${fmt(a.created_at)}</td><td><span class="badge zero">${esc(a.action)}</span></td><td>${esc(a.detail||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No activity yet.</div>'}</div>`;
+}
+
+/* ============================================================
+   RECEPTIONIST — SELL (one-tap entry)
+   ============================================================ */
+function vSell(v){
+  const custOpts=S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}${balanceOf(c.id)>0?` — owes ${money(balanceOf(c.id))}`:''}</option>`).join('');
+  v.innerHTML=`
+  <div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600"><input id="creditMode" type="checkbox" style="width:auto" onchange="toggleCredit()"> Sell on credit (customer owes)</label>
+    <select id="creditCust" class="biz hidden" style="max-width:240px">${custOpts||'<option value="">No customers yet</option>'}</select>
+    <span id="creditHint" class="hint hidden">Sales below will be added to this customer's tab instead of counted as cash.</span>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Record a sale</h2><span class="desc">tap − / + then Sell</span></div><div class="bd tight">
+    ${S.items.length?`<table><tbody>${S.items.map(sellRow).join('')}</tbody></table>`:'<div class="empty">No items available yet. Ask the admin to add some.</div>'}
+  </div></div>`;
+}
+function toggleCredit(){
+  const on=$('#creditMode').checked;
+  $('#creditCust').classList.toggle('hidden',!on);
+  $('#creditHint').classList.toggle('hidden',!on);
+}
+function sellRow(i){
+  const oh=onHand(i.id), out=oh<=0;
+  return `<tr>
+    <td class="itemname">${esc(i.name)}<div class="cat">${money(i.sell_price)} · ${oh} in stock</div></td>
+    <td class="r" style="white-space:nowrap">
+      <span class="qty"><button onclick="stepQ('${i.id}',-1)">−</button><input id="q_${i.id}" value="1" inputmode="numeric" onchange="fixQ('${i.id}')"><button onclick="stepQ('${i.id}',1)">+</button></span>
+      <button class="btn primary sm" style="margin-left:8px" onclick="recordSale('${i.id}')" ${out?'disabled':''}>${out?'Out':'Sell'}</button>
+    </td>
+  </tr>`;
+}
+function stepQ(id,d){ const el=$('#q_'+id); el.value=Math.max(1,(+el.value||1)+d); }
+function fixQ(id){ const el=$('#q_'+id); el.value=Math.max(1,Math.floor(+el.value||1)); }
+async function recordSale(id){
+  const qty=+$('#q_'+id).value||1, oh=onHand(id);
+  if(qty>oh){ if(!confirm(`Only ${oh} in stock. Record ${qty} anyway? (this will flag a stock shortage)`)) return; }
+  const onCredit=$('#creditMode')?.checked, custId=$('#creditCust')?.value;
+  if(onCredit && !custId) return toast('Pick a customer (or add one in Customers)',true);
+  const {error}=await sb.from('sales').insert({business_id:S.biz.id,item_id:id,quantity:qty,created_by:S.user.id});
+  if(error) return err(error);
+  const it=S.items.find(x=>x.id===id);
+  if(onCredit){
+    const amount=qty*Number(it.sell_price);
+    const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount,note:`${qty} × ${it.name}`,created_by:S.user.id});
+    if(r.error) return err(r.error);
+    toast(`On credit: ${money(amount)} (${it.name})`);
+  }else{
+    toast(`Sold ${qty} × ${it.name}`);
+  }
+  $('#q_'+id).value=1; await loadData(); render();
+  if(onCredit){ const cm=$('#creditMode'); if(cm){cm.checked=true; toggleCredit(); $('#creditCust').value=custId;} }
+}
+
+/* ============================================================
+   RECEPTIONIST — MY SALES
+   ============================================================ */
+async function vMySales(v){
+  v.innerHTML='<div class="empty">Loading…</div>';
+  const {data,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).eq('created_by',S.user.id).order('created_at',{ascending:false});
+  if(error) return err(error);
+  const t=today(), m=monthStart(), rev=s=>s.quantity*Number(s.unit_price);
+  const dT=data.filter(s=>s.entry_date===t), dM=data.filter(s=>s.entry_date>=m);
+  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(item)';};
+  v.innerHTML=`
+    <div class="stats">
+      <div class="stat good"><div class="label">Today</div><div class="value num">${money(dT.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dT.reduce((a,s)=>a+s.quantity,0)} items sold</div></div>
+      <div class="stat"><div class="label">This month</div><div class="value num">${money(dM.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dM.reduce((a,s)=>a+s.quantity,0)} items sold</div></div>
+    </div>
+    <div class="card"><div class="hd"><h2>My recent sales</h2></div><div class="bd tight">
+      ${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
+      <tbody>${data.slice(0,80).map(s=>`<tr><td class="num">${s.entry_date}</td><td class="itemname">${esc(nm(s.item_id))}</td><td class="r num">${s.quantity}</td><td class="r num">${money(rev(s))}</td></tr>`).join('')}</tbody></table>`
+      :'<div class="empty">No sales recorded by you yet.</div>'}
+    </div></div>`;
+}
+
+/* ============================================================
+   RECEPTIONIST — ITEM LIST (read only)
+   ============================================================ */
+function vStockList(v){
+  v.innerHTML=`<div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
+    ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Price</th><th class="r">Remaining</th></tr></thead>
+    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div></td><td class="r num">${money(i.sell_price)}</td><td class="r"><span class="badge ${b}">${oh}</span></td></tr>`;}).join('')}</tbody></table>`
+    :'<div class="empty">No items yet.</div>'}
+  </div></div>`;
+}
+
+/* ============================================================
+   CUSTOMERS — credit / owing  (admin + receptionist)
+   ============================================================ */
+function vCustomers(v){
+  const owing=S.customers.filter(c=>balanceOf(c.id)>0).sort((a,b)=>balanceOf(b.id)-balanceOf(a.id));
+  const clear=S.customers.filter(c=>balanceOf(c.id)<=0).sort((a,b)=>a.name.localeCompare(b.name));
+  const list=[...owing,...clear];
+  v.innerHTML=`
+  <div class="stats">
+    <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Total outstanding</div><div class="value num">${money(totalOwed())}</div><div class="sub">${owing.length} owing of ${S.customers.length}</div></div>
+  </div>
+  <div class="card"><div class="hd"><h2>Add customer</h2></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>Name</label><input id="custName" placeholder="e.g. Mr. Bello"></div>
+      <div class="field"><label>Phone (optional)</label><input id="custPhone" placeholder="0803..."></div>
+    </div>
+    <button class="btn primary" onclick="addCustomer()">Add customer</button>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Customers</h2><span class="desc">tap a name to record credit or payment</span></div><div class="bd tight">
+    ${list.length?`<table><tbody>${list.map(c=>{const bal=balanceOf(c.id);return `<tr style="cursor:pointer" onclick="openCustomer('${c.id}')">
+      <td class="itemname">${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
+      <td class="r">${bal>0?`<span class="badge neg">owes ${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
+      <td class="r hint">›</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No customers yet.</div>'}
+  </div></div>`;
+}
+async function addCustomer(){
+  const name=$('#custName').value.trim(); if(!name) return toast('Enter a name',true);
+  const {error}=await sb.from('customers').insert({business_id:S.biz.id,name,phone:$('#custPhone').value.trim()||null});
+  if(error) return err(error);
+  toast('Customer added'); await loadData(); render();
+}
+async function openCustomer(id){
+  const c=S.customers.find(x=>x.id===id), bal=balanceOf(id);
+  const {data,error}=await sb.from('customer_transactions').select('*').eq('customer_id',id).order('created_at',{ascending:false}).limit(60);
+  if(error) return err(error);
+  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  const isAdmin=S.role==='admin';
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="custCard">
+    <div class="hd"><h2>${esc(c.name)}</h2><span class="desc">${c.phone?esc(c.phone):''}</span><div class="spacer"></div>
+      <button class="btn ghost sm" onclick="document.getElementById('custCard').remove()">Close</button></div>
+    <div class="bd">
+      <div class="stats" style="margin-bottom:14px"><div class="stat ${bal>0?'bad':'good'}"><div class="label">Balance owed</div><div class="value num">${money(bal)}</div></div></div>
+      <div class="frow" style="align-items:flex-end">
+        <div class="field"><label>Amount (₦)</label><input id="ctxAmt" type="number" min="1" step="1" placeholder="0"></div>
+        <div class="field"><label>Note (optional)</label><input id="ctxNote" placeholder="e.g. part payment"></div>
+        <div class="field" style="display:flex;gap:8px">
+          <button class="btn ghost" onclick="custTx('${id}','credit')">+ Add credit</button>
+          <button class="btn primary" onclick="custTx('${id}','payment')">Record payment</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:6px;box-shadow:none"><div class="hd"><h2 style="font-size:15px">History</h2></div><div class="bd tight">
+        ${data.length?`<table><tbody>${data.map(t=>`<tr><td class="num hint">${fmt(t.created_at)}</td><td>${t.type==='credit'?'<span class="badge neg">credit</span>':'<span class="badge pos">payment</span>'} ${esc(t.note||'')}</td><td class="r num">${money(t.amount)}</td>${isAdmin?`<td class="r"><button class="btn danger sm" onclick='delCtx("${t.id}")'>✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="empty">No transactions yet.</div>'}
+      </div></div>
+    </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function custTx(id,type){
+  const amount=+$('#ctxAmt').value;
+  if(!amount||amount<=0) return toast('Enter an amount',true);
+  const {error}=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:id,type,amount,note:$('#ctxNote').value.trim()||null,created_by:S.user.id});
+  if(error) return err(error);
+  toast(type==='payment'?'Payment recorded':'Credit added'); await loadData(); render(); setTimeout(()=>openCustomer(id),60);
+}
+async function delCtx(txId){
+  if(!confirm('Delete this transaction?')) return;
+  const {error}=await sb.from('customer_transactions').delete().eq('id',txId);
+  if(error) return err(error);
+  toast('Deleted'); await loadData(); render();
+}
+
+/* ============================================================
+   ADMIN — SETTINGS (WhatsApp daily summary toggle)
+   ============================================================ */
+function vSettings(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>WhatsApp daily summary</h2><span class="desc">optional</span></div><div class="bd">
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
+      <input id="setWa" type="checkbox" ${S.biz.wa_enabled?'checked':''} style="width:auto"> Enable the daily summary button on the dashboard</label>
+    <div class="field"><label>Send to WhatsApp number (international format, e.g. 2348012345678)</label>
+      <input id="setWaNum" value="${esc(S.biz.wa_number||'')}" placeholder="234..."></div>
+    <p class="hint" style="margin-bottom:14px">When enabled, a <b>Send today's summary</b> button appears on your dashboard. Tapping it builds the day's figures and opens WhatsApp with the message ready — you just press send. (Hands-off automatic sending isn't possible from a free static file; this is the free, one-tap way.)</p>
+    <div class="row"><button class="btn primary" onclick="saveSettings()">Save</button>
+    <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send now</button></div>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
+    <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span> — share it from the <b>Team</b> tab to add receptionists.</p>
+  </div></div>`;
+}
+async function saveSettings(){
+  const wa_enabled=$('#setWa').checked, wa_number=$('#setWaNum').value.replace(/[^0-9]/g,'')||null;
+  const {error}=await sb.from('businesses').update({wa_enabled,wa_number}).eq('id',S.biz.id);
+  if(error) return err(error);
+  S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number;
+  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;}
+  toast('Settings saved');
+}
+async function sendWhatsAppSummary(){
+  const t=today();
+  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).eq('entry_date',t);
+  if(error) return err(error);
+  const rev=sales.reduce((a,s)=>a+s.quantity*Number(s.unit_price),0);
+  const prof=sales.reduce((a,s)=>a+s.quantity*(Number(s.unit_price)-Number(s.unit_cost)),0);
+  const units=sales.reduce((a,s)=>a+s.quantity,0);
+  const low=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).length;
+  const lines=[
+    `*${S.biz.name}* — daily summary`,
+    new Date().toLocaleDateString('en-NG',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}),
+    ``,
+    `Sales today: ${money(rev)} (${units} items)`,
+    `Profit today: ${money(prof)}`,
+    `Outstanding credit: ${money(totalOwed())}`,
+    `Low/out of stock: ${low} item(s)`
+  ];
+  const num=(S.biz.wa_number||'').replace(/[^0-9]/g,'');
+  const url=`https://wa.me/${num}?text=${encodeURIComponent(lines.join('\n'))}`;
+  window.open(url,'_blank');
+}
+</script>
+</body>
+</html>

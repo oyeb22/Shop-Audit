@@ -212,8 +212,8 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 /* ============================================================
    1) CONFIG — paste your Supabase keys here
    ============================================================ */
-const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
+const SUPABASE_URL      = "PASTE_YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY";
 
 /* ============================================================ */
 let sb = null;
@@ -307,6 +307,29 @@ async function loadData(){
 const onHand = id => S.stock[id]??0;
 const balanceOf = id => S.balances[id]??0;
 const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
+// describe stock as packs + loose units when the item has a pack size
+function stockLabel(i){
+  const u=onHand(i.id), upp=i.units_per_pack||1;
+  if(upp<=1) return `${u} in stock`;
+  const packs=Math.floor(u/upp), loose=u%upp;
+  let s=`${packs} pack${packs===1?'':'s'}`;
+  if(loose) s+=` + ${loose} unit${loose===1?'':'s'}`;
+  return s+` (${u} units)`;
+}
+function stockShort(i){
+  const u=onHand(i.id), upp=i.units_per_pack||1;
+  if(upp<=1) return `${u}`;
+  const packs=Math.floor(u/upp), loose=u%upp;
+  return loose?`${packs}pk+${loose}`:`${packs}pk`;
+}
+// turn a local NG number into wa.me international format
+function waNumber(phone){
+  let n=String(phone||'').replace(/[^0-9]/g,'');
+  if(n.startsWith('0')) n='234'+n.slice(1);
+  else if(n.startsWith('234')) {}
+  else if(n.length===10) n='234'+n;
+  return n;
+}
 
 /* ---------- navigation ---------- */
 function buildNav(){
@@ -392,7 +415,7 @@ async function vDashboard(v){
       <button class="btn primary" onclick="sendWhatsAppSummary()">Send today's summary</button>
     </div></div>`:''}
     ${lowItems.length?`<div class="card"><div class="hd"><h2>⚠ Needs restocking</h2></div><div class="bd tight">
-      <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${onHand(i.id)} left</span>`}</td><td class="r hint">reorder at ${i.low_stock_threshold}</td></tr>`).join('')}</tbody></table>
+      <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${i.low_stock_threshold}</td></tr>`).join('')}</tbody></table>
     </div></div>`:''}
     <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days</span></div><div class="bd tight">
       ${days.length?`<table><thead><tr><th>Date</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
@@ -401,7 +424,7 @@ async function vDashboard(v){
     </div></div>
     <div class="card"><div class="hd"><h2>Stock & sales per item</h2></div><div class="bd tight">
       <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Total sold</th></tr></thead>
-      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r"><span class="badge ${b}">${oh}</span></td><td class="r num">${sold[i.id]||0}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
+      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td><td class="r num">${sold[i.id]||0}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
     </div></div>`;
 }
 
@@ -410,66 +433,87 @@ async function vDashboard(v){
    ============================================================ */
 function vItems(v){
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">price & reorder level</span></div><div class="bd">
+  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">add as packs, optionally sell single units too</span></div><div class="bd">
     <div class="frow">
-      <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Coca-Cola 50cl"></div>
+      <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Coca-Cola"></div>
       <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Unit cost (₦)</label><input id="iCost" type="number" min="0" step="1" placeholder="0"></div>
-      <div class="field"><label>Unit sell (₦)</label><input id="iSell" type="number" min="0" step="1" placeholder="0"></div>
-      <div class="field"><label>Reorder at (units)</label><input id="iThr" type="number" min="0" step="1" value="5"></div>
+      <div class="field"><label>Pack price — sell (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 5000"></div>
+      <div class="field"><label>Pack price — cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for"></div>
+      <div class="field"><label>Opening stock (packs)</label><input id="iOpen" type="number" min="0" step="1" placeholder="e.g. 5"></div>
     </div>
-    <div class="frow">
-      <div class="field"><label>Units per pack/crate</label><input id="iUpp" type="number" min="1" step="1" value="1"></div>
-      <div class="field"><label>Pack/crate sell price (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="blank = units × unit price"></div>
+    <label style="display:flex;align-items:center;gap:9px;font-weight:600;margin:4px 0 12px">
+      <input id="iHasUnits" type="checkbox" style="width:auto" onchange="toggleUnitFields()"> Also sold in single units (not just whole packs)</label>
+    <div id="unitFields" class="frow hidden">
+      <div class="field"><label>Units in 1 pack</label><input id="iUpp" type="number" min="2" step="1" placeholder="e.g. 12"></div>
+      <div class="field"><label>Unit price — sell (₦)</label><input id="iUnitSell" type="number" min="0" step="1" placeholder="price of 1 unit"></div>
     </div>
-    <p class="hint" style="margin:-4px 0 12px">Set <b>units per pack</b> above 1 for crates/cartons (e.g. 12 or 24). Leave it at 1 for single items. Stock is always tracked in single units.</p>
+    <p class="hint" id="iPreview" style="margin:-2px 0 12px"></p>
     <button class="btn primary" onclick="addItem()">Add item</button>
   </div></div>
-  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap a price to edit</span></div><div class="bd tight">
-    <table><thead><tr><th>Item</th><th class="r">Cost</th><th class="r">Sell</th><th class="r">Margin</th><th class="r">Stock</th><th></th></tr></thead>
-    <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="6" class="empty">No items yet.</td></tr>'}</tbody></table>
+  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices or stock</span></div><div class="bd tight">
+    <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Unit price</th><th class="r">In stock</th><th></th></tr></thead>
+    <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="5" class="empty">No items yet.</td></tr>'}</tbody></table>
   </div></div>`;
 }
 function rowItem(i){
-  const oh=onHand(i.id), m=Number(i.sell_price)-Number(i.cost_price);
+  const upp=i.units_per_pack||1, oh=onHand(i.id);
   const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
-  const packTxt=(i.units_per_pack>1)?`<div class="cat">${i.units_per_pack}/pack · pack ${money(i.pack_price||i.units_per_pack*i.sell_price)}</div>`:'';
   return `<tr>
-    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${packTxt}</td>
-    <td class="r num">${money(i.cost_price)}</td>
-    <td class="r num">${money(i.sell_price)}</td>
-    <td class="r num" style="color:${m>=0?'var(--green)':'var(--red)'}">${money(m)}</td>
-    <td class="r"><span class="badge ${b}">${oh}</span></td>
+    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}${upp>1?` · ${upp} units/pack`:''}</div></td>
+    <td class="r num">${money(i.pack_price||i.sell_price)}</td>
+    <td class="r num">${upp>1?money(i.sell_price):'<span class="hint">—</span>'}</td>
+    <td class="r"><span class="badge ${b}">${stockShort(i)}</span></td>
     <td class="r"><button class="btn ghost sm" onclick='editItem("${i.id}")'>Edit</button></td>
   </tr>`;
 }
+function toggleUnitFields(){
+  $('#unitFields').classList.toggle('hidden',!$('#iHasUnits').checked);
+}
 async function addItem(){
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
+  const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0, openPacks=+$('#iOpen').value||0;
+  const hasUnits=$('#iHasUnits').checked;
+  let upp=1, unitSell=packSell, unitCost=packCost;
+  if(hasUnits){
+    upp=Math.max(2,+$('#iUpp').value||0);
+    if(upp<2) return toast('Enter how many units make 1 pack',true);
+    unitSell=+$('#iUnitSell').value||0;
+    if(!unitSell) return toast('Enter the unit sell price',true);
+    unitCost=packCost?packCost/upp:0;
+  }
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
-    cost_price:+$('#iCost').value||0,sell_price:+$('#iSell').value||0,low_stock_threshold:+$('#iThr').value||0,
-    units_per_pack:Math.max(1,+$('#iUpp').value||1),pack_price:+$('#iPack').value||0};
-  const {error}=await sb.from('items').insert(rec);
+    units_per_pack:upp, pack_price:packSell,
+    sell_price:unitSell, cost_price:unitCost,
+    low_stock_threshold:upp>1?upp:5};
+  const {data,error}=await sb.from('items').insert(rec).select().single();
   if(error) return err(error);
+  if(openPacks>0){
+    const base=openPacks*upp;
+    const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:data.id,quantity:openPacks,base_units:base,unit_cost:packCost,entry_date:today(),created_by:S.user.id});
+    if(r.error) return err(r.error);
+  }
   toast('Item added'); await loadData(); render();
 }
 function editItem(id){
   const i=S.items.find(x=>x.id===id);
+  const upp=i.units_per_pack||1;
   $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="editCard"><div class="hd"><h2>Edit ${esc(i.name)}</h2></div><div class="bd">
     <div class="frow">
       <div class="field"><label>Name</label><input id="eName" value="${esc(i.name)}"></div>
       <div class="field"><label>Category</label><input id="eCat" value="${esc(i.category||'')}"></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Cost (₦)</label><input id="eCost" type="number" value="${i.cost_price}"></div>
-      <div class="field"><label>Sell (₦)</label><input id="eSell" type="number" value="${i.sell_price}"></div>
-      <div class="field"><label>Reorder at</label><input id="eThr" type="number" value="${i.low_stock_threshold}"></div>
+      <div class="field"><label>Pack price — sell (₦)</label><input id="ePack" type="number" value="${i.pack_price||i.sell_price}"></div>
+      <div class="field"><label>Units in 1 pack</label><input id="eUpp" type="number" min="1" value="${upp}"></div>
+      <div class="field"><label>Unit price — sell (₦)</label><input id="eSell" type="number" value="${i.sell_price}"></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Units per pack/crate</label><input id="eUpp" type="number" min="1" value="${i.units_per_pack||1}"></div>
-      <div class="field"><label>Pack/crate price (₦)</label><input id="ePack" type="number" value="${i.pack_price||0}"></div>
+      <div class="field"><label>Unit cost (₦, for profit)</label><input id="eCost" type="number" value="${i.cost_price}"></div>
+      <div class="field"><label>Low-stock alert (units)</label><input id="eThr" type="number" value="${i.low_stock_threshold}"></div>
     </div>
+    <p class="hint" style="margin:-2px 0 12px">Set <b>units in 1 pack</b> to 1 if this item is only sold as whole packs. Adjust actual stock counts under <b>Restock</b> or <b>Reconcile</b>.</p>
     <div class="frow"><button class="btn primary" onclick='saveItem("${id}")'>Save</button>
     <button class="btn ghost" onclick="document.getElementById('editCard').remove()">Cancel</button>
     <div class="spacer"></div><button class="btn danger" onclick='delItem("${id}")'>Delete</button></div>
@@ -477,9 +521,10 @@ function editItem(id){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 async function saveItem(id){
+  const upp=Math.max(1,+$('#eUpp').value||1);
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
     cost_price:+$('#eCost').value||0,sell_price:+$('#eSell').value||0,low_stock_threshold:+$('#eThr').value||0,
-    units_per_pack:Math.max(1,+$('#eUpp').value||1),pack_price:+$('#ePack').value||0};
+    units_per_pack:upp,pack_price:+$('#ePack').value||0};
   const {error}=await sb.from('items').update(rec).eq('id',id);
   if(error) return err(error);
   toast('Saved'); await loadData(); render();
@@ -497,7 +542,7 @@ async function delItem(id){
 function vRestock(v){
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Record stock bought in</h2><span class="desc">increases available stock</span></div><div class="bd">
-    <div class="field"><label>Item</label><select id="rItem" onchange="rPackInfo()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (now ${onHand(i.id)})</option>`).join('')}</select></div>
+    <div class="field"><label>Item</label><select id="rItem" onchange="rPackInfo()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} — now ${stockShort(i)}</option>`).join('')}</select></div>
     <div class="frow">
       <div class="field"><label>Buying as</label><select id="rMode" onchange="rPackInfo()"><option value="unit">Units</option><option value="pack">Packs/crates</option></select></div>
       <div class="field"><label>Quantity bought</label><input id="rQty" type="number" min="1" step="1" placeholder="0"></div>
@@ -581,8 +626,20 @@ function vReports(v){
       <div class="field"><label>To</label><input id="repTo" type="date" value="${today()}"></div>
       <div class="field" style="display:flex;align-items:flex-end;gap:8px"><button class="btn primary" onclick="runReport()">Run</button></div>
     </div>
+    <div class="row" style="gap:6px">
+      <button class="btn ghost sm" onclick="repRange('today')">Today</button>
+      <button class="btn ghost sm" onclick="repRange('week')">Last 7 days</button>
+      <button class="btn ghost sm" onclick="repRange('month')">This month</button>
+    </div>
   </div></div>
   <div id="repOut"></div>`;
+  runReport();
+}
+function repRange(which){
+  const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
+  if(which==='today'){ $('#repFrom').value=today(); $('#repTo').value=today(); }
+  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#repFrom').value=iso(f); $('#repTo').value=today(); }
+  else if(which==='month'){ $('#repFrom').value=monthStart(); $('#repTo').value=today(); }
   runReport();
 }
 async function runReport(){
@@ -590,18 +647,21 @@ async function runReport(){
   const {data,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to);
   if(error) return err(error);
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const totU=data.reduce((a,s)=>a+s.quantity,0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
-  const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=s.quantity;byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
+  const totU=data.reduce((a,s)=>a+(s.base_units||s.quantity),0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
+  const byMethod={cash:0,transfer:0,credit:0};
+  data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
+  const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
   const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
   const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
-  S._report={from,to,rows,nm};
+  S._report={from,to,rows,nm,byMethod};
   $('#repOut').innerHTML=`
     <div class="stats">
-      <div class="stat"><div class="label">Units sold</div><div class="value num">${totU}</div></div>
-      <div class="stat good"><div class="label">Revenue</div><div class="value num">${money(totR)}</div></div>
-      <div class="stat"><div class="label">Profit</div><div class="value num" style="color:var(--green)">${money(totP)}</div></div>
+      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · profit ${money(totP)}</div></div>
+      <div class="stat"><div class="label">💵 Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
+      <div class="stat"><div class="label">🏦 Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
+      <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">📒 Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
     </div>
-    <div class="card"><div class="hd"><h2>By item</h2><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight">
+    <div class="card"><div class="hd"><h2>By item</h2><span class="desc">${from} → ${to}</span><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight">
       ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
       <tbody>${rows.map(([id,o])=>`<tr><td class="itemname">${esc(nm(id))}</td><td class="r num">${o.u}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales in this range.</div>'}
@@ -609,7 +669,7 @@ async function runReport(){
 }
 function exportCSV(){
   const r=S._report; if(!r) return;
-  let csv=`Item,Units,Revenue,Profit\n`;
+  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\n\nItem,Units,Revenue,Profit\n`;
   r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
   const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`; a.click();
@@ -657,8 +717,11 @@ async function vAudit(v){
    RECEPTIONIST — SELL  (point-of-sale cart with live preview)
    ============================================================ */
 let posQuery='';
-function unitPrice(i){ return Number(i.sell_price); }
-function packPrice(i){ return Number(i.pack_price)>0?Number(i.pack_price):(i.units_per_pack||1)*Number(i.sell_price); }
+function unitPrice(i){ return Number(i.sell_price)||Number(i.pack_price)||0; }
+function packPrice(i){
+  if(Number(i.pack_price)>0) return Number(i.pack_price);
+  return (i.units_per_pack||1)*Number(i.sell_price||0);
+}
 function cartUnits(){ const t={}; S.cart.forEach(l=>{ t[l.itemId]=(t[l.itemId]||0)+l.baseUnits*l.qty; }); return t; }
 function cartTotal(){ return S.cart.reduce((a,l)=>a+l.price*l.qty,0); }
 function cartCount(){ return S.cart.reduce((a,l)=>a+l.qty,0); }
@@ -675,8 +738,9 @@ function vSell(v){
       <div class="chd"><h2>🧾 Current sale</h2><div class="spacer"></div>
         <button class="btn ghost sm" onclick="clearCart()" id="clearBtn" style="${S.cart.length?'':'display:none'}">Clear</button></div>
       <div class="modeRow">
-        <label><input type="radio" name="payMode" value="cash" checked onchange="setPayMode('cash')"> Cash/Transfer</label>
-        <label><input type="radio" name="payMode" value="credit" onchange="setPayMode('credit')"> On credit</label>
+        <label><input type="radio" name="payMode" value="cash" checked onchange="setPayMode('cash')"> Cash</label>
+        <label><input type="radio" name="payMode" value="transfer" onchange="setPayMode('transfer')"> Transfer</label>
+        <label><input type="radio" name="payMode" value="credit" onchange="setPayMode('credit')"> Credit</label>
       </div>
       <div style="padding:0 16px 12px"><select id="saleCust" class="biz" style="width:100%;max-width:none">${custOpts}</select>
         <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — pick the customer above; the total is added to their tab.</p></div>
@@ -697,13 +761,15 @@ function productCards(){
   if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match for that search.</div>';
   return list.map(i=>{
     const oh=onHand(i.id), out=oh<=0, hasPack=(i.units_per_pack||1)>1;
+    const mainPrice = hasPack?unitPrice(i):packPrice(i);
+    const priceLbl = hasPack?'/unit':'/pack';
     return `<div class="prod ${out?'disabled':''}">
       <div class="pname">${esc(i.name)}</div>
-      <div class="pprice">${money(unitPrice(i))}<small style="font-weight:500;color:var(--muted)"> /unit</small></div>
-      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':oh+' in stock'}</div>
+      <div class="pprice">${money(mainPrice)}<small style="font-weight:500;color:var(--muted)"> ${priceLbl}</small></div>
+      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':stockShort(i)+' left'}</div>
       ${out?'':`<div class="opts">
-        <button class="opt" onclick='addToCart("${i.id}","unit")'>+ Unit<small>${money(unitPrice(i))}</small></button>
-        ${hasPack?`<button class="opt" onclick='addToCart("${i.id}","pack")'>+ Pack<small>${i.units_per_pack} · ${money(packPrice(i))}</small></button>`:''}
+        ${hasPack?`<button class="opt" onclick='addToCart("${i.id}","unit")'>+ Unit<small>${money(unitPrice(i))}</small></button>`:''}
+        <button class="opt" onclick='addToCart("${i.id}","pack")'>+ Pack<small>${hasPack?i.units_per_pack+' · ':''}${money(packPrice(i))}</small></button>
       </div>`}
     </div>`;
   }).join('');
@@ -755,11 +821,12 @@ async function checkout(){
   if(onCredit && !custId) return toast('Pick a customer for a credit sale',true);
   const total=cartTotal(), cnt=cartCount();
   const custName = custId ? (S.customers.find(c=>c.id===custId)||{}).name : 'Walk-in';
-  if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\n${onCredit?'ON CREDIT — '+custName:'Paid (cash/transfer)'}`)) return;
+  if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\n${onCredit?'ON CREDIT — '+custName:'Paid by '+S.payMode}`)) return;
   $('#checkoutBtn').disabled=true;
   try{
+    const method=onCredit?'credit':S.payMode;
     const rows=S.cart.map(l=>({business_id:S.biz.id,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
-      base_units:l.baseUnits*l.qty,unit_price:l.price,customer_id:custId,created_by:S.user.id}));
+      base_units:l.baseUnits*l.qty,unit_price:l.price,customer_id:custId,payment_method:method,created_by:S.user.id}));
     const {error}=await sb.from('sales').insert(rows);
     if(error) throw error;
     if(onCredit){
@@ -800,7 +867,7 @@ async function vMySales(v){
 function vStockList(v){
   v.innerHTML=`<div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
     ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Price</th><th class="r">Remaining</th></tr></thead>
-    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';const pk=(i.units_per_pack||1)>1?`<div class="cat">pack of ${i.units_per_pack}: ${money(i.pack_price||i.units_per_pack*i.sell_price)}</div>`:'';return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${pk}</td><td class="r num">${money(i.sell_price)}</td><td class="r"><span class="badge ${b}">${oh}</span></td></tr>`;}).join('')}</tbody></table>`
+    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';const pk=(i.units_per_pack||1)>1?`<div class="cat">pack of ${i.units_per_pack}: ${money(i.pack_price||i.sell_price)}</div>`:'';return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${pk}</td><td class="r num">${(i.units_per_pack||1)>1?money(i.sell_price):money(i.pack_price||i.sell_price)}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;}).join('')}</tbody></table>`
     :'<div class="empty">No items yet.</div>'}
   </div></div>`;
 }
@@ -843,10 +910,14 @@ async function openCustomer(id){
   const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   const isAdmin=S.role==='admin';
   $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="custCard">
-    <div class="hd"><h2>${esc(c.name)}</h2><span class="desc">${c.phone?esc(c.phone):''}</span><div class="spacer"></div>
+    <div class="hd"><h2>${esc(c.name)}</h2><span class="desc">${c.phone?esc(c.phone):'no phone saved'}</span><div class="spacer"></div>
       <button class="btn ghost sm" onclick="document.getElementById('custCard').remove()">Close</button></div>
     <div class="bd">
       <div class="stats" style="margin-bottom:14px"><div class="stat ${bal>0?'bad':'good'}"><div class="label">Balance owed</div><div class="value num">${money(bal)}</div></div></div>
+      ${c.phone?`<div class="row" style="margin-bottom:14px">
+        <button class="btn primary sm" onclick='waCustomer("${id}","reminder")'>💬 Payment reminder</button>
+        <button class="btn ghost sm" onclick='waCustomer("${id}","custom")'>💬 Custom message</button>
+      </div>`:'<p class="hint" style="margin-bottom:14px">Add a phone number (edit via re-adding the customer) to message them on WhatsApp.</p>'}
       <div class="frow" style="align-items:flex-end">
         <div class="field"><label>Amount (₦)</label><input id="ctxAmt" type="number" min="1" step="1" placeholder="0"></div>
         <div class="field"><label>Note (optional)</label><input id="ctxNote" placeholder="e.g. part payment"></div>
@@ -873,6 +944,21 @@ async function delCtx(txId){
   const {error}=await sb.from('customer_transactions').delete().eq('id',txId);
   if(error) return err(error);
   toast('Deleted'); await loadData(); render();
+}
+function waCustomer(id,kind){
+  const c=S.customers.find(x=>x.id===id); if(!c||!c.phone) return toast('No phone number saved',true);
+  const bal=balanceOf(id);
+  let msg;
+  if(kind==='reminder'){
+    msg=`Hello ${c.name}, this is a friendly reminder from ${S.biz.name}. `+
+        (bal>0?`Your outstanding balance is ${money(bal)}. Kindly arrange payment when convenient. Thank you!`
+              :`Thank you for your continued patronage!`);
+  }else{
+    const typed=prompt(`Message to ${c.name}:`, bal>0?`Hello ${c.name}, you have a balance of ${money(bal)} with ${S.biz.name}.`:`Hello ${c.name}, `);
+    if(typed===null) return;
+    msg=typed.trim(); if(!msg) return;
+  }
+  window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
 /* ============================================================

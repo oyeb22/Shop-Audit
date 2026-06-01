@@ -102,6 +102,48 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .tabs button{flex:1;padding:9px;border-radius:8px;font-weight:600;color:var(--muted)}
 .tabs button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 
+/* POS — point of sale */
+.pos{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
+@media(max-width:860px){.pos{grid-template-columns:1fr}}
+.posSearch{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px;margin-bottom:12px}
+.posSearch:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
+.prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;text-align:left;display:flex;flex-direction:column;gap:6px;transition:.12s;min-height:96px}
+.prod:hover{border-color:var(--green);transform:translateY(-1px);box-shadow:var(--shadow)}
+.prod:active{transform:translateY(0)}
+.prod .pname{font-weight:700;font-size:14px;line-height:1.25}
+.prod .pmeta{font-size:12px;color:var(--muted);margin-top:auto}
+.prod .pprice{font-weight:700;color:var(--green);font-size:14px}
+.prod.disabled{opacity:.45;pointer-events:none}
+.prod .opts{display:flex;gap:6px;margin-top:4px}
+.prod .opt{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 4px;font-weight:700;font-size:12.5px;color:var(--ink);background:#FCFAF5}
+.prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
+.prod .opt small{display:block;font-weight:500;color:var(--muted);font-size:10.5px}
+/* cart */
+.cart{position:sticky;top:78px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
+.cart .chd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+.cart .chd h2{font-size:17px}
+.cart .citems{overflow-y:auto;flex:1;min-height:60px}
+.citem{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line)}
+.citem .ci-n{flex:1;font-weight:600;font-size:13.5px;line-height:1.2}
+.citem .ci-n small{display:block;color:var(--muted);font-weight:500;font-size:11.5px}
+.citem .ci-t{font-weight:700;font-size:13.5px;white-space:nowrap}
+.citem .x{color:var(--red);font-size:18px;width:24px;text-align:center}
+.cstep{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.cstep button{width:26px;height:30px;font-size:15px;font-weight:700;color:var(--green)}
+.cstep span{min-width:26px;text-align:center;font-weight:700;font-size:13px}
+.cart .cfoot{border-top:1px solid var(--line);padding:14px 16px;background:#FCFAF5}
+.cart .total{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.cart .total .lbl{font-weight:600;color:var(--muted)}
+.cart .total .amt{font-family:'Fraunces';font-weight:700;font-size:30px;letter-spacing:-.02em}
+.cart .ccount{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+.cartEmpty{padding:34px 16px;text-align:center;color:var(--muted);font-size:13.5px}
+.modeRow{display:flex;gap:8px;padding:0 16px 12px}
+.modeRow label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px;font-weight:600;font-size:13px;cursor:pointer}
+.modeRow input{width:auto}
+.fab{position:fixed;right:18px;bottom:18px;z-index:60;background:var(--green);color:#fff;border-radius:99px;padding:14px 20px;font-weight:700;box-shadow:0 8px 24px -6px rgba(31,90,65,.5);display:none;align-items:center;gap:8px}
+@media(max-width:860px){.fab.show{display:inline-flex}}
+
 /* misc */
 .empty{padding:40px 18px;text-align:center;color:var(--muted)}
 .empty .big{font-size:40px;margin-bottom:8px}
@@ -170,12 +212,12 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 /* ============================================================
    1) CONFIG — paste your Supabase keys here
    ============================================================ */
-const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
+const SUPABASE_URL      = "PASTE_YOUR_SUPABASE_URL";
+const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_KEY";
 
 /* ============================================================ */
 let sb = null;
-const S = { user:null, businesses:[], biz:null, role:null, items:[], stock:{}, customers:[], balances:{}, tab:'dashboard' };
+const S = { user:null, businesses:[], biz:null, role:null, items:[], stock:{}, customers:[], balances:{}, cart:[], payMode:'cash', tab:'dashboard' };
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -245,6 +287,7 @@ async function loadBusinesses(){
 }
 async function switchBiz(id){
   S.biz=S.businesses.find(b=>b.id===id); S.role=S.biz._role; localStorage.setItem('lastBiz',id);
+  S.cart=[]; S.payMode='cash';
   $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':'');
   S.tab = S.role==='admin'?'dashboard':'sell';
   buildNav(); await loadData(); render();
@@ -330,15 +373,15 @@ async function vDashboard(v){
   const stockValue=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
 
   // day-by-day
-  const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({u:0,r:0,p:0})); byDay[s.entry_date].u+=s.quantity; byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
+  const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({u:0,r:0,p:0})); byDay[s.entry_date].u+=(s.base_units||s.quantity); byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
   const days=Object.entries(byDay).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
 
-  // per-item sold + remaining
-  const sold={}; sales.forEach(s=>sold[s.item_id]=(sold[s.item_id]||0)+s.quantity);
+  // per-item sold + remaining (in base units)
+  const sold={}; sales.forEach(s=>sold[s.item_id]=(sold[s.item_id]||0)+(s.base_units||s.quantity));
 
   v.innerHTML=`
     <div class="stats">
-      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${sum(dayS,s=>s.quantity)} sold · profit ${money(sum(dayS,prof))}</div></div>
+      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${sum(dayS,s=>(s.base_units||s.quantity))} sold · profit ${money(sum(dayS,prof))}</div></div>
       <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">profit ${money(sum(monS,prof))}</div></div>
       <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
       <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
@@ -373,10 +416,15 @@ function vItems(v){
       <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Cost price (₦)</label><input id="iCost" type="number" min="0" step="1" placeholder="0"></div>
-      <div class="field"><label>Sell price (₦)</label><input id="iSell" type="number" min="0" step="1" placeholder="0"></div>
-      <div class="field"><label>Reorder at</label><input id="iThr" type="number" min="0" step="1" value="5"></div>
+      <div class="field"><label>Unit cost (₦)</label><input id="iCost" type="number" min="0" step="1" placeholder="0"></div>
+      <div class="field"><label>Unit sell (₦)</label><input id="iSell" type="number" min="0" step="1" placeholder="0"></div>
+      <div class="field"><label>Reorder at (units)</label><input id="iThr" type="number" min="0" step="1" value="5"></div>
     </div>
+    <div class="frow">
+      <div class="field"><label>Units per pack/crate</label><input id="iUpp" type="number" min="1" step="1" value="1"></div>
+      <div class="field"><label>Pack/crate sell price (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="blank = units × unit price"></div>
+    </div>
+    <p class="hint" style="margin:-4px 0 12px">Set <b>units per pack</b> above 1 for crates/cartons (e.g. 12 or 24). Leave it at 1 for single items. Stock is always tracked in single units.</p>
     <button class="btn primary" onclick="addItem()">Add item</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap a price to edit</span></div><div class="bd tight">
@@ -387,8 +435,9 @@ function vItems(v){
 function rowItem(i){
   const oh=onHand(i.id), m=Number(i.sell_price)-Number(i.cost_price);
   const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
+  const packTxt=(i.units_per_pack>1)?`<div class="cat">${i.units_per_pack}/pack · pack ${money(i.pack_price||i.units_per_pack*i.sell_price)}</div>`:'';
   return `<tr>
-    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div></td>
+    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${packTxt}</td>
     <td class="r num">${money(i.cost_price)}</td>
     <td class="r num">${money(i.sell_price)}</td>
     <td class="r num" style="color:${m>=0?'var(--green)':'var(--red)'}">${money(m)}</td>
@@ -399,7 +448,8 @@ function rowItem(i){
 async function addItem(){
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
-    cost_price:+$('#iCost').value||0,sell_price:+$('#iSell').value||0,low_stock_threshold:+$('#iThr').value||0};
+    cost_price:+$('#iCost').value||0,sell_price:+$('#iSell').value||0,low_stock_threshold:+$('#iThr').value||0,
+    units_per_pack:Math.max(1,+$('#iUpp').value||1),pack_price:+$('#iPack').value||0};
   const {error}=await sb.from('items').insert(rec);
   if(error) return err(error);
   toast('Item added'); await loadData(); render();
@@ -416,6 +466,10 @@ function editItem(id){
       <div class="field"><label>Sell (₦)</label><input id="eSell" type="number" value="${i.sell_price}"></div>
       <div class="field"><label>Reorder at</label><input id="eThr" type="number" value="${i.low_stock_threshold}"></div>
     </div>
+    <div class="frow">
+      <div class="field"><label>Units per pack/crate</label><input id="eUpp" type="number" min="1" value="${i.units_per_pack||1}"></div>
+      <div class="field"><label>Pack/crate price (₦)</label><input id="ePack" type="number" value="${i.pack_price||0}"></div>
+    </div>
     <div class="frow"><button class="btn primary" onclick='saveItem("${id}")'>Save</button>
     <button class="btn ghost" onclick="document.getElementById('editCard').remove()">Cancel</button>
     <div class="spacer"></div><button class="btn danger" onclick='delItem("${id}")'>Delete</button></div>
@@ -424,7 +478,8 @@ function editItem(id){
 }
 async function saveItem(id){
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
-    cost_price:+$('#eCost').value||0,sell_price:+$('#eSell').value||0,low_stock_threshold:+$('#eThr').value||0};
+    cost_price:+$('#eCost').value||0,sell_price:+$('#eSell').value||0,low_stock_threshold:+$('#eThr').value||0,
+    units_per_pack:Math.max(1,+$('#eUpp').value||1),pack_price:+$('#ePack').value||0};
   const {error}=await sb.from('items').update(rec).eq('id',id);
   if(error) return err(error);
   toast('Saved'); await loadData(); render();
@@ -442,24 +497,36 @@ async function delItem(id){
 function vRestock(v){
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Record stock bought in</h2><span class="desc">increases available stock</span></div><div class="bd">
-    <div class="field"><label>Item</label><select id="rItem">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (now ${onHand(i.id)})</option>`).join('')}</select></div>
+    <div class="field"><label>Item</label><select id="rItem" onchange="rPackInfo()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (now ${onHand(i.id)})</option>`).join('')}</select></div>
     <div class="frow">
+      <div class="field"><label>Buying as</label><select id="rMode" onchange="rPackInfo()"><option value="unit">Units</option><option value="pack">Packs/crates</option></select></div>
       <div class="field"><label>Quantity bought</label><input id="rQty" type="number" min="1" step="1" placeholder="0"></div>
-      <div class="field"><label>Unit cost (₦)</label><input id="rCost" type="number" min="0" step="1" placeholder="defaults to item cost"></div>
       <div class="field"><label>Date</label><input id="rDate" type="date" value="${today()}"></div>
     </div>
+    <p class="hint" id="rInfo" style="margin:-4px 0 12px"></p>
     <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
     ${S.items.length?'':'<p class="hint" style="margin-top:10px">Add items first under the Items tab.</p>'}
   </div></div>`;
+  rPackInfo();
+}
+function rPackInfo(){
+  const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
+  const mode=$('#rMode').value, upp=i.units_per_pack||1;
+  $('#rInfo').innerHTML = mode==='pack'
+    ? `1 pack = <b>${upp}</b> unit(s). Stock will increase by quantity × ${upp} units.`
+    : `Adds single units to stock.`;
 }
 async function addPurchase(){
   const item_id=$('#rItem').value, qty=+$('#rQty').value;
   if(!item_id||!qty||qty<1) return toast('Enter a valid quantity',true);
   const it=S.items.find(i=>i.id===item_id);
-  const rec={business_id:S.biz.id,item_id,quantity:qty,unit_cost:(+$('#rCost').value||it.cost_price||0),entry_date:$('#rDate').value||today(),created_by:S.user.id};
+  const mode=$('#rMode').value, upp=it.units_per_pack||1;
+  const base=mode==='pack'?qty*upp:qty;
+  const unit_cost=mode==='pack'?(it.cost_price*upp):it.cost_price;
+  const rec={business_id:S.biz.id,item_id,quantity:qty,base_units:base,unit_cost:unit_cost||0,entry_date:$('#rDate').value||today(),created_by:S.user.id};
   const {error}=await sb.from('purchases').insert(rec);
   if(error) return err(error);
-  toast(`Added ${qty} to stock`); await loadData(); render();
+  toast(`Added ${base} unit(s) to stock`); await loadData(); render();
 }
 
 /* ============================================================
@@ -587,55 +654,121 @@ async function vAudit(v){
 }
 
 /* ============================================================
-   RECEPTIONIST — SELL (one-tap entry)
+   RECEPTIONIST — SELL  (point-of-sale cart with live preview)
    ============================================================ */
+let posQuery='';
+function unitPrice(i){ return Number(i.sell_price); }
+function packPrice(i){ return Number(i.pack_price)>0?Number(i.pack_price):(i.units_per_pack||1)*Number(i.sell_price); }
+function cartUnits(){ const t={}; S.cart.forEach(l=>{ t[l.itemId]=(t[l.itemId]||0)+l.baseUnits*l.qty; }); return t; }
+function cartTotal(){ return S.cart.reduce((a,l)=>a+l.price*l.qty,0); }
+function cartCount(){ return S.cart.reduce((a,l)=>a+l.qty,0); }
+
 function vSell(v){
-  const custOpts=S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}${balanceOf(c.id)>0?` — owes ${money(balanceOf(c.id))}`:''}</option>`).join('');
+  const custOpts=`<option value="">Walk-in (no customer)</option>`+S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}${balanceOf(c.id)>0?` — owes ${money(balanceOf(c.id))}`:''}</option>`).join('');
   v.innerHTML=`
-  <div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <label style="display:flex;align-items:center;gap:8px;font-weight:600"><input id="creditMode" type="checkbox" style="width:auto" onchange="toggleCredit()"> Sell on credit (customer owes)</label>
-    <select id="creditCust" class="biz hidden" style="max-width:240px">${custOpts||'<option value="">No customers yet</option>'}</select>
-    <span id="creditHint" class="hint hidden">Sales below will be added to this customer's tab instead of counted as cash.</span>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Record a sale</h2><span class="desc">tap − / + then Sell</span></div><div class="bd tight">
-    ${S.items.length?`<table><tbody>${S.items.map(sellRow).join('')}</tbody></table>`:'<div class="empty">No items available yet. Ask the admin to add some.</div>'}
-  </div></div>`;
+  <div class="pos">
+    <div>
+      <input class="posSearch" id="posSearch" placeholder="🔍  Search item…" value="${esc(posQuery)}" oninput="posFilter(this.value)">
+      <div class="prodgrid" id="prodGrid">${productCards()}</div>
+    </div>
+    <div class="cart" id="cartBox">
+      <div class="chd"><h2>🧾 Current sale</h2><div class="spacer"></div>
+        <button class="btn ghost sm" onclick="clearCart()" id="clearBtn" style="${S.cart.length?'':'display:none'}">Clear</button></div>
+      <div class="modeRow">
+        <label><input type="radio" name="payMode" value="cash" checked onchange="setPayMode('cash')"> Cash/Transfer</label>
+        <label><input type="radio" name="payMode" value="credit" onchange="setPayMode('credit')"> On credit</label>
+      </div>
+      <div style="padding:0 16px 12px"><select id="saleCust" class="biz" style="width:100%;max-width:none">${custOpts}</select>
+        <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — pick the customer above; the total is added to their tab.</p></div>
+      <div class="citems" id="cartItems">${cartRows()}</div>
+      <div class="cfoot">
+        <div class="total"><span class="lbl">Total to pay</span><span class="amt num" id="cartTotal">${money(cartTotal())}</span></div>
+        <div class="ccount" id="cartCount">${cartCount()} item(s) in this sale</div>
+        <button class="btn primary" style="width:100%;font-size:16px;padding:14px" id="checkoutBtn" onclick="checkout()" ${S.cart.length?'':'disabled'}>Complete sale</button>
+      </div>
+    </div>
+  </div>
+  <button class="fab ${S.cart.length?'show':''}" id="cartFab" onclick="document.getElementById('cartBox').scrollIntoView({behavior:'smooth'})">🧾 ${money(cartTotal())} · ${cartCount()}</button>`;
 }
-function toggleCredit(){
-  const on=$('#creditMode').checked;
-  $('#creditCust').classList.toggle('hidden',!on);
-  $('#creditHint').classList.toggle('hidden',!on);
+function productCards(){
+  if(!S.items.length) return '<div class="empty" style="grid-column:1/-1">No items available yet. Ask the admin to add some.</div>';
+  const q=posQuery.trim().toLowerCase();
+  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q));
+  if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match for that search.</div>';
+  return list.map(i=>{
+    const oh=onHand(i.id), out=oh<=0, hasPack=(i.units_per_pack||1)>1;
+    return `<div class="prod ${out?'disabled':''}">
+      <div class="pname">${esc(i.name)}</div>
+      <div class="pprice">${money(unitPrice(i))}<small style="font-weight:500;color:var(--muted)"> /unit</small></div>
+      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':oh+' in stock'}</div>
+      ${out?'':`<div class="opts">
+        <button class="opt" onclick='addToCart("${i.id}","unit")'>+ Unit<small>${money(unitPrice(i))}</small></button>
+        ${hasPack?`<button class="opt" onclick='addToCart("${i.id}","pack")'>+ Pack<small>${i.units_per_pack} · ${money(packPrice(i))}</small></button>`:''}
+      </div>`}
+    </div>`;
+  }).join('');
 }
-function sellRow(i){
-  const oh=onHand(i.id), out=oh<=0;
-  return `<tr>
-    <td class="itemname">${esc(i.name)}<div class="cat">${money(i.sell_price)} · ${oh} in stock</div></td>
-    <td class="r" style="white-space:nowrap">
-      <span class="qty"><button onclick="stepQ('${i.id}',-1)">−</button><input id="q_${i.id}" value="1" inputmode="numeric" onchange="fixQ('${i.id}')"><button onclick="stepQ('${i.id}',1)">+</button></span>
-      <button class="btn primary sm" style="margin-left:8px" onclick="recordSale('${i.id}')" ${out?'disabled':''}>${out?'Out':'Sell'}</button>
-    </td>
-  </tr>`;
+function posFilter(q){ posQuery=q; $('#prodGrid').innerHTML=productCards(); }
+function setPayMode(m){ S.payMode=m; $('#custNote').style.display=(m==='credit')?'block':'none'; }
+
+function addToCart(itemId,mode){
+  const i=S.items.find(x=>x.id===itemId); if(!i) return;
+  const baseUnits = mode==='pack' ? (i.units_per_pack||1) : 1;
+  const price     = mode==='pack' ? packPrice(i) : unitPrice(i);
+  // stock guard across everything already in the cart
+  const inCart=cartUnits()[itemId]||0;
+  if(inCart+baseUnits>onHand(i.id)) return toast(`Only ${onHand(i.id)} unit(s) of ${i.name} in stock`,true);
+  const ex=S.cart.find(l=>l.itemId===itemId&&l.mode===mode);
+  if(ex) ex.qty++; else S.cart.push({itemId,mode,baseUnits,price,name:i.name});
+  refreshCart();
 }
-function stepQ(id,d){ const el=$('#q_'+id); el.value=Math.max(1,(+el.value||1)+d); }
-function fixQ(id){ const el=$('#q_'+id); el.value=Math.max(1,Math.floor(+el.value||1)); }
-async function recordSale(id){
-  const qty=+$('#q_'+id).value||1, oh=onHand(id);
-  if(qty>oh){ if(!confirm(`Only ${oh} in stock. Record ${qty} anyway? (this will flag a stock shortage)`)) return; }
-  const onCredit=$('#creditMode')?.checked, custId=$('#creditCust')?.value;
-  if(onCredit && !custId) return toast('Pick a customer (or add one in Customers)',true);
-  const {error}=await sb.from('sales').insert({business_id:S.biz.id,item_id:id,quantity:qty,created_by:S.user.id});
-  if(error) return err(error);
-  const it=S.items.find(x=>x.id===id);
-  if(onCredit){
-    const amount=qty*Number(it.sell_price);
-    const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount,note:`${qty} × ${it.name}`,created_by:S.user.id});
-    if(r.error) return err(r.error);
-    toast(`On credit: ${money(amount)} (${it.name})`);
-  }else{
-    toast(`Sold ${qty} × ${it.name}`);
-  }
-  $('#q_'+id).value=1; await loadData(); render();
-  if(onCredit){ const cm=$('#creditMode'); if(cm){cm.checked=true; toggleCredit(); $('#creditCust').value=custId;} }
+function cartRows(){
+  if(!S.cart.length) return '<div class="cartEmpty">Tap items on the left to add them here. The running total updates automatically.</div>';
+  return S.cart.map((l,idx)=>`<div class="citem">
+    <div class="ci-n">${esc(l.name)}<small>${l.mode==='pack'?`pack ×${l.baseUnits} · `:''}${money(l.price)} each</small></div>
+    <span class="cstep"><button onclick="cartStep(${idx},-1)">−</button><span class="num">${l.qty}</span><button onclick="cartStep(${idx},1)">+</button></span>
+    <span class="ci-t num">${money(l.price*l.qty)}</span>
+    <button class="x" onclick="cartRemove(${idx})" title="Remove">×</button>
+  </div>`).join('');
+}
+function cartStep(idx,d){
+  const l=S.cart[idx]; if(!l) return;
+  if(d>0){ const inCart=cartUnits()[l.itemId]||0; if(inCart+l.baseUnits>onHand(l.itemId)) return toast('Not enough stock',true); }
+  l.qty+=d; if(l.qty<=0) S.cart.splice(idx,1); refreshCart();
+}
+function cartRemove(idx){ S.cart.splice(idx,1); refreshCart(); }
+function clearCart(){ S.cart=[]; refreshCart(); }
+function refreshCart(){
+  const items=$('#cartItems'); if(!items) return; // not on sell page
+  items.innerHTML=cartRows();
+  $('#cartTotal').textContent=money(cartTotal());
+  $('#cartCount').textContent=cartCount()+' item(s) in this sale';
+  $('#checkoutBtn').disabled=!S.cart.length;
+  $('#clearBtn').style.display=S.cart.length?'':'none';
+  const fab=$('#cartFab'); if(fab){ fab.classList.toggle('show',S.cart.length>0); fab.innerHTML=`🧾 ${money(cartTotal())} · ${cartCount()}`; }
+  $('#prodGrid').innerHTML=productCards(); // reflect remaining stock live
+}
+async function checkout(){
+  if(!S.cart.length) return;
+  const onCredit=(S.payMode==='credit');
+  const custId=$('#saleCust').value||null;
+  if(onCredit && !custId) return toast('Pick a customer for a credit sale',true);
+  const total=cartTotal(), cnt=cartCount();
+  const custName = custId ? (S.customers.find(c=>c.id===custId)||{}).name : 'Walk-in';
+  if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\n${onCredit?'ON CREDIT — '+custName:'Paid (cash/transfer)'}`)) return;
+  $('#checkoutBtn').disabled=true;
+  try{
+    const rows=S.cart.map(l=>({business_id:S.biz.id,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
+      base_units:l.baseUnits*l.qty,unit_price:l.price,customer_id:custId,created_by:S.user.id}));
+    const {error}=await sb.from('sales').insert(rows);
+    if(error) throw error;
+    if(onCredit){
+      const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
+      if(r.error) throw r.error;
+    }
+    S.cart=[]; toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
+    await loadData(); render();
+  }catch(e){ err(e); $('#checkoutBtn').disabled=false; }
 }
 
 /* ============================================================
@@ -648,14 +781,15 @@ async function vMySales(v){
   const t=today(), m=monthStart(), rev=s=>s.quantity*Number(s.unit_price);
   const dT=data.filter(s=>s.entry_date===t), dM=data.filter(s=>s.entry_date>=m);
   const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(item)';};
+  const cn=id=>{const c=S.customers.find(x=>x.id===id);return c?c.name:'';};
   v.innerHTML=`
     <div class="stats">
-      <div class="stat good"><div class="label">Today</div><div class="value num">${money(dT.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dT.reduce((a,s)=>a+s.quantity,0)} items sold</div></div>
-      <div class="stat"><div class="label">This month</div><div class="value num">${money(dM.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dM.reduce((a,s)=>a+s.quantity,0)} items sold</div></div>
+      <div class="stat good"><div class="label">Today</div><div class="value num">${money(dT.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dT.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
+      <div class="stat"><div class="label">This month</div><div class="value num">${money(dM.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dM.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
     </div>
     <div class="card"><div class="hd"><h2>My recent sales</h2></div><div class="bd tight">
-      ${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
-      <tbody>${data.slice(0,80).map(s=>`<tr><td class="num">${s.entry_date}</td><td class="itemname">${esc(nm(s.item_id))}</td><td class="r num">${s.quantity}</td><td class="r num">${money(rev(s))}</td></tr>`).join('')}</tbody></table>`
+      ${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th>Customer</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
+      <tbody>${data.slice(0,80).map(s=>`<tr><td class="num">${s.entry_date}</td><td class="itemname">${esc(nm(s.item_id))}${s.sold_as==='pack'?' <span class="cat">pack</span>':''}</td><td>${esc(cn(s.customer_id))||'<span class="hint">—</span>'}</td><td class="r num">${s.quantity}</td><td class="r num">${money(rev(s))}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales recorded by you yet.</div>'}
     </div></div>`;
 }
@@ -666,7 +800,7 @@ async function vMySales(v){
 function vStockList(v){
   v.innerHTML=`<div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
     ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Price</th><th class="r">Remaining</th></tr></thead>
-    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div></td><td class="r num">${money(i.sell_price)}</td><td class="r"><span class="badge ${b}">${oh}</span></td></tr>`;}).join('')}</tbody></table>`
+    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';const pk=(i.units_per_pack||1)>1?`<div class="cat">pack of ${i.units_per_pack}: ${money(i.pack_price||i.units_per_pack*i.sell_price)}</div>`:'';return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${pk}</td><td class="r num">${money(i.sell_price)}</td><td class="r"><span class="badge ${b}">${oh}</span></td></tr>`;}).join('')}</tbody></table>`
     :'<div class="empty">No items yet.</div>'}
   </div></div>`;
 }
@@ -757,7 +891,30 @@ function vSettings(v){
   </div></div>
   <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
     <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span> — share it from the <b>Team</b> tab to add receptionists.</p>
+  </div></div>
+  <div class="card"><div class="hd"><h2 style="color:var(--red)">Reset test data</h2><span class="desc">clear everything you entered while testing</span></div><div class="bd">
+    <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b> — giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
+    <div class="row">
+      <button class="btn danger" onclick="resetData(false)">Clear sales & history (keep items)</button>
+      <button class="btn danger" onclick="resetData(true)">Wipe everything incl. items</button>
+    </div>
   </div></div>`;
+}
+async function resetData(includeItems){
+  const word=includeItems?'WIPE':'CLEAR';
+  const typed=prompt(`This permanently deletes data for "${S.biz.name}".\n\nType ${word} to confirm.`);
+  if(typed!==word) return toast('Reset cancelled',true);
+  try{
+    const bid=S.biz.id;
+    // delete transactional rows first (FK-safe order)
+    for(const tbl of ['sales','purchases','adjustments','reconciliations','customer_transactions']){
+      const {error}=await sb.from(tbl).delete().eq('business_id',bid); if(error) throw error;
+    }
+    await sb.from('customers').delete().eq('business_id',bid);
+    if(includeItems){ await sb.from('items').delete().eq('business_id',bid); }
+    await sb.from('audit_log').delete().eq('business_id',bid);
+    S.cart=[]; toast('Data reset — clean slate'); await loadData(); render();
+  }catch(e){ err(e); }
 }
 async function saveSettings(){
   const wa_enabled=$('#setWa').checked, wa_number=$('#setWaNum').value.replace(/[^0-9]/g,'')||null;

@@ -301,8 +301,29 @@ async function loadData(){
     sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id)
   ]);
   if(it.error) return err(it.error);
-  S.items=it.data||[]; S.stock={}; (stk.data||[]).forEach(r=>S.stock[r.item_id]=Number(r.on_hand||0));
+  S.items=it.data||[];
   S.customers=cu.data||[]; S.balances={}; (cb.data||[]).forEach(r=>S.balances[r.customer_id]=Number(r.balance||0));
+  S.stock={};
+  if(stk.error){
+    // the stock view couldn't be read — compute it directly so stock isn't wrongly 0
+    console.warn('item_stock unreadable, computing from movements:',stk.error.message);
+    toast('Updating stock settings… run migration-5 if this repeats',true);
+    await computeStockFallback();
+  }else{
+    (stk.data||[]).forEach(r=>S.stock[r.item_id]=Number(r.on_hand||0));
+  }
+}
+async function computeStockFallback(){
+  const bid=S.biz.id;
+  const [p,s,a]=await Promise.all([
+    sb.from('purchases').select('item_id,base_units,quantity').eq('business_id',bid),
+    sb.from('sales').select('item_id,base_units,quantity').eq('business_id',bid),
+    sb.from('adjustments').select('item_id,quantity_delta').eq('business_id',bid)
+  ]);
+  const add=(arr,sign,f)=>{(arr.data||[]).forEach(r=>{S.stock[r.item_id]=(S.stock[r.item_id]||0)+sign*f(r);});};
+  add(p,+1,r=>Number(r.base_units||r.quantity||0));
+  add(s,-1,r=>Number(r.base_units||r.quantity||0));
+  add(a,+1,r=>Number(r.quantity_delta||0));
 }
 const onHand = id => S.stock[id]??0;
 const balanceOf = id => S.balances[id]??0;

@@ -806,7 +806,7 @@ function addToCart(itemId,mode){
   const inCart=cartUnits()[itemId]||0;
   if(inCart+baseUnits>onHand(i.id)) return toast(`Only ${onHand(i.id)} unit(s) of ${i.name} in stock`,true);
   const ex=S.cart.find(l=>l.itemId===itemId&&l.mode===mode);
-  if(ex) ex.qty++; else S.cart.push({itemId,mode,baseUnits,price,name:i.name});
+  if(ex) ex.qty++; else S.cart.push({itemId,mode,baseUnits,price,name:i.name,qty:1});
   refreshCart();
 }
 function cartRows(){
@@ -820,6 +820,7 @@ function cartRows(){
 }
 function cartStep(idx,d){
   const l=S.cart[idx]; if(!l) return;
+  if(!Number.isFinite(l.qty)) l.qty=1;
   if(d>0){ const inCart=cartUnits()[l.itemId]||0; if(inCart+l.baseUnits>onHand(l.itemId)) return toast('Not enough stock',true); }
   l.qty+=d; if(l.qty<=0) S.cart.splice(idx,1); refreshCart();
 }

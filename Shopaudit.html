@@ -141,6 +141,13 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .modeRow{display:flex;gap:8px;padding:0 16px 12px}
 .modeRow label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px;font-weight:600;font-size:13px;cursor:pointer}
 .modeRow input{width:auto}
+.custBox{padding:0 16px 12px}
+.custInput{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;font-size:14px}
+.custInput:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
+.custResults{display:flex;flex-direction:column;gap:4px;margin-top:4px}
+.custHit{text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:13.5px}
+.custHit:hover{border-color:var(--green);background:#F0F5F1}
+.custChosen{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid var(--green);background:#EFF5F1;border-radius:10px}
 .fab{position:fixed;right:18px;bottom:18px;z-index:60;background:var(--green);color:#fff;border-radius:99px;padding:14px 20px;font-weight:700;box-shadow:0 8px 24px -6px rgba(31,90,65,.5);display:none;align-items:center;gap:8px}
 @media(max-width:860px){.fab.show{display:inline-flex}}
 
@@ -183,7 +190,12 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
       <label>Full name</label><input id="auName" placeholder="e.g. Amaka O.">
     </div>
     <div class="field"><label>Email</label><input id="auEmail" type="email" placeholder="you@email.com"></div>
-    <div class="field"><label>Password</label><input id="auPass" type="password" placeholder="At least 6 characters"></div>
+    <div class="field"><label>Password</label>
+      <div style="position:relative">
+        <input id="auPass" type="password" placeholder="At least 6 characters" style="padding-right:64px">
+        <button type="button" onclick="togglePass()" id="pwToggle" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--green);padding:6px 8px;border-radius:7px">Show</button>
+      </div>
+    </div>
     <button id="auBtn" class="btn primary" style="width:100%;margin-top:6px" onclick="doAuth()">Sign in</button>
     <p id="authMsg" class="hint" style="text-align:center;margin-top:12px"></p>
   </div>
@@ -249,6 +261,7 @@ function setAuthMode(m){ authMode=m;
   $('#auBtn').textContent = m==='signin'?'Sign in':'Create account';
   $('#authMsg').textContent='';
 }
+function togglePass(){ const i=$('#auPass'),b=$('#pwToggle'); if(i.type==='password'){i.type='text';b.textContent='Hide';}else{i.type='password';b.textContent='Show';} }
 async function doAuth(){
   const email=$('#auEmail').value.trim(), pass=$('#auPass').value, name=$('#auName').value.trim();
   if(!email||!pass) return toast('Enter email and password',true);
@@ -748,7 +761,6 @@ function cartTotal(){ return S.cart.reduce((a,l)=>a+l.price*l.qty,0); }
 function cartCount(){ return S.cart.reduce((a,l)=>a+l.qty,0); }
 
 function vSell(v){
-  const custOpts=`<option value="">Walk-in (no customer)</option>`+S.customers.map(c=>`<option value="${c.id}">${esc(c.name)}${balanceOf(c.id)>0?` — owes ${money(balanceOf(c.id))}`:''}</option>`).join('');
   v.innerHTML=`
   <div class="pos">
     <div>
@@ -763,8 +775,15 @@ function vSell(v){
         <label><input type="radio" name="payMode" value="transfer" onchange="setPayMode('transfer')"> Transfer</label>
         <label><input type="radio" name="payMode" value="credit" onchange="setPayMode('credit')"> Credit</label>
       </div>
-      <div style="padding:0 16px 12px"><select id="saleCust" class="biz" style="width:100%;max-width:none">${custOpts}</select>
-        <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — pick the customer above; the total is added to their tab.</p></div>
+      <div class="custBox">
+        <div id="custChosen" class="custChosen hidden"></div>
+        <div id="custPick">
+          <input id="custSearch" class="custInput" placeholder="👤 Customer name (type to search)…" autocomplete="off" oninput="custSuggest(this.value)">
+          <div id="custResults" class="custResults"></div>
+          <input id="custPhone" class="custInput" placeholder="📞 Phone (optional, for WhatsApp)" inputmode="tel" style="margin-top:6px">
+          <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — a customer is required so the balance is tracked.</p>
+        </div>
+      </div>
       <div class="citems" id="cartItems">${cartRows()}</div>
       <div class="cfoot">
         <div class="total"><span class="lbl">Total to pay</span><span class="amt num" id="cartTotal">${money(cartTotal())}</span></div>
@@ -774,6 +793,31 @@ function vSell(v){
     </div>
   </div>
   <button class="fab ${S.cart.length?'show':''}" id="cartFab" onclick="document.getElementById('cartBox').scrollIntoView({behavior:'smooth'})">🧾 ${money(cartTotal())} · ${cartCount()}</button>`;
+  S.saleCustId=null; renderChosen();
+}
+// ---- customer picker on the sell page ----
+function custSuggest(q){
+  const box=$('#custResults'); const s=q.trim().toLowerCase();
+  if(!s){ box.innerHTML=''; return; }
+  const hits=S.customers.filter(c=>c.name.toLowerCase().includes(s)||String(c.phone||'').includes(s)).slice(0,6);
+  box.innerHTML = hits.length
+    ? hits.map(c=>`<button class="custHit" onclick='chooseCust("${c.id}")'><b>${esc(c.name)}</b>${c.phone?` <span class="hint">${esc(c.phone)}</span>`:''}${balanceOf(c.id)>0?` <span class="badge neg" style="float:right">owes ${money(balanceOf(c.id))}</span>`:''}</button>`).join('')
+    : `<div class="hint" style="padding:8px 10px">No match — a new customer "<b>${esc(q.trim())}</b>" will be saved with this sale.</div>`;
+}
+function chooseCust(id){ S.saleCustId=id; renderChosen(); }
+function clearChosen(){ S.saleCustId=null; renderChosen(); }
+function renderChosen(){
+  const chosen=$('#custChosen'), pick=$('#custPick'); if(!chosen) return;
+  if(S.saleCustId){
+    const c=S.customers.find(x=>x.id===S.saleCustId);
+    chosen.className='custChosen';
+    chosen.innerHTML=`<div><b>👤 ${esc(c.name)}</b>${c.phone?`<div class="hint">${esc(c.phone)}</div>`:''}</div><button class="btn ghost sm" onclick="clearChosen()">Change</button>`;
+    pick.classList.add('hidden');
+  }else{
+    chosen.className='custChosen hidden'; chosen.innerHTML='';
+    pick.classList.remove('hidden');
+    const s=$('#custSearch'); if(s){ s.value=''; } const r=$('#custResults'); if(r) r.innerHTML='';
+  }
 }
 function productCards(){
   if(!S.items.length) return '<div class="empty" style="grid-column:1/-1">No items available yet. Ask the admin to add some.</div>';
@@ -839,13 +883,25 @@ function refreshCart(){
 async function checkout(){
   if(!S.cart.length) return;
   const onCredit=(S.payMode==='credit');
-  const custId=$('#saleCust').value||null;
-  if(onCredit && !custId) return toast('Pick a customer for a credit sale',true);
+  const typedName=($('#custSearch')?.value||'').trim();
+  const typedPhone=($('#custPhone')?.value||'').trim();
+  let custId=S.saleCustId||null;
+  if(onCredit && !custId && !typedName) return toast('Enter a customer name for a credit sale',true);
   const total=cartTotal(), cnt=cartCount();
-  const custName = custId ? (S.customers.find(c=>c.id===custId)||{}).name : 'Walk-in';
-  if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\n${onCredit?'ON CREDIT — '+custName:'Paid by '+S.payMode}`)) return;
+  const shownName = custId ? (S.customers.find(c=>c.id===custId)||{}).name : (typedName||'Walk-in');
+  if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\nCustomer: ${shownName}\n${onCredit?'ON CREDIT':'Paid by '+S.payMode}`)) return;
   $('#checkoutBtn').disabled=true;
   try{
+    // resolve customer: chosen → existing by name/phone → create new
+    if(!custId && typedName){
+      const lc=typedName.toLowerCase();
+      const match=S.customers.find(c=>c.name.toLowerCase()===lc || (typedPhone&&String(c.phone||'')===typedPhone));
+      if(match){ custId=match.id; if(typedPhone&&!match.phone){ await sb.from('customers').update({phone:typedPhone}).eq('id',match.id); } }
+      else{
+        const ins=await sb.from('customers').insert({business_id:S.biz.id,name:typedName,phone:typedPhone||null}).select().single();
+        if(ins.error) throw ins.error; custId=ins.data.id;
+      }
+    }
     const method=onCredit?'credit':S.payMode;
     const rows=S.cart.map(l=>({business_id:S.biz.id,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
       base_units:l.baseUnits*l.qty,unit_price:l.price,customer_id:custId,payment_method:method,created_by:S.user.id}));
@@ -855,7 +911,7 @@ async function checkout(){
       const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
       if(r.error) throw r.error;
     }
-    S.cart=[]; toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
+    S.cart=[]; S.saleCustId=null; toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
     await loadData(); render();
   }catch(e){ err(e); $('#checkoutBtn').disabled=false; }
 }
@@ -897,33 +953,68 @@ function vStockList(v){
 /* ============================================================
    CUSTOMERS — credit / owing  (admin + receptionist)
    ============================================================ */
-function vCustomers(v){
-  const owing=S.customers.filter(c=>balanceOf(c.id)>0).sort((a,b)=>balanceOf(b.id)-balanceOf(a.id));
-  const clear=S.customers.filter(c=>balanceOf(c.id)<=0).sort((a,b)=>a.name.localeCompare(b.name));
-  const list=[...owing,...clear];
+async function vCustomers(v){
+  v.innerHTML='<div class="empty">Loading…</div>';
+  // total spend per customer (revenue across all their sales)
+  const {data:sales}=await sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id);
+  S._spend={}; S._visits={}; S._last={};
+  (sales||[]).forEach(s=>{ if(!s.customer_id) return;
+    S._spend[s.customer_id]=(S._spend[s.customer_id]||0)+s.quantity*Number(s.unit_price);
+    S._visits[s.customer_id]=(S._visits[s.customer_id]||0)+1;
+    if(!S._last[s.customer_id]||s.entry_date>S._last[s.customer_id]) S._last[s.customer_id]=s.entry_date;
+  });
+  S._custSort=S._custSort||'spend'; S._custQ=S._custQ||'';
   v.innerHTML=`
   <div class="stats">
-    <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Total outstanding</div><div class="value num">${money(totalOwed())}</div><div class="sub">${owing.length} owing of ${S.customers.length}</div></div>
+    <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Total outstanding</div><div class="value num">${money(totalOwed())}</div><div class="sub">${S.customers.filter(c=>balanceOf(c.id)>0).length} owing of ${S.customers.length}</div></div>
+    <div class="stat"><div class="label">Customers</div><div class="value num">${S.customers.length}</div></div>
   </div>
   <div class="card"><div class="hd"><h2>Add customer</h2></div><div class="bd">
     <div class="frow">
-      <div class="field"><label>Name</label><input id="custName" placeholder="e.g. Mr. Bello"></div>
-      <div class="field"><label>Phone (optional)</label><input id="custPhone" placeholder="0803..."></div>
+      <div class="field"><label>Name</label><input id="newCustName" placeholder="e.g. Mr. Bello"></div>
+      <div class="field"><label>Phone (optional)</label><input id="newCustPhone" placeholder="0803..."></div>
     </div>
     <button class="btn primary" onclick="addCustomer()">Add customer</button>
   </div></div>
-  <div class="card"><div class="hd"><h2>Customers</h2><span class="desc">tap a name to record credit or payment</span></div><div class="bd tight">
-    ${list.length?`<table><tbody>${list.map(c=>{const bal=balanceOf(c.id);return `<tr style="cursor:pointer" onclick="openCustomer('${c.id}')">
-      <td class="itemname">${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
-      <td class="r">${bal>0?`<span class="badge neg">owes ${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
-      <td class="r hint">›</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No customers yet.</div>'}
-  </div></div>`;
+  <div class="card"><div class="hd"><h2>Customers</h2><div class="spacer"></div>
+    <select class="biz" style="max-width:170px" onchange="setCustSort(this.value)">
+      <option value="spend" ${S._custSort==='spend'?'selected':''}>Top spenders</option>
+      <option value="visits" ${S._custSort==='visits'?'selected':''}>Most visits</option>
+      <option value="owing" ${S._custSort==='owing'?'selected':''}>Owing most</option>
+      <option value="recent" ${S._custSort==='recent'?'selected':''}>Most recent</option>
+      <option value="name" ${S._custSort==='name'?'selected':''}>Name (A–Z)</option>
+    </select></div>
+    <div class="bd" style="padding-bottom:6px"><input class="custInput" id="custFilter" placeholder="🔍 Search name or phone…" value="${esc(S._custQ)}" oninput="setCustQ(this.value)"></div>
+    <div class="bd tight" id="custTableWrap">${customerTable()}</div>
+  </div>`;
 }
+function customerTable(){
+  const sp=id=>S._spend[id]||0, vs=id=>S._visits[id]||0;
+  let list=S.customers.slice();
+  const q=(S._custQ||'').trim().toLowerCase();
+  if(q) list=list.filter(c=>c.name.toLowerCase().includes(q)||String(c.phone||'').includes(q));
+  const sorters={
+    spend:(a,b)=>sp(b.id)-sp(a.id), visits:(a,b)=>vs(b.id)-vs(a.id),
+    owing:(a,b)=>balanceOf(b.id)-balanceOf(a.id), name:(a,b)=>a.name.localeCompare(b.name),
+    recent:(a,b)=>String(S._last[b.id]||'').localeCompare(String(S._last[a.id]||''))
+  };
+  list.sort(sorters[S._custSort]||sorters.spend);
+  if(!list.length) return '<div class="empty">No customers match.</div>';
+  return `<table><thead><tr><th>Customer</th><th class="r">Spent</th><th class="r">Visits</th><th class="r">Balance</th></tr></thead>
+    <tbody>${list.map((c,i)=>{const bal=balanceOf(c.id);const rank=(S._custSort==='spend'&&!q&&i<3)?['🥇','🥈','🥉'][i]+' ':'';return `<tr style="cursor:pointer" onclick="openCustomer('${c.id}')">
+      <td class="itemname">${rank}${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
+      <td class="r num">${money(sp(c.id))}</td>
+      <td class="r num">${vs(c.id)}</td>
+      <td class="r">${bal>0?`<span class="badge neg">${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
+    </tr>`;}).join('')}</tbody></table>`;
+}
+function setCustSort(s){ S._custSort=s; $('#custTableWrap').innerHTML=customerTable(); }
+function setCustQ(q){ S._custQ=q; $('#custTableWrap').innerHTML=customerTable(); }
 async function addCustomer(){
-  const name=$('#custName').value.trim(); if(!name) return toast('Enter a name',true);
-  const {error}=await sb.from('customers').insert({business_id:S.biz.id,name,phone:$('#custPhone').value.trim()||null});
+  const name=$('#newCustName').value.trim(); if(!name) return toast('Enter a name',true);
+  const {error}=await sb.from('customers').insert({business_id:S.biz.id,name,phone:$('#newCustPhone').value.trim()||null});
   if(error) return err(error);
-  toast('Customer added'); await loadData(); render();
+  toast('Customer added'); await loadData(); vCustomers($('#view'));
 }
 async function openCustomer(id){
   const c=S.customers.find(x=>x.id===id), bal=balanceOf(id);

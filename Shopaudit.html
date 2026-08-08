@@ -863,9 +863,17 @@ async function vMembers(v){
   if(error) return err(error);
   $('#memList').outerHTML=`<div id="memList"><table><tbody>${data.map(m=>`<tr>
     <td class="itemname">${esc(m.full_name||'(no name)')}${m.is_owner?' <span class="cat">owner</span>':''}</td>
-    <td><span class="rolepill ${m.role==='receptionist'?'recept':''}">${m.role}</span></td>
-    <td class="r">${m.is_owner?'':`<button class="btn danger sm" onclick='removeMember("${m.user_id}")'>Remove</button>`}</td>
+    <td><span class="rolepill ${m.role==='receptionist'?'recept':m.role==='manager'?'mgr':''}">${m.role}</span></td>
+    <td class="r">${m.is_owner?'':`
+      ${m.role==='receptionist'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","manager")'>Promote to Manager</button>`:''}
+      ${m.role==='manager'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","receptionist")'>Demote to Receptionist</button>`:''}
+      <button class="btn danger sm" onclick='removeMember("${m.user_id}")'>Remove</button>`}</td>
   </tr>`).join('')}</tbody></table></div>`;
+}
+async function setMemberRole(uid,role){
+  const {error}=await sb.rpc('set_member_role',{b:S.biz.id,target_user:uid,new_role:role});
+  if(error) return err(error);
+  toast('Role updated'); vMembers($('#view'));
 }
 async function loadJoinRequests(){
   const {data,error}=await sb.rpc('list_join_requests',{b:S.biz.id});
@@ -873,15 +881,16 @@ async function loadJoinRequests(){
   const box=$('#joinReqList'); if(!box) return;
   box.outerHTML = `<div id="joinReqList">${data.length?`<table><tbody>${data.map(r=>`<tr>
     <td class="itemname">${esc(r.full_name||r.email||'(no name)')}<div class="cat">${esc(r.email||'')}</div></td>
-    <td><span class="rolepill">${esc(r.requested_role)}</span></td>
-    <td class="r"><button class="btn primary sm" onclick='approveJoinRequest("${r.id}")'>Approve</button>
+    <td><span class="rolepill">requested ${esc(r.requested_role)}</span></td>
+    <td class="r"><button class="btn ghost sm" onclick='approveJoinRequest("${r.id}","receptionist")'>Approve as Receptionist</button>
+    <button class="btn primary sm" onclick='approveJoinRequest("${r.id}","manager")'>Approve as Manager</button>
     <button class="btn danger sm" onclick='rejectJoinRequest("${r.id}")'>Reject</button></td>
   </tr>`).join('')}</tbody></table>`:'<div class="empty">No pending requests.</div>'}</div>`;
 }
-async function approveJoinRequest(id){
-  const {error}=await sb.rpc('approve_join_request',{request_id:id});
+async function approveJoinRequest(id,role){
+  const {error}=await sb.rpc('approve_join_request',{request_id:id,as_role:role});
   if(error) return err(error);
-  toast('Approved'); vMembers($('#view'));
+  toast('Approved as '+role); vMembers($('#view'));
 }
 async function rejectJoinRequest(id){
   if(!confirm('Reject this join request?')) return;

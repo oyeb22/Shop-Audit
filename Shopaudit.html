@@ -37,6 +37,7 @@ input,select{font-family:inherit;font-size:15px}
 select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);font-weight:600;max-width:180px}
 .rolepill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px;background:#EFE8DA;color:var(--green-d)}
 .rolepill.recept{background:#EAEEF6;color:#2C4A78}
+.rolepill.mgr{background:#F3E8D2;color:#8A5A12}
 .iconbtn{padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);font-weight:600;color:var(--ink)}
 .iconbtn:hover{border-color:var(--green)}
 
@@ -306,8 +307,8 @@ async function loadBusinesses(){
 async function switchBiz(id){
   S.biz=S.businesses.find(b=>b.id===id); S.role=S.biz._role; localStorage.setItem('lastBiz',id);
   S.cart=[]; S.payMode='cash';
-  $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':'');
-  S.tab = S.role==='admin'?'dashboard':'sell';
+  $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':S.role==='manager'?' mgr':'');
+  S.tab = (S.role==='admin'||S.role==='manager')?'dashboard':'sell';
   buildNav(); await loadData(); render();
 }
 async function loadData(){
@@ -359,13 +360,26 @@ function fmtPacks(n){
   if(Number.isInteger(n)) return String(n);
   return n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
 }
-function stockLabel(i){
-  const p=onHand(i.id);
-  return `${fmtPacks(p)} pack${Math.abs(p-1)<0.0005?'':'s'} in stock`;
+// spell out remaining stock as whole packs + mode units, e.g. "9 packs + 1 Mudu"
+// (greedy: biggest portion first, so it reads the way a shop owner would count it)
+function packBreakdown(i){
+  const total=onHand(i.id);
+  const modes=itemModes(i).slice().sort((a,b)=>a.per_pack-b.per_pack);
+  let whole=Math.floor(total+1e-6);
+  let rem=total-whole;
+  const parts=[];
+  modes.forEach(m=>{
+    if(rem<=1e-6) return;
+    const portion=1/m.per_pack;
+    const count=Math.floor(rem/portion+1e-6);
+    if(count>0){ parts.push(`${count} ${m.name}`); rem-=count*portion; }
+  });
+  if(rem>1e-6) parts.push(`${fmtPacks(rem)} pack`);
+  if(whole>0||!parts.length) parts.unshift(`${whole} pack${whole===1?'':'s'}`);
+  return parts.join(' + ');
 }
-function stockShort(i){
-  return `${fmtPacks(onHand(i.id))}pk`;
-}
+function stockLabel(i){ return `${packBreakdown(i)} in stock`; }
+function stockShort(i){ return packBreakdown(i); }
 // turn a local NG number into wa.me international format
 function waNumber(phone){
   let n=String(phone||'').replace(/[^0-9]/g,'');
@@ -377,9 +391,14 @@ function waNumber(phone){
 
 /* ---------- navigation ---------- */
 function buildNav(){
-  const tabs = S.role==='admin'
-    ? [['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['members','Team'],['settings','Settings'],['audit','Audit log']]
-    : [['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
+  let tabs;
+  if(S.role==='admin'){
+    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
+  }else if(S.role==='manager'){
+    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports']];
+  }else{
+    tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
+  }
   if(TERMINAL_ENABLED) tabs.splice(1,0,['terminal','Card terminal']);
   $('#nav').innerHTML = tabs.map(([k,l])=>`<button class="${S.tab===k?'active':''}" onclick="go('${k}')">${l}</button>`).join('');
 }
@@ -389,16 +408,20 @@ function go(t){ S.tab=t; buildNav(); render(); }
 async function render(){
   if(!S.biz){ renderNoBiz(); return; }
   const v=$('#view');
-  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,reports:vReports,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal};
+  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,reports:vReports,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals};
   (map[S.tab]||vDashboard)(v);
 }
 
 /* ============================================================
    NO BUSINESS YET  (create / join)
    ============================================================ */
-function renderNoBiz(){
+async function renderNoBiz(){
   $('#bizSelect').innerHTML='<option>No business yet</option>'; $('#rolePill').textContent='—'; $('#nav').innerHTML='';
-  $('#view').innerHTML=`
+  const {data:pending}=await sb.from('join_requests').select('*, business:businesses(name)').eq('user_id',S.user.id).eq('status','pending');
+  const pendingHtml = (pending&&pending.length) ? `<div class="card"><div class="hd"><h2>Waiting for approval</h2></div><div class="bd">
+    ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending — the admin needs to approve it before you get access.</p>`).join('')}
+  </div></div>` : '';
+  $('#view').innerHTML= pendingHtml + `
   <div class="split">
     <div class="card"><div class="hd"><h2>Create a business</h2></div><div class="bd">
       <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b> — set prices, stock and see all reports.</p>
@@ -406,9 +429,9 @@ function renderNoBiz(){
       <button class="btn primary" onclick="createBiz()">Create business</button>
     </div></div>
     <div class="card"><div class="hd"><h2>Join a business</h2></div><div class="bd">
-      <p class="hint" style="margin-bottom:12px">Joining with a code makes you a <b>receptionist</b> for that shop.</p>
+      <p class="hint" style="margin-bottom:12px">Joining with a code sends a request — the shop's admin has to approve it before you get access.</p>
       <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
-      <button class="btn primary" onclick="joinBiz()">Join business</button>
+      <button class="btn primary" onclick="joinBiz()">Request to join</button>
     </div></div>
   </div>`;
 }
@@ -421,9 +444,11 @@ async function createBiz(){
 async function joinBiz(){
   const code=$('#nbCode')?.value.trim()||$('#mCode')?.value.trim();
   if(!code) return toast('Enter an invite code',true);
-  const {error}=await sb.rpc('join_business',{code});
+  const {data,error}=await sb.rpc('join_business',{code});
   if(error) return err(error);
-  toast('Joined business'); await loadBusinesses();
+  await loadBusinesses();
+  const joined = S.businesses.some(b=>b.id===data);
+  toast(joined?'Joined business':'Request sent — waiting for admin approval');
 }
 
 /* ============================================================
@@ -479,8 +504,9 @@ async function vDashboard(v){
 let draftModes=[];
 function vItems(v){
   draftModes=[];
+  const isManager=S.role==='manager';
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">every item has a pack price; add other ways to sell it below</span></div><div class="bd">
+  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">${isManager?'sent to the admin for approval':'every item has a pack price; add other ways to sell it below'}</span></div><div class="bd">
     <div class="frow">
       <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Rice"></div>
       <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
@@ -498,13 +524,26 @@ function vItems(v){
       <div id="draftModesBox"></div>
       <button class="btn ghost sm" type="button" onclick="addDraftMode()">+ Add a mode (e.g. Half bag, Mudu)</button>
     </div>
-    <button class="btn primary" style="margin-top:8px" onclick="addItem()">Add item</button>
+    <button class="btn primary" style="margin-top:8px" onclick="addItem()">${isManager?'Send for approval':'Add item'}</button>
   </div></div>
-  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock</span></div><div class="bd tight">
+  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?' — changes go to the admin for approval':''}</span></div><div class="bd tight">
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
     <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="5" class="empty">No items yet.</td></tr>'}</tbody></table>
-  </div></div>`;
+  </div></div>
+  ${isManager?'<div class="card"><div class="hd"><h2>My submitted changes</h2></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
   renderDraftModes();
+  if(isManager) loadMyChanges();
+}
+async function loadMyChanges(){
+  const {data,error}=await sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('requested_by',S.user.id).order('created_at',{ascending:false}).limit(30);
+  if(error) return;
+  const box=$('#myChangesList'); if(!box) return;
+  const label={add_item:'Add item',edit_item:'Edit item',delete_item:'Delete item'};
+  const badgeCls={pending:'zero',approved:'ok',rejected:'neg'};
+  box.outerHTML = `<div id="myChangesList">${data.length?`<table><tbody>${data.map(c=>{
+    const nm = c.payload?.name || (S.items.find(i=>i.id===c.item_id)||{}).name || '(item)';
+    return `<tr><td class="itemname">${esc(label[c.action_type]||c.action_type)}<div class="cat">${esc(nm)}</div></td><td class="r"><span class="badge ${badgeCls[c.status]||'zero'}">${esc(c.status)}</span></td></tr>`;
+  }).join('')}</tbody></table>`:'<div class="empty">No submissions yet.</div>'}</div>`;
 }
 function rowItem(i){
   const modes=itemModes(i), oh=onHand(i.id);
@@ -547,17 +586,33 @@ async function addItem(){
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
     pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold};
+
+  if(S.role==='manager'){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks}});
+    if(error) return err(error);
+    toast('Sent for approval'); draftModes=[]; render();
+    return;
+  }
+
   const {data,error}=await sb.from('items').insert(rec).select().single();
   if(error) return err(error);
   if(openPacks>0){
     const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:data.id,quantity:openPacks,base_units:openPacks,unit_cost:packCost,entry_date:today(),created_by:S.user.id});
     if(r.error) return err(r.error);
   }
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_added',detail:name});
   toast('Item added'); draftModes=[]; await loadData(); render();
 }
 function editItem(id){
   const i=S.items.find(x=>x.id===id);
-  window._editModes = itemModes(i).map(m=>({...m}));
+  let modes=itemModes(i).map(m=>({...m}));
+  // this item predates the modes system and used to sell by single unit — offer that
+  // back as a suggested mode instead of silently dropping it (nothing is saved until
+  // the owner reviews and hits Save)
+  const suggestedUnit = !modes.length && Number(i.units_per_pack)>1 && Number(i.sell_price)>0;
+  if(suggestedUnit) modes=[{name:'Unit',price:Number(i.sell_price),per_pack:Number(i.units_per_pack)}];
+  window._editModes = modes;
   $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="editCard"><div class="hd"><h2>Edit ${esc(i.name)}</h2></div><div class="bd">
     <div class="frow">
       <div class="field"><label>Name</label><input id="eName" value="${esc(i.name)}"></div>
@@ -568,6 +623,7 @@ function editItem(id){
       <div class="field"><label>Pack price — cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>
       <div class="field"><label>Low-stock alert (packs)</label><input id="eThr" type="number" step="any" value="${i.low_stock_threshold}"></div>
     </div>
+    ${suggestedUnit?`<p class="hint" style="margin:-2px 0 10px;color:var(--amber)">This item used to sell by single unit (${money(i.sell_price)} · ${i.units_per_pack}/pack) — added back below as a <b>Unit</b> mode. Review and hit Save to restore it, or remove it if you don't want it.</p>`:''}
     <div class="field">
       <label>Other ways to sell this</label>
       <div id="editModesBox"></div>
@@ -609,14 +665,36 @@ async function saveItem(id){
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
     pack_price:+$('#ePack').value||0, cost_price:+$('#eCost').value||0,
     low_stock_threshold:+$('#eThr').value||0, modes};
+
+  if(S.role==='manager'){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'edit_item', item_id:id, payload:rec});
+    if(error) return err(error);
+    window._editModes=null; toast('Sent for approval'); document.getElementById('editCard')?.remove(); render();
+    return;
+  }
+
   const {error}=await sb.from('items').update(rec).eq('id',id);
   if(error) return err(error);
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_updated',detail:rec.name});
   window._editModes=null; toast('Saved'); await loadData(); render();
 }
 async function delItem(id){
   if(!confirm('Delete this item and all its history?')) return;
+  const i=S.items.find(x=>x.id===id);
+
+  if(S.role==='manager'){
+    const snapshot={name:i.name,category:i.category,pack_price:fullPackPrice(i),cost_price:fullPackCost(i),modes:itemModes(i)};
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'delete_item', item_id:id, payload:snapshot});
+    if(error) return err(error);
+    toast('Delete sent for approval'); document.getElementById('editCard')?.remove(); render();
+    return;
+  }
+
   const {error}=await sb.from('items').delete().eq('id',id);
   if(error) return err(error);
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_deleted',detail:i?.name||''});
   toast('Item deleted'); await loadData(); render();
 }
 
@@ -774,11 +852,13 @@ function exportCSV(){
 async function vMembers(v){
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
-    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it.</p>
+    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it — you'll need to approve them below before they get access.</p>
     <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
     <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
   </div></div>
+  <div class="card"><div class="hd"><h2>Join requests</h2><span class="desc">approve before they get access</span></div><div class="bd tight"><div id="joinReqList" class="empty">Loading…</div></div></div>
   <div class="card"><div class="hd"><h2>Team</h2></div><div class="bd tight"><div id="memList" class="empty">Loading…</div></div></div>`;
+  loadJoinRequests();
   const {data,error}=await sb.rpc('list_members',{b:S.biz.id});
   if(error) return err(error);
   $('#memList').outerHTML=`<div id="memList"><table><tbody>${data.map(m=>`<tr>
@@ -787,10 +867,33 @@ async function vMembers(v){
     <td class="r">${m.is_owner?'':`<button class="btn danger sm" onclick='removeMember("${m.user_id}")'>Remove</button>`}</td>
   </tr>`).join('')}</tbody></table></div>`;
 }
+async function loadJoinRequests(){
+  const {data,error}=await sb.rpc('list_join_requests',{b:S.biz.id});
+  if(error) return err(error);
+  const box=$('#joinReqList'); if(!box) return;
+  box.outerHTML = `<div id="joinReqList">${data.length?`<table><tbody>${data.map(r=>`<tr>
+    <td class="itemname">${esc(r.full_name||r.email||'(no name)')}<div class="cat">${esc(r.email||'')}</div></td>
+    <td><span class="rolepill">${esc(r.requested_role)}</span></td>
+    <td class="r"><button class="btn primary sm" onclick='approveJoinRequest("${r.id}")'>Approve</button>
+    <button class="btn danger sm" onclick='rejectJoinRequest("${r.id}")'>Reject</button></td>
+  </tr>`).join('')}</tbody></table>`:'<div class="empty">No pending requests.</div>'}</div>`;
+}
+async function approveJoinRequest(id){
+  const {error}=await sb.rpc('approve_join_request',{request_id:id});
+  if(error) return err(error);
+  toast('Approved'); vMembers($('#view'));
+}
+async function rejectJoinRequest(id){
+  if(!confirm('Reject this join request?')) return;
+  const {error}=await sb.rpc('reject_join_request',{request_id:id});
+  if(error) return err(error);
+  toast('Rejected'); vMembers($('#view'));
+}
 async function removeMember(uid){
   if(!confirm('Remove this team member?')) return;
   const {error}=await sb.from('business_members').delete().eq('business_id',S.biz.id).eq('user_id',uid);
   if(error) return err(error);
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'member_removed',detail:''});
   toast('Removed'); vMembers($('#view'));
 }
 
@@ -804,6 +907,77 @@ async function vAudit(v){
   const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   $('#auList').outerHTML=`<div id="auList">${data.length?`<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead>
   <tbody>${data.map(a=>`<tr><td class="num hint">${fmt(a.created_at)}</td><td><span class="badge zero">${esc(a.action)}</span></td><td>${esc(a.detail||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No activity yet.</div>'}</div>`;
+}
+
+/* ============================================================
+   ADMIN — APPROVALS (manager-submitted item changes)
+   ============================================================ */
+async function vApprovals(v){
+  v.innerHTML='<div class="empty">Loading…</div>';
+  const {data,error}=await sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('status','pending').order('created_at',{ascending:true});
+  if(error) return err(error);
+  if(!data.length){ v.innerHTML='<div class="card"><div class="bd"><div class="empty">No pending approvals.</div></div></div>'; return; }
+  v.innerHTML=data.map(renderApprovalCard).join('');
+}
+function renderApprovalCard(c){
+  const item = c.item_id ? S.items.find(i=>i.id===c.item_id) : null;
+  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item'}[c.action_type]||c.action_type;
+  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  let body='';
+  if(c.action_type==='add_item'){
+    body=`<p><b>${esc(c.payload.name)}</b> · ${esc(c.payload.category||'')}</p>
+      <p class="hint">Pack: ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost · low-stock alert ${fmtPacks(c.payload.low_stock_threshold)} pack(s)</p>
+      ${(c.payload.modes||[]).length?`<p class="hint">Modes: ${esc(c.payload.modes.map(m=>`${m.name} (${money(m.price)})`).join(', '))}</p>`:''}
+      ${c.payload._opening_packs?`<p class="hint">Opening stock: ${fmtPacks(c.payload._opening_packs)} pack(s)</p>`:''}`;
+  }else if(c.action_type==='edit_item'){
+    body=`<p><b>${esc(item?item.name:'(item)')}</b></p>
+      <p class="hint">New: ${esc(c.payload.name)} · ${esc(c.payload.category||'')} · pack ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost · low-stock alert ${fmtPacks(c.payload.low_stock_threshold)} pack(s)</p>
+      ${(c.payload.modes||[]).length?`<p class="hint">Modes: ${esc(c.payload.modes.map(m=>`${m.name} (${money(m.price)})`).join(', '))}</p>`:'<p class="hint">No extra modes</p>'}
+      ${item?`<p class="hint" style="color:var(--muted)">Currently: ${esc(item.name)} · pack ${money(fullPackPrice(item))} sell / ${money(fullPackCost(item))} cost</p>`:'<p class="hint" style="color:var(--red)">Original item no longer exists.</p>'}`;
+  }else if(c.action_type==='delete_item'){
+    body=`<p><b>${esc(c.payload.name)}</b> · ${esc(c.payload.category||'')}</p>
+      <p class="hint">Pack: ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost</p>
+      <p class="hint" style="color:var(--red)">This item and its sales/purchase history will be permanently deleted.</p>`;
+  }
+  return `<div class="card"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
+    ${body}
+    <div class="frow" style="margin-top:10px">
+      <button class="btn primary" onclick='approveChange("${c.id}")'>Approve</button>
+      <button class="btn danger" onclick='rejectChange("${c.id}")'>Reject</button>
+    </div>
+  </div></div>`;
+}
+async function approveChange(id){
+  const {data:c,error:e0}=await sb.from('pending_changes').select('*').eq('id',id).single();
+  if(e0) return err(e0);
+  try{
+    if(c.action_type==='add_item'){
+      const {_opening_packs,...rec}=c.payload;
+      const {data:item,error}=await sb.from('items').insert(rec).select().single();
+      if(error) throw error;
+      if(_opening_packs>0){
+        const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:item.id,quantity:_opening_packs,base_units:_opening_packs,unit_cost:rec.cost_price,entry_date:today(),created_by:c.requested_by});
+        if(r.error) throw r.error;
+      }
+    }else if(c.action_type==='edit_item'){
+      const {error}=await sb.from('items').update(c.payload).eq('id',c.item_id);
+      if(error) throw error;
+    }else if(c.action_type==='delete_item'){
+      const {error}=await sb.from('items').delete().eq('id',c.item_id);
+      if(error) throw error;
+    }
+    const {error:e1}=await sb.from('pending_changes').update({status:'approved',reviewed_by:S.user.id,reviewed_at:new Date().toISOString()}).eq('id',id);
+    if(e1) throw e1;
+    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_approved',detail:`${c.action_type} approved`});
+    toast('Approved'); await loadData(); vApprovals($('#view'));
+  }catch(e){ err(e); }
+}
+async function rejectChange(id){
+  const note=prompt('Reason for rejecting (optional):')||null;
+  const {data:c,error}=await sb.from('pending_changes').update({status:'rejected',reviewed_by:S.user.id,reviewed_at:new Date().toISOString(),review_note:note}).eq('id',id).select().single();
+  if(error) return err(error);
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_rejected',detail:note||(c?.action_type+' rejected')});
+  toast('Rejected'); vApprovals($('#view'));
 }
 
 /* ============================================================
@@ -897,7 +1071,7 @@ function termProductCards(q){
     const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
     return `<div class="prod ${out?'disabled':''}">
       <div class="pname">${esc(i.name)}</div>
-      <div class="pmeta">${out?'Out of stock':fmtPacks(oh)+' pack(s) left'}</div>
+      <div class="pmeta">${out?'Out of stock':packBreakdown(i)+' left'}</div>
       ${out?'':`<div class="opts">
         <button class="opt" onclick='termAdd("${i.id}",1)'>+ Pack<small>${money(fullPackPrice(i))}</small></button>
         ${modes.map(m=>`<button class="opt" onclick='termAdd("${i.id}",${m.per_pack})'>+ ${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
@@ -914,7 +1088,7 @@ function termAdd(itemId,per_pack){
   const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
   const label = isPack ? 'pack' : (mode?mode.name:String(per_pack));
   const inCart=termCart.filter(l=>l.itemId===itemId).reduce((a,l)=>a+l.baseUnits*l.qty,0);
-  if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${fmtPacks(onHand(i.id))} pack(s) of ${i.name} in stock`,true);
+  if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
   const ex=termCart.find(l=>l.itemId===itemId&&l.mode===label);
   if(ex) ex.qty++; else termCart.push({itemId,mode:label,baseUnits,price,cost,name:i.name,qty:1});
   refreshTermCart();
@@ -1057,7 +1231,7 @@ function productCards(){
     return `<div class="prod ${out?'disabled':''}">
       <div class="pname">${esc(i.name)}</div>
       <div class="pprice">${money(fullPackPrice(i))}<small style="font-weight:500;color:var(--muted)"> /pack</small></div>
-      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':fmtPacks(oh)+' pack(s) left'}</div>
+      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
       ${out?'':`<div class="opts">
         <button class="opt" onclick='addToCart("${i.id}",1)'>+ Pack<small>${money(fullPackPrice(i))}</small></button>
         ${modes.map(m=>`<button class="opt" onclick='addToCart("${i.id}",${m.per_pack})'>+ ${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
@@ -1078,7 +1252,7 @@ function addToCart(itemId,per_pack){
   const label = isPack ? 'pack' : (mode?mode.name:String(per_pack));
   // stock guard across everything already in the cart (small epsilon for float rounding)
   const inCart=cartUnits()[itemId]||0;
-  if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${fmtPacks(onHand(i.id))} pack(s) of ${i.name} in stock`,true);
+  if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
   const ex=S.cart.find(l=>l.itemId===itemId&&l.mode===label);
   if(ex) ex.qty++; else S.cart.push({itemId,mode:label,baseUnits,price,cost,name:i.name,qty:1});
   refreshCart();

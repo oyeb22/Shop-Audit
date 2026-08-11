@@ -456,17 +456,25 @@ async function joinBiz(){
    ============================================================ */
 async function vDashboard(v){
   v.innerHTML='<div class="empty">Loading…</div>';
-  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id);
-  if(error) return err(error);
+  const [salesRes,expRes]=await Promise.all([
+    sb.from('sales').select('*').eq('business_id',S.biz.id),
+    sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved')
+  ]);
+  if(salesRes.error) return err(salesRes.error);
+  const sales=salesRes.data, exps=expRes.data||[];
   const t=today(), m=monthStart();
   const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
   const dayS=sales.filter(s=>s.entry_date===t), monS=sales.filter(s=>s.entry_date>=m);
+  const dayExp=sum(exps.filter(e=>e.entry_date===t),e=>Number(e.amount));
+  const monExp=sum(exps.filter(e=>e.entry_date>=m),e=>Number(e.amount));
   const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
   const stockValue=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
 
-  // day-by-day
+  // day-by-day (net of that day's approved expenses)
   const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({u:0,r:0,p:0})); byDay[s.entry_date].u+=(s.base_units||s.quantity); byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
+  const byDayExp={}; exps.forEach(e=>{ byDayExp[e.entry_date]=(byDayExp[e.entry_date]||0)+Number(e.amount); });
+  Object.keys(byDayExp).forEach(d=>{ (byDay[d]??=({u:0,r:0,p:0})); });
   const days=Object.entries(byDay).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
 
   // per-item sold + remaining (in base units)
@@ -474,8 +482,8 @@ async function vDashboard(v){
 
   v.innerHTML=`
     <div class="stats">
-      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${fmtPacks(sum(dayS,s=>(s.base_units||s.quantity)))} pack(s) sold · profit ${money(sum(dayS,prof))}</div></div>
-      <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">profit ${money(sum(monS,prof))}</div></div>
+      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${fmtPacks(sum(dayS,s=>(s.base_units||s.quantity)))} pack(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
+      <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
       <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
       <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
       <div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>
@@ -487,9 +495,9 @@ async function vDashboard(v){
     ${lowItems.length?`<div class="card"><div class="hd"><h2>⚠ Needs restocking</h2></div><div class="bd tight">
       <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${fmtPacks(i.low_stock_threshold)} pack(s)</td></tr>`).join('')}</tbody></table>
     </div></div>`:''}
-    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days</span></div><div class="bd tight">
-      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
-      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num">${fmtPacks(o.u)}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
+    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days · net of approved expenses</span></div><div class="bd tight">
+      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Expenses</th><th class="r">Net profit</th></tr></thead>
+      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num">${fmtPacks(o.u)}</td><td class="r num">${money(o.r)}</td><td class="r num">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales recorded yet.</div>'}
     </div></div>
     <div class="card"><div class="hd"><h2>Stock & sales per item</h2></div><div class="bd tight">
@@ -814,19 +822,26 @@ function repRange(which){
 }
 async function runReport(){
   const from=$('#repFrom').value, to=$('#repTo').value;
-  const {data,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to);
-  if(error) return err(error);
+  const [salesRes,expRes]=await Promise.all([
+    sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+    sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to)
+  ]);
+  if(salesRes.error) return err(salesRes.error);
+  const data=salesRes.data;
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
   const totU=data.reduce((a,s)=>a+(s.base_units||s.quantity),0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
+  const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0), netProfit=totP-totExp;
   const byMethod={cash:0,transfer:0,credit:0,card:0};
   data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
   const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
   const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
   const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
-  S._report={from,to,rows,nm,byMethod};
+  S._report={from,to,rows,nm,byMethod,totExp,netProfit};
   $('#repOut').innerHTML=`
     <div class="stats">
-      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · profit ${money(totP)}</div></div>
+      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · gross profit ${money(totP)}</div></div>
+      <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
+      <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses</div></div>
       <div class="stat"><div class="label">💵 Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
       <div class="stat"><div class="label">🏦 Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
       <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">📒 Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
@@ -840,7 +855,7 @@ async function runReport(){
 }
 function exportCSV(){
   const r=S._report; if(!r) return;
-  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nItem,Units,Revenue,Profit\n`;
+  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
   r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
   const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`; a.click();

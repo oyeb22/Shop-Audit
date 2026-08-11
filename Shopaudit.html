@@ -197,8 +197,21 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
         <button type="button" onclick="togglePass()" id="pwToggle" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--green);padding:6px 8px;border-radius:7px">Show</button>
       </div>
     </div>
+    <p id="forgotLink" class="hint" style="text-align:right;margin:-6px 0 2px"><a href="#" onclick="forgotPassword();return false">Forgot password?</a></p>
     <button id="auBtn" class="btn primary" style="width:100%;margin-top:6px" onclick="doAuth()">Sign in</button>
     <p id="authMsg" class="hint" style="text-align:center;margin-top:12px"></p>
+  </div>
+</div>
+
+<!-- ===================== RESET PASSWORD (shown after tapping the emailed link) ===================== -->
+<div id="resetScreen" class="auth hidden">
+  <div class="authcard">
+    <div class="brand"><span class="mark">SA</span> Shop Audit</div>
+    <div class="tag">Set a new password</div>
+    <div class="field"><label>New password</label><input id="rpPass1" type="password" placeholder="At least 6 characters"></div>
+    <div class="field"><label>Confirm new password</label><input id="rpPass2" type="password" placeholder="Repeat password"></div>
+    <button id="rpBtn" class="btn primary" style="width:100%;margin-top:6px" onclick="doPasswordReset()">Set new password</button>
+    <p id="rpMsg" class="hint" style="text-align:center;margin-top:12px"></p>
   </div>
 </div>
 
@@ -253,19 +266,50 @@ function boot(){
     $('#setupNotice').classList.remove('hidden'); return;
   }
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // a "reset password" email link lands back here with type=recovery in the URL —
+  // supabase-js turns that into a session automatically, so intercept it via this
+  // event instead of letting the normal getSession() below log straight into the app
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='PASSWORD_RECOVERY'){
+      $('#authScreen').classList.add('hidden'); $('#app').classList.add('hidden');
+      $('#resetScreen').classList.remove('hidden');
+    }
+  });
+  if(window.location.hash.includes('type=recovery')) return;
   sb.auth.getSession().then(({data})=>{ if(data.session){ S.user=data.session.user; afterLogin(); } else showAuth(); });
 }
 boot();
 
 /* ---------- auth ---------- */
 let authMode='signin';
-function showAuth(){ $('#app').classList.add('hidden'); $('#authScreen').classList.remove('hidden'); }
+function showAuth(){ $('#app').classList.add('hidden'); $('#resetScreen').classList.add('hidden'); $('#authScreen').classList.remove('hidden'); }
 function setAuthMode(m){ authMode=m;
   $('#tabSignin').classList.toggle('active',m==='signin');
   $('#tabSignup').classList.toggle('active',m==='signup');
   $('#nameField').classList.toggle('hidden',m!=='signup');
+  $('#forgotLink').classList.toggle('hidden',m!=='signin');
   $('#auBtn').textContent = m==='signin'?'Sign in':'Create account';
   $('#authMsg').textContent='';
+}
+async function forgotPassword(){
+  const email=$('#auEmail').value.trim();
+  if(!email) return toast('Enter your email above first, then tap Forgot password',true);
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href.split('#')[0]});
+  if(error) return err(error);
+  toast('Reset link sent — check your email');
+}
+async function doPasswordReset(){
+  const p1=$('#rpPass1').value, p2=$('#rpPass2').value;
+  if(!p1||p1.length<6) return toast('Password must be at least 6 characters',true);
+  if(p1!==p2) return toast('Passwords do not match',true);
+  $('#rpBtn').disabled=true;
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error){ err(error); $('#rpBtn').disabled=false; return; }
+  toast('Password updated');
+  $('#resetScreen').classList.add('hidden');
+  const {data}=await sb.auth.getSession();
+  if(data.session){ S.user=data.session.user; afterLogin(); } else { showAuth(); }
+  $('#rpBtn').disabled=false;
 }
 function togglePass(){ const i=$('#auPass'),b=$('#pwToggle'); if(i.type==='password'){i.type='text';b.textContent='Hide';}else{i.type='password';b.textContent='Show';} }
 async function doAuth(){

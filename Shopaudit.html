@@ -524,6 +524,11 @@ async function vDashboard(v){
   // per-item sold + remaining (in base units)
   const sold={}; sales.forEach(s=>sold[s.item_id]=(sold[s.item_id]||0)+(s.base_units||s.quantity));
 
+  // today's customers, for the end-of-day thank-you round
+  const todayCustIds=[...new Set(dayS.filter(s=>s.customer_id).map(s=>s.customer_id))];
+  const todayCusts=todayCustIds.map(id=>S.customers.find(c=>c.id===id)).filter(Boolean);
+  S._todayCusts=todayCusts;
+
   v.innerHTML=`
     <div class="stats">
       <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${fmtPacks(sum(dayS,s=>(s.base_units||s.quantity)))} pack(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
@@ -535,6 +540,13 @@ async function vDashboard(v){
     ${S.biz.wa_enabled?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px"><b>WhatsApp daily summary</b><div class="hint">Composes today's numbers and opens WhatsApp ready to send.</div></div>
       <button class="btn primary" onclick="sendWhatsAppSummary()">Send today's summary</button>
+    </div></div>`:''}
+    ${todayCusts.length?`<div class="card"><div class="hd"><h2>Today's customers</h2><span class="desc">${todayCusts.filter(c=>c.phone).length} with phone · say thanks before you close up</span><div class="spacer"></div>
+      ${todayCusts.some(c=>c.phone)?`<button class="btn primary sm" onclick="openThanksRound()">Start thank-you round →</button>`:''}</div><div class="bd tight">
+      <table><tbody>${todayCusts.map(c=>`<tr>
+        <td class="itemname">${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:'<div class="cat">no phone saved</div>'}</td>
+        <td class="r">${c.phone?`<button class="btn ghost sm" onclick='waCustomer("${c.id}","thanks")'>💬 Thank you</button>`:'<span class="hint">—</span>'}</td>
+      </tr>`).join('')}</tbody></table>
     </div></div>`:''}
     ${lowItems.length?`<div class="card"><div class="hd"><h2>⚠ Needs restocking</h2></div><div class="bd tight">
       <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${fmtPacks(i.low_stock_threshold)} pack(s)</td></tr>`).join('')}</tbody></table>
@@ -1647,13 +1659,62 @@ function waCustomer(id,kind){
     msg=`Hello ${c.name}, this is a friendly reminder from ${S.biz.name}. `+
         (bal>0?`Your outstanding balance is ${money(bal)}. Kindly arrange payment when convenient. Thank you!`
               :`Thank you for your continued patronage!`);
+  }else if(kind==='thanks'){
+    msg=`Hello ${c.name}, thank you for shopping with us today at ${S.biz.name}! We appreciate your patronage. 🙏`;
   }else{
     const typed=prompt(`Message to ${c.name}:`, bal>0?`Hello ${c.name}, you have a balance of ${money(bal)} with ${S.biz.name}.`:`Hello ${c.name}, `);
     if(typed===null) return;
     msg=typed.trim(); if(!msg) return;
   }
-  window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'_blank');
+  // a fixed window name (instead of '_blank') makes the browser reuse one tab across
+  // repeated sends instead of piling up a new tab per customer — matters a lot once
+  // you're going through dozens of people back to back
+  window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'waSend');
 }
+
+/* ---------- thank-you round: queue through today's customers with progress tracking ---------- */
+// "sent" state lives in localStorage keyed by business+date — resets naturally each day,
+// survives a refresh/interruption without needing a DB table for something this disposable
+function thanksSentKey(){ return `thanksSent_${S.biz.id}_${today()}`; }
+function getThanksSent(){ try{ return new Set(JSON.parse(localStorage.getItem(thanksSentKey())||'[]')); }catch{ return new Set(); } }
+function markThanksSent(id){ const s=getThanksSent(); s.add(id); localStorage.setItem(thanksSentKey(),JSON.stringify([...s])); }
+let thanksQueue=[], thanksIdx=0;
+function openThanksRound(){
+  const sent=getThanksSent();
+  thanksQueue=(S._todayCusts||[]).filter(c=>c.phone);
+  const firstUnsent=thanksQueue.findIndex(c=>!sent.has(c.id));
+  thanksIdx=firstUnsent===-1?0:firstUnsent;
+  renderThanksRound();
+}
+function renderThanksRound(){
+  document.getElementById('thanksCard')?.remove();
+  const sent=getThanksSent();
+  const total=thanksQueue.length, sentCount=thanksQueue.filter(c=>sent.has(c.id)).length;
+  const c=thanksQueue[thanksIdx];
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="thanksCard"><div class="hd"><h2>Thank-you round</h2>
+    <span class="desc">${sentCount} of ${total} sent</span><div class="spacer"></div>
+    <button class="btn ghost sm" onclick="closeThanksRound()">Close</button></div>
+  <div class="bd">
+    ${c?`<div class="stats" style="margin-bottom:14px"><div class="stat"><div class="label">Now sending to</div><div class="value" style="font-size:20px">${esc(c.name)}</div><div class="sub">${esc(c.phone)}${sent.has(c.id)?' · already sent':''}</div></div></div>
+    <div class="row">
+      <button class="btn primary" onclick='sendThanksAndNext("${c.id}")' style="flex:1;font-size:16px;padding:14px">💬 Send & next</button>
+      <button class="btn ghost" onclick="skipThanks()">Skip</button>
+    </div>`
+    :`<div class="empty">🎉 Everyone's been messaged. Use the list below to resend anyone.</div>`}
+    <div class="card" style="margin-top:16px;box-shadow:none"><div class="bd tight">
+      <table><tbody>${thanksQueue.map((x,i)=>`<tr style="${i===thanksIdx?'background:#F0F5F1':''}">
+        <td class="itemname">${esc(x.name)}<div class="cat">${esc(x.phone)}</div></td>
+        <td class="r">${sent.has(x.id)?'<span class="badge ok">sent</span>':'<span class="badge zero">pending</span>'}</td>
+        <td class="r"><button class="btn ghost sm" onclick="jumpThanks(${i})">${sent.has(x.id)?'Resend':'Send'}</button></td>
+      </tr>`).join('')}</tbody></table>
+    </div></div>
+  </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function sendThanksAndNext(id){ waCustomer(id,'thanks'); markThanksSent(id); thanksIdx++; renderThanksRound(); }
+function skipThanks(){ thanksIdx++; renderThanksRound(); }
+function jumpThanks(i){ thanksIdx=i; sendThanksAndNext(thanksQueue[i].id); }
+function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
 
 /* ============================================================
    ADMIN — SETTINGS (WhatsApp daily summary toggle)
@@ -1723,7 +1784,7 @@ async function sendWhatsAppSummary(){
   ];
   const num=(S.biz.wa_number||'').replace(/[^0-9]/g,'');
   const url=`https://wa.me/${num}?text=${encodeURIComponent(lines.join('\n'))}`;
-  window.open(url,'_blank');
+  window.open(url,'waSend');
 }
 </script>
 </body>

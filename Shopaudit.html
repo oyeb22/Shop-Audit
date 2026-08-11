@@ -393,9 +393,9 @@ function waNumber(phone){
 function buildNav(){
   let tabs;
   if(S.role==='admin'){
-    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
+    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
   }else if(S.role==='manager'){
-    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports']];
+    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['expenses','Expenses']];
   }else{
     tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
   }
@@ -408,7 +408,7 @@ function go(t){ S.tab=t; buildNav(); render(); }
 async function render(){
   if(!S.biz){ renderNoBiz(); return; }
   const v=$('#view');
-  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,reports:vReports,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals};
+  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals};
   (map[S.tab]||vDashboard)(v);
 }
 
@@ -844,6 +844,113 @@ function exportCSV(){
   r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
   const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`; a.click();
+}
+
+/* ============================================================
+   ADMIN + MANAGER — EXPENDITURES (rent, transport, repairs, etc.)
+   Admin entries land approved immediately; manager entries land pending
+   and need admin approval (enforced at the RLS layer too, not just here).
+   ============================================================ */
+async function vExpenses(v){
+  v.innerHTML='<div class="empty">Loading…</div>';
+  const isManager=S.role==='manager';
+  const {data,error}=await sb.from('expenditures').select('*').eq('business_id',S.biz.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false});
+  if(error) return err(error);
+  S._exp=data||[];
+  S._expFrom=S._expFrom||monthStart(); S._expTo=S._expTo||today();
+  const pending=S._exp.filter(e=>e.status==='pending');
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Record an expense</h2><span class="desc">${isManager?'sent to the admin for approval':'rent, transport, repairs — anything outside stock purchases'}</span></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>Amount (₦)</label><input id="exAmt" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
+      <div class="field"><label>Category (optional)</label><input id="exCat" placeholder="e.g. Transport, Rent, Repairs"></div>
+      <div class="field"><label>Date</label><input id="exDate" type="date" value="${today()}"></div>
+    </div>
+    <div class="field"><label>Note</label><input id="exNote" placeholder="What was this for?"></div>
+    <button class="btn primary" onclick="addExpenditure()">${isManager?'Send for approval':'Record expense'}</button>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Overview</h2></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>From</label><input id="exFrom" type="date" value="${S._expFrom}"></div>
+      <div class="field"><label>To</label><input id="exTo" type="date" value="${S._expTo}"></div>
+      <div class="field" style="display:flex;align-items:flex-end"><button class="btn primary" onclick="runExpReport()">Run</button></div>
+    </div>
+    <div class="row" style="gap:6px">
+      <button class="btn ghost sm" onclick="expRange('today')">Today</button>
+      <button class="btn ghost sm" onclick="expRange('week')">Last 7 days</button>
+      <button class="btn ghost sm" onclick="expRange('month')">This month</button>
+    </div>
+  </div></div>
+  <div id="expOut"></div>
+  ${pending.length?`<div class="card"><div class="hd"><h2>Awaiting approval</h2><span class="desc">${pending.length} pending</span></div><div class="bd tight">${renderExpPending(pending)}</div></div>`:''}
+  <div class="card"><div class="hd"><h2>All expenses</h2></div><div class="bd tight">${renderExpList(S._exp)}</div></div>`;
+  runExpReport();
+}
+function expRange(which){
+  const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
+  if(which==='today'){ $('#exFrom').value=today(); $('#exTo').value=today(); }
+  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#exFrom').value=iso(f); $('#exTo').value=today(); }
+  else if(which==='month'){ $('#exFrom').value=monthStart(); $('#exTo').value=today(); }
+  runExpReport();
+}
+function runExpReport(){
+  const from=$('#exFrom').value, to=$('#exTo').value;
+  S._expFrom=from; S._expTo=to;
+  const inRange=(S._exp||[]).filter(e=>e.entry_date>=from&&e.entry_date<=to);
+  const approved=inRange.filter(e=>e.status==='approved');
+  const total=approved.reduce((a,e)=>a+Number(e.amount),0);
+  const byCat={}; approved.forEach(e=>{ const c=e.category||'Uncategorized'; byCat[c]=(byCat[c]||0)+Number(e.amount); });
+  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  $('#expOut').innerHTML=`
+    <div class="stats">
+      <div class="stat bad"><div class="label">Total expenses</div><div class="value num">${money(total)}</div><div class="sub">${approved.length} approved entr${approved.length===1?'y':'ies'} · ${from} → ${to}</div></div>
+    </div>
+    <div class="card"><div class="hd"><h2>By category</h2></div><div class="bd tight">
+      ${catRows.length?`<table><thead><tr><th>Category</th><th class="r">Amount</th></tr></thead>
+      <tbody>${catRows.map(([c,amt])=>`<tr><td class="itemname">${esc(c)}</td><td class="r num">${money(amt)}</td></tr>`).join('')}</tbody></table>`
+      :'<div class="empty">No approved expenses in this range.</div>'}
+    </div></div>`;
+}
+function renderExpPending(list){
+  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  return `<table><tbody>${list.map(e=>`<tr>
+    <td class="num hint">${fmt(e.created_at)}</td>
+    <td class="itemname">${esc(e.category||'—')}<div class="cat">${esc(e.note)}</div></td>
+    <td class="r num">${money(e.amount)}</td>
+    ${S.role==='admin'?`<td class="r"><button class="btn primary sm" onclick='approveExpenditure("${e.id}")'>Approve</button>
+    <button class="btn danger sm" onclick='rejectExpenditure("${e.id}")'>Reject</button></td>`:'<td class="r"><span class="badge zero">pending</span></td>'}
+  </tr>`).join('')}</tbody></table>`;
+}
+function renderExpList(list){
+  if(!list.length) return '<div class="empty">No expenses recorded yet.</div>';
+  const badgeCls={approved:'ok',pending:'zero',rejected:'neg'};
+  return `<table><thead><tr><th>Date</th><th>Category</th><th class="r">Amount</th><th class="r">Status</th></tr></thead>
+  <tbody>${list.map(e=>`<tr><td class="num">${e.entry_date}</td><td class="itemname">${esc(e.category||'—')}<div class="cat">${esc(e.note)}</div></td><td class="r num">${money(e.amount)}</td><td class="r"><span class="badge ${badgeCls[e.status]}">${e.status}</span></td></tr>`).join('')}</tbody></table>`;
+}
+async function addExpenditure(){
+  const amount=+$('#exAmt').value;
+  if(!amount||amount<=0) return toast('Enter the amount',true);
+  const note=$('#exNote').value.trim();
+  if(!note) return toast('Add a note explaining the expense',true);
+  const status = S.role==='manager' ? 'pending' : 'approved';
+  const rec={business_id:S.biz.id,amount,category:$('#exCat').value.trim()||null,note,entry_date:$('#exDate').value||today(),status,created_by:S.user.id};
+  const {error}=await sb.from('expenditures').insert(rec);
+  if(error) return err(error);
+  if(status==='approved'){
+    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'expenditure_added',detail:`${money(amount)} — ${note}`});
+  }
+  toast(status==='pending'?'Sent for approval':'Expense recorded'); vExpenses($('#view'));
+}
+async function approveExpenditure(id){
+  const {error}=await sb.rpc('approve_expenditure',{exp_id:id});
+  if(error) return err(error);
+  toast('Approved'); vExpenses($('#view'));
+}
+async function rejectExpenditure(id){
+  const note=prompt('Reason for rejecting (optional):')||null;
+  const {error}=await sb.rpc('reject_expenditure',{exp_id:id,note});
+  if(error) return err(error);
+  toast('Rejected'); vExpenses($('#view'));
 }
 
 /* ============================================================

@@ -1622,6 +1622,7 @@ async function openCustomer(id){
       <div class="stats" style="margin-bottom:14px"><div class="stat ${bal>0?'bad':'good'}"><div class="label">Balance owed</div><div class="value num">${money(bal)}</div></div></div>
       ${c.phone?`<div class="row" style="margin-bottom:14px">
         <button class="btn primary sm" onclick='waCustomer("${id}","reminder")'>💬 Payment reminder</button>
+        <button class="btn ghost sm" onclick='waCustomer("${id}","thanks")'>💬 Thank you</button>
         <button class="btn ghost sm" onclick='waCustomer("${id}","custom")'>💬 Custom message</button>
       </div>`:'<p class="hint" style="margin-bottom:14px">Add a phone number (edit via re-adding the customer) to message them on WhatsApp.</p>'}
       <div class="frow" style="align-items:flex-end">
@@ -1660,7 +1661,8 @@ function waCustomer(id,kind){
         (bal>0?`Your outstanding balance is ${money(bal)}. Kindly arrange payment when convenient. Thank you!`
               :`Thank you for your continued patronage!`);
   }else if(kind==='thanks'){
-    msg=`Hello ${c.name}, thank you for shopping with us today at ${S.biz.name}! We appreciate your patronage. 🙏`;
+    const tmpl=S.biz.thankyou_message||`Hello {name}, thank you for shopping with us today at ${S.biz.name}! We appreciate your patronage. 🙏`;
+    msg=tmpl.replace(/\{name\}/g,c.name);
   }else{
     const typed=prompt(`Message to ${c.name}:`, bal>0?`Hello ${c.name}, you have a balance of ${money(bal)} with ${S.biz.name}.`:`Hello ${c.name}, `);
     if(typed===null) return;
@@ -1721,14 +1723,18 @@ function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
    ============================================================ */
 function vSettings(v){
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>WhatsApp daily summary</h2><span class="desc">optional</span></div><div class="bd">
+  <div class="card"><div class="hd"><h2>WhatsApp</h2></div><div class="bd">
+    <p class="hint" style="margin-bottom:16px">Thank-you and reminder messages to customers just open WhatsApp with the text ready — no number to connect for those. The settings below are only for the daily summary.</p>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
       <input id="setWa" type="checkbox" ${S.biz.wa_enabled?'checked':''} style="width:auto"> Enable the daily summary button on the dashboard</label>
-    <div class="field"><label>Send to WhatsApp number (international format, e.g. 2348012345678)</label>
+    <div class="field"><label>Send summary to this number (international format, e.g. 2348012345678)</label>
       <input id="setWaNum" value="${esc(S.biz.wa_number||'')}" placeholder="234..."></div>
-    <p class="hint" style="margin-bottom:14px">When enabled, a <b>Send today's summary</b> button appears on your dashboard. Tapping it builds the day's figures and opens WhatsApp with the message ready — you just press send. (Hands-off automatic sending isn't possible from a free static file; this is the free, one-tap way.)</p>
+    <div class="field"><label>Thank-you message</label>
+      <input id="setThanksMsg" value="${esc(S.biz.thankyou_message||'')}" placeholder="Hello {name}, thank you for shopping with us today at ${esc(S.biz.name)}! We appreciate your patronage. 🙏">
+      <p class="hint" style="margin-top:6px">Use <span class="code">{name}</span> to insert the customer's name. Leave blank to use the default shown above.</p>
+    </div>
     <div class="row"><button class="btn primary" onclick="saveSettings()">Save</button>
-    <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send now</button></div>
+    <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send summary now</button></div>
   </div></div>
   <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
     <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span> — share it from the <b>Team</b> tab to add receptionists.</p>
@@ -1759,10 +1765,11 @@ async function resetData(includeItems){
 }
 async function saveSettings(){
   const wa_enabled=$('#setWa').checked, wa_number=$('#setWaNum').value.replace(/[^0-9]/g,'')||null;
-  const {error}=await sb.from('businesses').update({wa_enabled,wa_number}).eq('id',S.biz.id);
+  const thankyou_message=$('#setThanksMsg').value.trim()||null;
+  const {error}=await sb.from('businesses').update({wa_enabled,wa_number,thankyou_message}).eq('id',S.biz.id);
   if(error) return err(error);
-  S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number;
-  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;}
+  S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number; S.biz.thankyou_message=thankyou_message;
+  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;bz.thankyou_message=thankyou_message;}
   toast('Settings saved');
 }
 async function sendWhatsAppSummary(){

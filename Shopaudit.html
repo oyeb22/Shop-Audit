@@ -31,7 +31,9 @@ input,select{font-family:inherit;font-size:15px}
 .topbar{position:sticky;top:0;z-index:40;background:rgba(251,248,241,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .topbar .wrap{display:flex;align-items:center;gap:14px;height:62px}
 .brand{font-weight:700;font-size:21px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
-.brand .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--green),var(--green-d));display:grid;place-items:center;color:#fff;font-size:14px;font-family:'Hanken Grotesk'}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--green-d);display:grid;place-items:center;color:#fff;font-size:14px;font-family:'Hanken Grotesk'}
+.ic{width:16px;height:16px;flex:0 0 auto;vertical-align:-3px}
+.ic.lg{width:20px;height:20px}
 .spacer{flex:1}
 .bizsel{display:flex;align-items:center;gap:8px}
 select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);font-weight:600;max-width:180px}
@@ -52,7 +54,7 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .row{display:flex;gap:14px;flex-wrap:wrap}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
 .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
-.stat .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.stat .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
 .stat .value{font-family:'Fraunces';font-weight:600;font-size:26px;margin-top:5px;letter-spacing:-.02em}
 .stat .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
 .stat.good .value{color:var(--green)} .stat.bad .value{color:var(--red)} .stat.warn .value{color:var(--amber)}
@@ -106,20 +108,24 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 /* POS — point of sale */
 .pos{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
 @media(max-width:860px){.pos{grid-template-columns:1fr}}
-.posSearch{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px;margin-bottom:12px}
+.searchWrap{position:relative;margin-bottom:12px}
+.searchWrap .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.posSearch{width:100%;padding:13px 15px 13px 40px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px}
 .posSearch:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
-.prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
-.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;text-align:left;display:flex;flex-direction:column;gap:6px;transition:.12s;min-height:96px}
-.prod:hover{border-color:var(--green);transform:translateY(-1px);box-shadow:var(--shadow)}
-.prod:active{transform:translateY(0)}
+.prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:start}
+.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:8px;transition:.12s;cursor:pointer}
+.prod:hover{border-color:var(--green)}
+.prod.expanded{border-color:var(--green);box-shadow:0 0 0 2px rgba(31,90,65,.1)}
+.prod .phead{display:flex;align-items:center;gap:9px}
+.prod .pIcon{width:34px;height:34px;flex:0 0 auto;border-radius:9px;background:#EFE8DA;color:var(--green-d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
 .prod .pname{font-weight:700;font-size:14px;line-height:1.25}
-.prod .pmeta{font-size:12px;color:var(--muted);margin-top:auto}
+.prod .pmeta{font-size:12px;color:var(--muted)}
 .prod .pprice{font-weight:700;color:var(--green);font-size:14px}
 .prod.disabled{opacity:.45;pointer-events:none}
-.prod .opts{display:flex;gap:6px;margin-top:4px}
-.prod .opt{flex:1;border:1px solid var(--line);border-radius:8px;padding:7px 4px;font-weight:700;font-size:12.5px;color:var(--ink);background:#FCFAF5}
+.prod .opts{display:flex;flex-direction:column;gap:6px;cursor:default}
+.prod .opt{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer}
 .prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
-.prod .opt small{display:block;font-weight:500;color:var(--muted);font-size:10.5px}
+.prod .opt small{font-weight:600;color:var(--green)}
 /* cart */
 .cart{position:sticky;top:78px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
 .cart .chd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
@@ -256,6 +262,20 @@ const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN
 const today = () => new Date().toISOString().slice(0,10);
 const monthStart = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); };
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// tiny inline icon set — plain geometric strokes, no emoji, no external icon library/CDN
+const ICON_PATHS = {
+  search:'<circle cx="10" cy="10" r="6.5"/><line x1="19" y1="19" x2="14.5" y2="14.5"/>',
+  chat:'<path d="M4 4h16v11H9l-4 4V4Z"/>',
+  alert:'<path d="M12 3 22 20H2Z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>',
+  cart:'<path d="M3 3h3l2.2 12h10.6L21 8H7"/><circle cx="10" cy="20" r="1.3" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.3" fill="currentColor" stroke="none"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M5 20l2-6h10l2 6"/>',
+  x:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>',
+  cash:'<rect x="2" y="6" width="20" height="12" rx="1.5"/><circle cx="12" cy="12" r="3"/>',
+  bank:'<path d="M4 10h16M5 10v9M9 10v9M15 10v9M19 10v9M3 21h18M12 3 21 8H3Z"/>',
+  card:'<rect x="2" y="5" width="20" height="14" rx="1.5"/><line x1="2" y1="10" x2="22" y2="10"/>',
+  check:'<path d="M4 12l6 6L20 6"/>'
+};
+function icon(name,cls){ return `<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`; }
 let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',2600); }
 function err(e){ console.error(e); toast((e&&e.message)||'Something went wrong',true); }
@@ -545,10 +565,10 @@ async function vDashboard(v){
       ${todayCusts.some(c=>c.phone)?`<button class="btn primary sm" onclick="openThanksRound()">Start thank-you round →</button>`:''}</div><div class="bd tight">
       <table><tbody>${todayCusts.map(c=>`<tr>
         <td class="itemname">${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:'<div class="cat">no phone saved</div>'}</td>
-        <td class="r">${c.phone?`<button class="btn ghost sm" onclick='waCustomer("${c.id}","thanks")'>💬 Thank you</button>`:'<span class="hint">—</span>'}</td>
+        <td class="r">${c.phone?`<button class="btn ghost sm" onclick='waCustomer("${c.id}","thanks")'>${icon('chat')} Thank you</button>`:'<span class="hint">—</span>'}</td>
       </tr>`).join('')}</tbody></table>
     </div></div>`:''}
-    ${lowItems.length?`<div class="card"><div class="hd"><h2>⚠ Needs restocking</h2></div><div class="bd tight">
+    ${lowItems.length?`<div class="card"><div class="hd"><h2>${icon('alert')} Needs restocking</h2></div><div class="bd tight">
       <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${fmtPacks(i.low_stock_threshold)} pack(s)</td></tr>`).join('')}</tbody></table>
     </div></div>`:''}
     <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days · net of approved expenses</span></div><div class="bd tight">
@@ -566,11 +586,18 @@ async function vDashboard(v){
    ADMIN — ITEMS  (set prices, stock thresholds)
    ============================================================ */
 let draftModes=[];
+const FREE_ITEM_CAP=15;
 function vItems(v){
   draftModes=[];
   const isManager=S.role==='manager';
+  const isPaid=!!S.biz.is_paid;
+  const atCap=!isPaid && S.items.length>=FREE_ITEM_CAP;
   v.innerHTML=`
+  ${!isPaid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?' — limit reached':''}</div>
+  </div></div>`:''}
   <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">${isManager?'sent to the admin for approval':'every item has a pack price; add other ways to sell it below'}</span></div><div class="bd">
+    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached — upgrade to add more items.</p>':''}
     <div class="frow">
       <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Rice"></div>
       <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
@@ -588,7 +615,7 @@ function vItems(v){
       <div id="draftModesBox"></div>
       <button class="btn ghost sm" type="button" onclick="addDraftMode()">+ Add a mode (e.g. Half bag, Mudu)</button>
     </div>
-    <button class="btn primary" style="margin-top:8px" onclick="addItem()">${isManager?'Send for approval':'Add item'}</button>
+    <button class="btn primary" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?' — changes go to the admin for approval':''}</span></div><div class="bd tight">
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
@@ -629,7 +656,7 @@ function renderDraftModes(){
       <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" placeholder="e.g. Half bag" oninput="draftModes[${idx}].name=this.value"></div>
       <div class="field" style="margin-bottom:0"><label>Price (₦)</label><input type="number" min="0" step="1" value="${m.price||''}" oninput="draftModes[${idx}].price=+this.value||0;modePreview(${idx})"></div>
       <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="2" step="1" value="${m.per_pack||''}" oninput="draftModes[${idx}].per_pack=+this.value||0;modePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeDraftMode(${idx})">✕</button></div>
+      <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeDraftMode(${idx})">${icon('x')}</button></div>
     </div>
     <p class="hint" id="dmPrev${idx}" style="margin:-2px 0 10px">${draftModePreviewText(idx)}</p>`).join('');
 }
@@ -642,6 +669,7 @@ function modePreview(idx){ const el=$('#dmPrev'+idx); if(el) el.textContent=draf
 function addDraftMode(){ draftModes.push({name:'',price:0,per_pack:2}); renderDraftModes(); }
 function removeDraftMode(idx){ draftModes.splice(idx,1); renderDraftModes(); }
 async function addItem(){
+  if(S.role!=='manager' && !S.biz.is_paid && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached — upgrade to add more items',true);
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
   const openPacks=+$('#iOpen').value||0, threshold=+$('#iThr').value||0;
@@ -711,7 +739,7 @@ function renderEditModes(){
       <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" oninput="window._editModes[${idx}].name=this.value"></div>
       <div class="field" style="margin-bottom:0"><label>Price (₦)</label><input type="number" min="0" step="1" value="${m.price||''}" oninput="window._editModes[${idx}].price=+this.value||0;editModePreview(${idx})"></div>
       <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="2" step="1" value="${m.per_pack||''}" oninput="window._editModes[${idx}].per_pack=+this.value||0;editModePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeEditMode(${idx})">✕</button></div>
+      <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeEditMode(${idx})">${icon('x')}</button></div>
     </div>
     <p class="hint" id="emPrev${idx}" style="margin:-2px 0 10px">${editModePreviewText(idx)}</p>`).join('');
 }
@@ -898,10 +926,10 @@ async function runReport(){
       <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · gross profit ${money(totP)}</div></div>
       <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
       <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses</div></div>
-      <div class="stat"><div class="label">💵 Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
-      <div class="stat"><div class="label">🏦 Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
-      <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">📒 Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
-      ${byMethod.card?`<div class="stat"><div class="label">💳 Card (terminal)</div><div class="value num">${money(byMethod.card)}</div></div>`:''}
+      <div class="stat"><div class="label">${icon('cash')} Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
+      <div class="stat"><div class="label">${icon('bank')} Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
+      <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
+      ${byMethod.card?`<div class="stat"><div class="label">${icon('card')} Card (terminal)</div><div class="value num">${money(byMethod.card)}</div></div>`:''}
     </div>
     <div class="card"><div class="hd"><h2>By item</h2><span class="desc">${from} → ${to}</span><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight">
       ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
@@ -1028,8 +1056,10 @@ async function rejectExpenditure(id){
    ADMIN — MEMBERS / TEAM
    ============================================================ */
 async function vMembers(v){
+  const isPaid=!!S.biz.is_paid;
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
+    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner — upgrade to approve team members.</p>':''}
     <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it — you'll need to approve them below before they get access.</p>
     <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
     <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
@@ -1234,7 +1264,7 @@ function openTermDetails(id){
     <span class="desc">pick what was bought, then confirm</span><div class="spacer"></div>
     <button class="btn ghost sm" onclick="closeTermDetails()">Close</button></div>
   <div class="bd">
-    <input class="posSearch" id="termSearch" placeholder="🔍 Search item…" oninput="termFilter(this.value)">
+    <div class="searchWrap">${icon('search')}<input class="posSearch" id="termSearch" placeholder="Search item…" oninput="termFilter(this.value)"></div>
     <div class="prodgrid" id="termGrid" style="margin-bottom:14px">${termProductCards('')}</div>
     <div id="termCartItems"></div>
     <div class="frow" style="margin-top:10px">
@@ -1353,11 +1383,11 @@ function vSell(v){
   v.innerHTML=`
   <div class="pos">
     <div>
-      <input class="posSearch" id="posSearch" placeholder="🔍  Search item…" value="${esc(posQuery)}" oninput="posFilter(this.value)">
+      <div class="searchWrap">${icon('search')}<input class="posSearch" id="posSearch" placeholder="Search item…" value="${esc(posQuery)}" oninput="posFilter(this.value)"></div>
       <div class="prodgrid" id="prodGrid">${productCards()}</div>
     </div>
     <div class="cart" id="cartBox">
-      <div class="chd"><h2>🧾 Current sale</h2><div class="spacer"></div>
+      <div class="chd"><h2>${icon('cart','lg')} Current sale</h2><div class="spacer"></div>
         <button class="btn ghost sm" onclick="clearCart()" id="clearBtn" style="${S.cart.length?'':'display:none'}">Clear</button></div>
       <div class="modeRow">
         <label><input type="radio" name="payMode" value="cash" checked onchange="setPayMode('cash')"> Cash</label>
@@ -1367,9 +1397,9 @@ function vSell(v){
       <div class="custBox">
         <div id="custChosen" class="custChosen hidden"></div>
         <div id="custPick">
-          <input id="custSearch" class="custInput" placeholder="👤 Customer name (type to search)…" autocomplete="off" oninput="custSuggest(this.value)">
+          <input id="custSearch" class="custInput" placeholder="Customer name (type to search)…" autocomplete="off" oninput="custSuggest(this.value)">
           <div id="custResults" class="custResults"></div>
-          <input id="custPhone" class="custInput" placeholder="📞 Phone (optional, for WhatsApp)" inputmode="tel" style="margin-top:6px">
+          <input id="custPhone" class="custInput" placeholder="Phone (optional, for WhatsApp)" inputmode="tel" style="margin-top:6px">
           <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — a customer is required so the balance is tracked.</p>
         </div>
       </div>
@@ -1381,7 +1411,7 @@ function vSell(v){
       </div>
     </div>
   </div>
-  <button class="fab ${S.cart.length?'show':''}" id="cartFab" onclick="document.getElementById('cartBox').scrollIntoView({behavior:'smooth'})">🧾 ${money(cartTotal())} · ${cartCount()}</button>`;
+  <button class="fab ${S.cart.length?'show':''}" id="cartFab" onclick="document.getElementById('cartBox').scrollIntoView({behavior:'smooth'})">${icon('cart')} ${money(cartTotal())} · ${cartCount()}</button>`;
   S.saleCustId=null; renderChosen();
 }
 // ---- customer picker on the sell page ----
@@ -1400,7 +1430,7 @@ function renderChosen(){
   if(S.saleCustId){
     const c=S.customers.find(x=>x.id===S.saleCustId);
     chosen.className='custChosen';
-    chosen.innerHTML=`<div><b>👤 ${esc(c.name)}</b>${c.phone?`<div class="hint">${esc(c.phone)}</div>`:''}</div><button class="btn ghost sm" onclick="clearChosen()">Change</button>`;
+    chosen.innerHTML=`<div><b>${icon('user')} ${esc(c.name)}</b>${c.phone?`<div class="hint">${esc(c.phone)}</div>`:''}</div><button class="btn ghost sm" onclick="clearChosen()">Change</button>`;
     pick.classList.add('hidden');
   }else{
     chosen.className='custChosen hidden'; chosen.innerHTML='';
@@ -1408,6 +1438,9 @@ function renderChosen(){
     const s=$('#custSearch'); if(s){ s.value=''; } const r=$('#custResults'); if(r) r.innerHTML='';
   }
 }
+// accordion: only one product card open at a time — tapping a card shows its
+// modes/prices, tapping a different one closes the first and opens the new one
+let expandedProductId=null;
 function productCards(){
   if(!S.items.length) return '<div class="empty" style="grid-column:1/-1">No items available yet. Ask the admin to add some.</div>';
   const q=posQuery.trim().toLowerCase();
@@ -1415,17 +1448,22 @@ function productCards(){
   if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match for that search.</div>';
   return list.map(i=>{
     const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
-    return `<div class="prod ${out?'disabled':''}">
-      <div class="pname">${esc(i.name)}</div>
-      <div class="pprice">${money(fullPackPrice(i))}<small style="font-weight:500;color:var(--muted)"> /pack</small></div>
-      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
-      ${out?'':`<div class="opts">
-        <button class="opt" onclick='addToCart("${i.id}",1)'>+ Pack<small>${money(fullPackPrice(i))}</small></button>
-        ${modes.map(m=>`<button class="opt" onclick='addToCart("${i.id}",${m.per_pack})'>+ ${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
-      </div>`}
+    const expanded=expandedProductId===i.id;
+    return `<div class="prod ${out?'disabled':''} ${expanded?'expanded':''}" onclick="${out?'':`toggleProduct('${i.id}')`}">
+      <div class="phead">
+        <div class="pIcon">${esc(i.name.charAt(0).toUpperCase())}</div>
+        <div class="pname">${esc(i.name)}</div>
+      </div>
+      ${expanded?`
+        <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
+        <div class="opts" onclick="event.stopPropagation()">
+          <button class="opt" onclick='addToCart("${i.id}",1)'>Pack<small>${money(fullPackPrice(i))}</small></button>
+          ${modes.map(m=>`<button class="opt" onclick='addToCart("${i.id}",${m.per_pack})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
+        </div>`:''}
     </div>`;
   }).join('');
 }
+function toggleProduct(id){ expandedProductId = expandedProductId===id ? null : id; $('#prodGrid').innerHTML=productCards(); }
 function posFilter(q){ posQuery=q; $('#prodGrid').innerHTML=productCards(); }
 function setPayMode(m){ S.payMode=m; $('#custNote').style.display=(m==='credit')?'block':'none'; }
 
@@ -1468,7 +1506,7 @@ function refreshCart(){
   $('#cartCount').textContent=cartCount()+' item(s) in this sale';
   $('#checkoutBtn').disabled=!S.cart.length;
   $('#clearBtn').style.display=S.cart.length?'':'none';
-  const fab=$('#cartFab'); if(fab){ fab.classList.toggle('show',S.cart.length>0); fab.innerHTML=`🧾 ${money(cartTotal())} · ${cartCount()}`; }
+  const fab=$('#cartFab'); if(fab){ fab.classList.toggle('show',S.cart.length>0); fab.innerHTML=`${icon('cart')} ${money(cartTotal())} · ${cartCount()}`; }
   $('#prodGrid').innerHTML=productCards(); // reflect remaining stock live
 }
 async function checkout(){
@@ -1577,7 +1615,7 @@ async function vCustomers(v){
       <option value="recent" ${S._custSort==='recent'?'selected':''}>Most recent</option>
       <option value="name" ${S._custSort==='name'?'selected':''}>Name (A–Z)</option>
     </select></div>
-    <div class="bd" style="padding-bottom:6px"><input class="custInput" id="custFilter" placeholder="🔍 Search name or phone…" value="${esc(S._custQ)}" oninput="setCustQ(this.value)"></div>
+    <div class="bd" style="padding-bottom:6px"><input class="custInput" id="custFilter" placeholder="Search name or phone…" value="${esc(S._custQ)}" oninput="setCustQ(this.value)"></div>
     <div class="bd tight" id="custTableWrap">${customerTable()}</div>
   </div>`;
 }
@@ -1593,12 +1631,14 @@ function customerTable(){
   };
   list.sort(sorters[S._custSort]||sorters.spend);
   if(!list.length) return '<div class="empty">No customers match.</div>';
-  return `<table><thead><tr><th>Customer</th><th class="r">Spent</th><th class="r">Visits</th><th class="r">Balance</th></tr></thead>
-    <tbody>${list.map((c,i)=>{const bal=balanceOf(c.id);const rank=(S._custSort==='spend'&&!q&&i<3)?['🥇','🥈','🥉'][i]+' ':'';return `<tr style="cursor:pointer" onclick="openCustomer('${c.id}')">
-      <td class="itemname">${rank}${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
-      <td class="r num">${money(sp(c.id))}</td>
-      <td class="r num">${vs(c.id)}</td>
-      <td class="r">${bal>0?`<span class="badge neg">${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
+  return `<table><thead><tr><th>Customer</th><th class="r">Spent</th><th class="r">Visits</th><th class="r">Balance</th><th class="r"></th></tr></thead>
+    <tbody>${list.map((c,i)=>{const bal=balanceOf(c.id);const rank=(S._custSort==='spend'&&!q&&i<3)?`<span style="color:var(--gold);font-weight:800;margin-right:4px">#${i+1}</span>`:'';return `<tr>
+      <td class="itemname" style="cursor:pointer" onclick="openCustomer('${c.id}')">${rank}${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
+      <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')">${money(sp(c.id))}</td>
+      <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')">${vs(c.id)}</td>
+      <td class="r" style="cursor:pointer" onclick="openCustomer('${c.id}')">${bal>0?`<span class="badge neg">${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
+      <td class="r">${c.phone?`<button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","thanks")'>Thanks</button>
+        ${bal>0?`<button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","reminder")'>Remind</button>`:''}`:''}</td>
     </tr>`;}).join('')}</tbody></table>`;
 }
 function setCustSort(s){ S._custSort=s; $('#custTableWrap').innerHTML=customerTable(); }
@@ -1621,9 +1661,9 @@ async function openCustomer(id){
     <div class="bd">
       <div class="stats" style="margin-bottom:14px"><div class="stat ${bal>0?'bad':'good'}"><div class="label">Balance owed</div><div class="value num">${money(bal)}</div></div></div>
       ${c.phone?`<div class="row" style="margin-bottom:14px">
-        <button class="btn primary sm" onclick='waCustomer("${id}","reminder")'>💬 Payment reminder</button>
-        <button class="btn ghost sm" onclick='waCustomer("${id}","thanks")'>💬 Thank you</button>
-        <button class="btn ghost sm" onclick='waCustomer("${id}","custom")'>💬 Custom message</button>
+        <button class="btn primary sm" onclick='waCustomer("${id}","reminder")'>${icon('chat')} Payment reminder</button>
+        <button class="btn ghost sm" onclick='waCustomer("${id}","thanks")'>${icon('chat')} Thank you</button>
+        <button class="btn ghost sm" onclick='waCustomer("${id}","custom")'>${icon('chat')} Custom message</button>
       </div>`:'<p class="hint" style="margin-bottom:14px">Add a phone number (edit via re-adding the customer) to message them on WhatsApp.</p>'}
       <div class="frow" style="align-items:flex-end">
         <div class="field"><label>Amount (₦)</label><input id="ctxAmt" type="number" min="1" step="1" placeholder="0"></div>
@@ -1634,7 +1674,7 @@ async function openCustomer(id){
         </div>
       </div>
       <div class="card" style="margin-top:6px;box-shadow:none"><div class="hd"><h2 style="font-size:15px">History</h2></div><div class="bd tight">
-        ${data.length?`<table><tbody>${data.map(t=>`<tr><td class="num hint">${fmt(t.created_at)}</td><td>${t.type==='credit'?'<span class="badge neg">credit</span>':'<span class="badge pos">payment</span>'} ${esc(t.note||'')}</td><td class="r num">${money(t.amount)}</td>${isAdmin?`<td class="r"><button class="btn danger sm" onclick='delCtx("${t.id}")'>✕</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="empty">No transactions yet.</div>'}
+        ${data.length?`<table><tbody>${data.map(t=>`<tr><td class="num hint">${fmt(t.created_at)}</td><td>${t.type==='credit'?'<span class="badge neg">credit</span>':'<span class="badge pos">payment</span>'} ${esc(t.note||'')}</td><td class="r num">${money(t.amount)}</td>${isAdmin?`<td class="r"><button class="btn danger sm" onclick='delCtx("${t.id}")'>${icon('x')}</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="empty">No transactions yet.</div>'}
       </div></div>
     </div></div>`);
   window.scrollTo({top:0,behavior:'smooth'});
@@ -1657,9 +1697,12 @@ function waCustomer(id,kind){
   const bal=balanceOf(id);
   let msg;
   if(kind==='reminder'){
-    msg=`Hello ${c.name}, this is a friendly reminder from ${S.biz.name}. `+
-        (bal>0?`Your outstanding balance is ${money(bal)}. Kindly arrange payment when convenient. Thank you!`
-              :`Thank you for your continued patronage!`);
+    if(bal>0){
+      const tmpl=S.biz.reminder_message||`Hello {name}, this is a friendly reminder from ${S.biz.name}. Your outstanding balance is {balance}. Kindly arrange payment when convenient. Thank you!`;
+      msg=tmpl.replace(/\{name\}/g,c.name).replace(/\{balance\}/g,money(bal));
+    }else{
+      msg=`Hello ${c.name}, thank you for your continued patronage!`;
+    }
   }else if(kind==='thanks'){
     const tmpl=S.biz.thankyou_message||`Hello {name}, thank you for shopping with us today at ${S.biz.name}! We appreciate your patronage. 🙏`;
     msg=tmpl.replace(/\{name\}/g,c.name);
@@ -1699,10 +1742,10 @@ function renderThanksRound(){
   <div class="bd">
     ${c?`<div class="stats" style="margin-bottom:14px"><div class="stat"><div class="label">Now sending to</div><div class="value" style="font-size:20px">${esc(c.name)}</div><div class="sub">${esc(c.phone)}${sent.has(c.id)?' · already sent':''}</div></div></div>
     <div class="row">
-      <button class="btn primary" onclick='sendThanksAndNext("${c.id}")' style="flex:1;font-size:16px;padding:14px">💬 Send & next</button>
+      <button class="btn primary" onclick='sendThanksAndNext("${c.id}")' style="flex:1;font-size:16px;padding:14px">${icon('chat')} Send &amp; next</button>
       <button class="btn ghost" onclick="skipThanks()">Skip</button>
     </div>`
-    :`<div class="empty">🎉 Everyone's been messaged. Use the list below to resend anyone.</div>`}
+    :`<div class="empty">${icon('check','lg')} Everyone's been messaged. Use the list below to resend anyone.</div>`}
     <div class="card" style="margin-top:16px;box-shadow:none"><div class="bd tight">
       <table><tbody>${thanksQueue.map((x,i)=>`<tr style="${i===thanksIdx?'background:#F0F5F1':''}">
         <td class="itemname">${esc(x.name)}<div class="cat">${esc(x.phone)}</div></td>
@@ -1732,6 +1775,10 @@ function vSettings(v){
     <div class="field"><label>Thank-you message</label>
       <input id="setThanksMsg" value="${esc(S.biz.thankyou_message||'')}" placeholder="Hello {name}, thank you for shopping with us today at ${esc(S.biz.name)}! We appreciate your patronage. 🙏">
       <p class="hint" style="margin-top:6px">Use <span class="code">{name}</span> to insert the customer's name. Leave blank to use the default shown above.</p>
+    </div>
+    <div class="field"><label>Payment reminder message</label>
+      <input id="setReminderMsg" value="${esc(S.biz.reminder_message||'')}" placeholder="Hello {name}, this is a friendly reminder from ${esc(S.biz.name)}. Your outstanding balance is {balance}. Kindly arrange payment when convenient. Thank you!">
+      <p class="hint" style="margin-top:6px">Use <span class="code">{name}</span> and <span class="code">{balance}</span>. Leave blank to use the default shown above.</p>
     </div>
     <div class="row"><button class="btn primary" onclick="saveSettings()">Save</button>
     <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send summary now</button></div>
@@ -1766,10 +1813,11 @@ async function resetData(includeItems){
 async function saveSettings(){
   const wa_enabled=$('#setWa').checked, wa_number=$('#setWaNum').value.replace(/[^0-9]/g,'')||null;
   const thankyou_message=$('#setThanksMsg').value.trim()||null;
-  const {error}=await sb.from('businesses').update({wa_enabled,wa_number,thankyou_message}).eq('id',S.biz.id);
+  const reminder_message=$('#setReminderMsg').value.trim()||null;
+  const {error}=await sb.from('businesses').update({wa_enabled,wa_number,thankyou_message,reminder_message}).eq('id',S.biz.id);
   if(error) return err(error);
-  S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number; S.biz.thankyou_message=thankyou_message;
-  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;bz.thankyou_message=thankyou_message;}
+  S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number; S.biz.thankyou_message=thankyou_message; S.biz.reminder_message=reminder_message;
+  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;bz.thankyou_message=thankyou_message;bz.reminder_message=reminder_message;}
   toast('Settings saved');
 }
 async function sendWhatsAppSummary(){

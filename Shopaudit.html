@@ -378,6 +378,48 @@ async function switchBiz(id){
   $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':S.role==='manager'?' mgr':'');
   S.tab = (S.role==='admin'||S.role==='manager')?'dashboard':'sell';
   buildNav(); await loadData(); render();
+  subscribeRealtime();
+}
+
+/* ---------- realtime: items + stock stay live across sessions without a refresh ---------- */
+let realtimeChannel=null, realtimeTimer=null;
+function subscribeRealtime(){
+  if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel=null; }
+  if(!S.biz) return;
+  const bid=S.biz.id;
+  realtimeChannel = sb.channel('biz-'+bid)
+    .on('postgres_changes',{event:'*',schema:'public',table:'items',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'purchases',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'sales',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
+    .on('postgres_changes',{event:'*',schema:'public',table:'adjustments',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
+    .subscribe();
+}
+function scheduleRealtimeRefresh(){
+  // a single checkout can touch sales + trigger several events at once — debounce
+  // so a burst of changes only triggers one refresh instead of several in a row
+  clearTimeout(realtimeTimer);
+  realtimeTimer=setTimeout(doRealtimeRefresh,300);
+}
+async function doRealtimeRefresh(){
+  if(!S.biz) return;
+  const bid=S.biz.id;
+  const [it,stk]=await Promise.all([
+    sb.from('items').select('*').eq('business_id',bid).order('name'),
+    sb.from('item_stock').select('item_id,on_hand').eq('business_id',bid)
+  ]);
+  if(it.error) return; // stay silent — this is a background sync, not a user action
+  S.items=it.data||[];
+  if(!stk.error){ S.stock={}; (stk.data||[]).forEach(r=>S.stock[r.item_id]=Number(r.on_hand||0)); }
+  else{ await computeStockFallback(); }
+  // Dashboard/StockList are pure read-only display — safe to fully re-render.
+  // Sell page has a live cart + customer search mid-typing — only patch the
+  // product grid (same function the cart already calls after every action)
+  // so nobody's in-progress sale gets wiped out from under them.
+  // Every other tab (Items/Restock/Reconcile/etc.) may have half-filled forms —
+  // leave the screen as-is; S.items/S.stock are current underneath regardless,
+  // so whatever they submit next already uses fresh data.
+  if(S.tab==='dashboard'||S.tab==='stocklist') render();
+  else if(S.tab==='sell'){ const grid=$('#prodGrid'); if(grid) grid.innerHTML=productCards(); }
 }
 async function loadData(){
   if(!S.biz) return;
@@ -679,6 +721,8 @@ async function addItem(){
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
   const openPacks=+$('#iOpen').value||0, threshold=+$('#iThr').value||0;
   if(!packSell) return toast('Enter the pack sell price',true);
+  const incomplete=draftModes.find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=2)));
+  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 2 — or remove it`,true);
   const modes=draftModes.filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=2)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
@@ -757,6 +801,8 @@ function editModePreview(idx){ const el=$('#emPrev'+idx); if(el) el.textContent=
 function addEditMode(){ window._editModes=window._editModes||[]; window._editModes.push({name:'',price:0,per_pack:2}); renderEditModes(); }
 function removeEditMode(idx){ window._editModes.splice(idx,1); renderEditModes(); }
 async function saveItem(id){
+  const incomplete=(window._editModes||[]).find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=2)));
+  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 2 — or remove it`,true);
   const modes=(window._editModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=2)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',

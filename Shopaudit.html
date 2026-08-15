@@ -702,13 +702,14 @@ function renderDraftModes(){
     <div class="frow" style="align-items:flex-end;margin-bottom:6px">
       <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" placeholder="e.g. Half bag" oninput="draftModes[${idx}].name=this.value"></div>
       <div class="field" style="margin-bottom:0"><label>Price (₦)</label><input type="number" min="0" step="1" value="${m.price||''}" oninput="draftModes[${idx}].price=+this.value||0;modePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="2" step="1" value="${m.per_pack||''}" oninput="draftModes[${idx}].per_pack=+this.value||0;modePreview(${idx})"></div>
+      <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="1" step="1" value="${m.per_pack||''}" oninput="draftModes[${idx}].per_pack=+this.value||0;modePreview(${idx})"></div>
       <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeDraftMode(${idx})">${icon('x')}</button></div>
     </div>
     <p class="hint" id="dmPrev${idx}" style="margin:-2px 0 10px">${draftModePreviewText(idx)}</p>`).join('');
 }
 function draftModePreviewText(idx){
   const m=draftModes[idx]; if(!m||!m.per_pack) return '';
+  if(m.per_pack===1) return 'Same quantity as a full pack — just a different price (e.g. wholesale vs retail).';
   const packCost=+($('#iPackCost')?.value||0);
   return `= ${pct(m.per_pack).toFixed(1)}% of a pack${packCost?` · cost ≈ ${money(packCost/m.per_pack)}`:''}`;
 }
@@ -721,9 +722,9 @@ async function addItem(){
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
   const openPacks=+$('#iOpen').value||0, threshold=+$('#iThr').value||0;
   if(!packSell) return toast('Enter the pack sell price',true);
-  const incomplete=draftModes.find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=2)));
-  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 2 — or remove it`,true);
-  const modes=draftModes.filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=2)
+  const incomplete=draftModes.find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
+  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1 — or remove it`,true);
+  const modes=draftModes.filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
     pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold};
@@ -787,13 +788,14 @@ function renderEditModes(){
     <div class="frow" style="align-items:flex-end;margin-bottom:6px">
       <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" oninput="window._editModes[${idx}].name=this.value"></div>
       <div class="field" style="margin-bottom:0"><label>Price (₦)</label><input type="number" min="0" step="1" value="${m.price||''}" oninput="window._editModes[${idx}].price=+this.value||0;editModePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="2" step="1" value="${m.per_pack||''}" oninput="window._editModes[${idx}].per_pack=+this.value||0;editModePreview(${idx})"></div>
+      <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="1" step="1" value="${m.per_pack||''}" oninput="window._editModes[${idx}].per_pack=+this.value||0;editModePreview(${idx})"></div>
       <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeEditMode(${idx})">${icon('x')}</button></div>
     </div>
     <p class="hint" id="emPrev${idx}" style="margin:-2px 0 10px">${editModePreviewText(idx)}</p>`).join('');
 }
 function editModePreviewText(idx){
   const m=(window._editModes||[])[idx]; if(!m||!m.per_pack) return '';
+  if(m.per_pack===1) return 'Same quantity as a full pack — just a different price (e.g. wholesale vs retail).';
   const packCost=+($('#eCost')?.value||0);
   return `= ${pct(m.per_pack).toFixed(1)}% of a pack${packCost?` · cost ≈ ${money(packCost/m.per_pack)}`:''}`;
 }
@@ -801,9 +803,9 @@ function editModePreview(idx){ const el=$('#emPrev'+idx); if(el) el.textContent=
 function addEditMode(){ window._editModes=window._editModes||[]; window._editModes.push({name:'',price:0,per_pack:2}); renderEditModes(); }
 function removeEditMode(idx){ window._editModes.splice(idx,1); renderEditModes(); }
 async function saveItem(id){
-  const incomplete=(window._editModes||[]).find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=2)));
-  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 2 — or remove it`,true);
-  const modes=(window._editModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=2)
+  const incomplete=(window._editModes||[]).find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
+  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1 — or remove it`,true);
+  const modes=(window._editModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
     pack_price:+$('#ePack').value||0, cost_price:+$('#eCost').value||0,
@@ -1341,20 +1343,25 @@ function termProductCards(q){
       <div class="pname">${esc(i.name)}</div>
       <div class="pmeta">${out?'Out of stock':packBreakdown(i)+' left'}</div>
       ${out?'':`<div class="opts">
-        <button class="opt" onclick='termAdd("${i.id}",1)'>+ Pack<small>${money(fullPackPrice(i))}</small></button>
-        ${modes.map(m=>`<button class="opt" onclick='termAdd("${i.id}",${m.per_pack})'>+ ${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
+        <button class="opt" onclick='termAdd("${i.id}",-1)'>+ Pack<small>${money(fullPackPrice(i))}</small></button>
+        ${modes.map((m,mi)=>`<button class="opt" onclick='termAdd("${i.id}",${mi})'>+ ${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
       </div>`}
     </div>`;
   }).join('');
 }
-function termAdd(itemId,per_pack){
+// modeIdx: -1 = the built-in Pack button, >=0 = index into itemModes(i) — using
+// the index (not per_pack) as the discriminator, since a mode's per_pack can now
+// legitimately be 1 (e.g. wholesale vs retail at the same quantity), which would
+// otherwise be indistinguishable from the Pack button itself
+function termAdd(itemId,modeIdx){
   const i=S.items.find(x=>x.id===itemId); if(!i) return;
-  const isPack = per_pack===1;
-  const mode = isPack ? null : itemModes(i).find(m=>m.per_pack===per_pack);
+  const isPack = modeIdx===-1;
+  const mode = isPack ? null : itemModes(i)[modeIdx];
+  const per_pack = isPack ? 1 : (mode?mode.per_pack:1);
   const baseUnits = isPack ? 1 : (1/per_pack);
   const price = isPack ? fullPackPrice(i) : (mode?mode.price:0);
   const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
-  const label = isPack ? 'pack' : (mode?mode.name:String(per_pack));
+  const label = isPack ? 'pack' : (mode?mode.name:'');
   const inCart=termCart.filter(l=>l.itemId===itemId).reduce((a,l)=>a+l.baseUnits*l.qty,0);
   if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
   const ex=termCart.find(l=>l.itemId===itemId&&l.mode===label);
@@ -1508,8 +1515,8 @@ function productCards(){
       ${expanded?`
         <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
         <div class="opts" onclick="event.stopPropagation()">
-          <button class="opt" onclick='addToCart("${i.id}",1)'>Pack<small>${money(fullPackPrice(i))}</small></button>
-          ${modes.map(m=>`<button class="opt" onclick='addToCart("${i.id}",${m.per_pack})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
+          <button class="opt" onclick='addToCart("${i.id}",-1)'>Pack<small>${money(fullPackPrice(i))}</small></button>
+          ${modes.map((m,mi)=>`<button class="opt" onclick='addToCart("${i.id}",${mi})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
         </div>`:''}
     </div>`;
   }).join('');
@@ -1518,14 +1525,17 @@ function toggleProduct(id){ expandedProductId = expandedProductId===id ? null : 
 function posFilter(q){ posQuery=q; $('#prodGrid').innerHTML=productCards(); }
 function setPayMode(m){ S.payMode=m; $('#custNote').style.display=(m==='credit')?'block':'none'; }
 
-function addToCart(itemId,per_pack){
+// modeIdx: -1 = the built-in Pack button, >=0 = index into itemModes(i) — see
+// the same note on termAdd() for why this isn't per_pack anymore
+function addToCart(itemId,modeIdx){
   const i=S.items.find(x=>x.id===itemId); if(!i) return;
-  const isPack = per_pack===1;
-  const mode = isPack ? null : itemModes(i).find(m=>m.per_pack===per_pack);
+  const isPack = modeIdx===-1;
+  const mode = isPack ? null : itemModes(i)[modeIdx];
+  const per_pack = isPack ? 1 : (mode?mode.per_pack:1);
   const baseUnits = isPack ? 1 : (1/per_pack);
   const price = isPack ? fullPackPrice(i) : (mode?mode.price:0);
   const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
-  const label = isPack ? 'pack' : (mode?mode.name:String(per_pack));
+  const label = isPack ? 'pack' : (mode?mode.name:'');
   // stock guard across everything already in the cart (small epsilon for float rounding)
   const inCart=cartUnits()[itemId]||0;
   if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);

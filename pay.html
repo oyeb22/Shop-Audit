@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Shop Audit — Upgrade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<style>
+:root{
+  --paper:#FBF8F1; --card:#FFFFFF; --ink:#17150F; --muted:#6F6A5E; --line:#E8E1D3;
+  --green:#1F5A41; --green-d:#16432F; --red:#B23A33;
+  --shadow:0 1px 2px rgba(23,21,15,.05),0 8px 24px -12px rgba(23,21,15,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);color:var(--ink);
+  min-height:100vh;display:grid;place-items:center;padding:24px;font-size:15px;line-height:1.5}
+h1,h2,.brand{font-family:'Fraunces',serif}
+.wrap{width:100%;max-width:440px}
+.brand{font-weight:700;font-size:22px;display:flex;align-items:center;gap:9px;justify-content:center;margin-bottom:22px}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--green-d);display:grid;place-items:center;color:#fff;font-size:14px;font-family:'Hanken Grotesk'}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:26px}
+.field{margin-bottom:13px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
+.field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;color:var(--ink);font-family:inherit;font-size:15px}
+.field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px 18px;border-radius:10px;font-weight:700;font-size:14px;border:none;cursor:pointer;background:var(--green);color:#fff;font-family:inherit}
+.btn:hover{background:var(--green-d)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin-top:12px}
+.bizrow{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.bizrow .name{font-weight:700;font-size:16px;margin-bottom:2px}
+.bizrow .price{font-family:'Fraunces';font-weight:600;font-size:24px;margin:8px 0}
+.bizrow .was{font-size:13px;color:var(--muted);text-decoration:line-through;margin-right:6px}
+.discount{display:inline-block;font-size:11px;font-weight:700;background:#E6F0E9;color:var(--green);padding:3px 9px;border-radius:99px;margin-bottom:6px}
+.empty{text-align:center;padding:20px;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);
+  padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:.25s;max-width:90vw}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><span class="mark">SA</span> Shop Audit</div>
+
+  <div id="authCard" class="card">
+    <h2 style="font-size:18px;margin-bottom:16px">Sign in to upgrade</h2>
+    <div class="field"><label>Email</label><input id="email" type="email" placeholder="you@email.com"></div>
+    <div class="field"><label>Password</label><input id="pass" type="password" placeholder="Your password"></div>
+    <button class="btn" id="signInBtn" onclick="doSignIn()">Sign in</button>
+    <p class="hint">Don't have a Shop Audit account yet? Create one in the app first, then come back here.</p>
+  </div>
+
+  <div id="payCard" class="card hidden" style="display:none"></div>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+// paste your Paystack PUBLIC key here (safe to expose — it's meant to be public)
+const PAYSTACK_PUBLIC_KEY = "pk_test_0f15e18f3e6c491688f9d977ccf8c1a5d0572194";
+
+const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
+
+const $ = s => document.querySelector(s);
+const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT;
+function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',3200); }
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let CURRENT_PRICE = null, BASE_PRICE = null;
+
+sb.auth.getSession().then(({data})=>{ if(data.session) afterSignIn(); });
+
+async function doSignIn(){
+  const email=$('#email').value.trim(), pass=$('#pass').value;
+  if(!email||!pass) return toast('Enter email and password',true);
+  $('#signInBtn').disabled=true;
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  if(error){ toast(error.message,true); $('#signInBtn').disabled=false; return; }
+  afterSignIn();
+}
+
+async function afterSignIn(){
+  $('#authCard').style.display='none';
+  const payCard=$('#payCard'); payCard.style.display='block'; payCard.innerHTML='<div class="empty">Loading…</div>';
+
+  const [{data:pricing,error:pe}, {data:members,error:me}] = await Promise.all([
+    sb.from('pricing').select('*').eq('id',1).single(),
+    sb.from('business_members').select('role,business:businesses(*)').eq('role','admin')
+  ]);
+  if(pe){ payCard.innerHTML='<div class="empty">Could not load pricing. Try again shortly.</div>'; return; }
+  if(me){ payCard.innerHTML='<div class="empty">Could not load your businesses. Try again shortly.</div>'; return; }
+
+  BASE_PRICE = Number(pricing.base_price);
+  CURRENT_PRICE = Math.round(BASE_PRICE * (1 - Number(pricing.discount_percent)/100));
+  const discounted = pricing.discount_percent > 0;
+
+  const unpaid = (members||[]).map(m=>m.business).filter(b=>b && !b.is_paid);
+  const paid = (members||[]).map(m=>m.business).filter(b=>b && b.is_paid);
+
+  if(!unpaid.length){
+    payCard.innerHTML = paid.length
+      ? `<div class="empty">You're all set — every business you own is already on the paid plan.</div>`
+      : `<div class="empty">You're not the owner (admin) of any business yet. Create one in the app first.</div>`;
+    return;
+  }
+
+  payCard.innerHTML = unpaid.map(b=>`
+    <div class="bizrow">
+      <div class="name">${esc(b.name)}</div>
+      ${discounted?`<div class="discount">${esc(pricing.discount_note||pricing.discount_percent+'% off')}</div>`:''}
+      <div class="price">${discounted?`<span class="was">${money(BASE_PRICE)}</span>`:''}${money(CURRENT_PRICE)}</div>
+      <button class="btn" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}")'>Pay ${money(CURRENT_PRICE)} — one time</button>
+    </div>
+  `).join('') + `<p class="hint">One-time payment. No subscription, nothing recurring.</p>`;
+}
+
+function payFor(businessId, businessName){
+  if(PAYSTACK_PUBLIC_KEY.includes('xxxx')){ toast('Payment isn\'t set up yet — paste a real Paystack public key into pay.html',true); return; }
+  sb.auth.getUser().then(({data})=>{
+    const email = data.user.email;
+    const handler = PaystackPop.setup({
+      key: PAYSTACK_PUBLIC_KEY,
+      email,
+      amount: CURRENT_PRICE * 100, // kobo
+      currency: 'NGN',
+      metadata: { business_id: businessId, business_name: businessName },
+      callback: function(response){
+        confirmPayment(response.reference);
+      },
+      onClose: function(){}
+    });
+    handler.openIframe();
+  });
+}
+
+async function confirmPayment(reference){
+  toast('Confirming payment…');
+  const {data,error} = await sb.rpc('verify_and_activate_payment',{p_reference:reference});
+  if(error){ toast(error.message,true); return; }
+  if(data && data.already_processed){ toast('Already confirmed — you\'re on the paid plan.'); }
+  else{ toast('Payment confirmed — you\'re upgraded!'); }
+  afterSignIn();
+}
+</script>
+</body>
+</html>

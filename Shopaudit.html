@@ -276,6 +276,10 @@ const ICON_PATHS = {
   check:'<path d="M4 12l6 6L20 6"/>'
 };
 function icon(name,cls){ return `<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`; }
+// opens the payment page in the device's own browser, never embedded in-app —
+// once this is wrapped in Capacitor, swap this for @capacitor/browser's
+// Browser.open() to guarantee it leaves the app rather than opening in a webview
+function openUpgrade(){ window.open('pay.html','_blank'); }
 let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',2600); }
 function err(e){ console.error(e); toast((e&&e.message)||'Something went wrong',true); }
@@ -595,9 +599,10 @@ function vItems(v){
   v.innerHTML=`
   ${!isPaid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?' — limit reached':''}</div>
+    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
   </div></div>`:''}
   <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">${isManager?'sent to the admin for approval':'every item has a pack price; add other ways to sell it below'}</span></div><div class="bd">
-    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached — upgrade to add more items.</p>':''}
+    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached — <a href="#" onclick="openUpgrade();return false">upgrade</a> to add more items.</p>':''}
     <div class="frow">
       <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Rice"></div>
       <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
@@ -1059,7 +1064,7 @@ async function vMembers(v){
   const isPaid=!!S.biz.is_paid;
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
-    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner — upgrade to approve team members.</p>':''}
+    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner — <a href="#" onclick="openUpgrade();return false">upgrade</a> to approve team members.</p>':''}
     <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it — you'll need to approve them below before they get access.</p>
     <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
     <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
@@ -1766,6 +1771,12 @@ function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
    ============================================================ */
 function vSettings(v){
   v.innerHTML=`
+  ${S.biz.is_paid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div><b>Paid plan</b><div class="hint">Unlimited items and team members.</div></div>
+  </div></div>`:`<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">one-time payment, no subscription</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">You're on the free plan — ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits, permanently.</div>
+    <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
+  </div></div>`}
   <div class="card"><div class="hd"><h2>WhatsApp</h2></div><div class="bd">
     <p class="hint" style="margin-bottom:16px">Thank-you and reminder messages to customers just open WhatsApp with the text ready — no number to connect for those. The settings below are only for the daily summary.</p>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">

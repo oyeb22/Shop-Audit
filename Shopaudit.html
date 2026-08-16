@@ -77,6 +77,8 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
 .badge.low{background:#FBEFD8;color:var(--amber)} .badge.ok{background:#E6F0E9;color:var(--green)} .badge.out{background:#F8E2E0;color:var(--red)}
 .badge.pos{background:#E6F0E9;color:var(--green)} .badge.neg{background:#F8E2E0;color:var(--red)} .badge.zero{background:#EFEBE0;color:var(--muted)}
+.badge.gold{background:#F3E8D2;color:#8A5A12} .badge.blue{background:#EAEEF6;color:#2C4A78}
+.badge.lg{font-size:13px;padding:6px 13px;font-weight:800}
 
 /* forms */
 .field{margin-bottom:13px}
@@ -886,6 +888,7 @@ async function addPurchase(){
   const rec={business_id:S.biz.id,item_id,quantity:qty,base_units:base,unit_cost:unit_cost||0,entry_date:$('#rDate').value||today(),created_by:S.user.id};
   const {error}=await sb.from('purchases').insert(rec);
   if(error) return err(error);
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${fmtPacks(base)} pack(s) of ${it.name}`});
   toast(`Added ${fmtPacks(base)} pack(s) to stock`); await loadData(); render();
 }
 
@@ -920,6 +923,8 @@ async function saveRecon(){
   if($('#cApply').checked && variance!==0){
     await sb.from('adjustments').insert({business_id:S.biz.id,item_id,quantity_delta:variance,reason:'reconciliation correction',created_by:S.user.id});
   }
+  const nm=(S.items.find(i=>i.id===item_id)||{}).name||'';
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: ${variance>0?'+':''}${fmtPacks(variance)} pack(s) variance`});
   toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded'); await loadData(); render();
 }
 async function loadRecon(){
@@ -1170,13 +1175,38 @@ async function removeMember(uid){
 /* ============================================================
    ADMIN — AUDIT LOG
    ============================================================ */
+// action → { label, cls } — cls picks the badge color so different kinds of
+// activity are visually distinct at a glance (money in vs owed, stock moves,
+// item edits, team/approvals) instead of one flat gray badge for everything
+const AUDIT_META={
+  sale_completed:          {label:'Sale',                cls:'pos'},
+  payment_received:        {label:'Payment received',    cls:'pos'},
+  credit_payment_recorded: {label:'Credit payment',       cls:'pos'},
+  credit_added:            {label:'Credit given',         cls:'neg'},
+  restock_added:           {label:'Restock',              cls:'gold'},
+  reconciliation_recorded: {label:'Reconciliation',       cls:'gold'},
+  expenditure_added:       {label:'Expense recorded',     cls:'gold'},
+  expenditure_approved:    {label:'Expense approved',     cls:'pos'},
+  expenditure_rejected:    {label:'Expense rejected',     cls:'neg'},
+  item_added:              {label:'Item added',           cls:'blue'},
+  item_updated:            {label:'Item updated',         cls:'blue'},
+  item_deleted:            {label:'Item deleted',         cls:'neg'},
+  change_approved:         {label:'Change approved',      cls:'pos'},
+  change_rejected:         {label:'Change rejected',      cls:'neg'},
+  member_removed:          {label:'Member removed',       cls:'neg'},
+  join_requested:          {label:'Join requested',       cls:'blue'},
+  join_approved:           {label:'Join approved',        cls:'pos'},
+  join_rejected:           {label:'Join rejected',        cls:'neg'},
+  role_changed:            {label:'Role changed',         cls:'blue'}
+};
+function auditMeta(action){ return AUDIT_META[action] || {label:(action||'').replace(/_/g,' '), cls:'zero'}; }
 async function vAudit(v){
   v.innerHTML='<div class="card"><div class="hd"><h2>Audit log</h2><span class="desc">every important change, automatically recorded</span></div><div class="bd tight"><div id="auList" class="empty">Loading…</div></div></div>';
   const {data,error}=await sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200);
   if(error) return err(error);
   const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   $('#auList').outerHTML=`<div id="auList">${data.length?`<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead>
-  <tbody>${data.map(a=>`<tr><td class="num hint">${fmt(a.created_at)}</td><td><span class="badge zero">${esc(a.action)}</span></td><td>${esc(a.detail||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No activity yet.</div>'}</div>`;
+  <tbody>${data.map(a=>{const m=auditMeta(a.action);return `<tr><td class="num hint">${fmt(a.created_at)}</td><td><span class="badge lg ${m.cls}">${esc(m.label)}</span></td><td>${esc(a.detail||'')}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No activity yet.</div>'}</div>`;
 }
 
 /* ============================================================
@@ -1600,6 +1630,9 @@ async function checkout(){
     if(onCredit){
       const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
       if(r.error) throw r.error;
+      await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} — ${shownName}`});
+    }else{
+      await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} — ${cnt} item(s), ${shownName}`});
     }
     S.cart=[]; S.saleCustId=null; toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
     await loadData(); render();
@@ -1745,6 +1778,8 @@ async function custTx(id,type){
   if(!amount||amount<=0) return toast('Enter an amount',true);
   const {error}=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:id,type,amount,note:$('#ctxNote').value.trim()||null,created_by:S.user.id});
   if(error) return err(error);
+  const cname=(S.customers.find(c=>c.id===id)||{}).name||'';
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:type==='payment'?'credit_payment_recorded':'credit_added',detail:`${money(amount)} — ${cname}`});
   toast(type==='payment'?'Payment recorded':'Credit added'); await loadData(); render(); setTimeout(()=>openCustomer(id),60);
 }
 async function delCtx(txId){

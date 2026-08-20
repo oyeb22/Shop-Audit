@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Shop Audit — Upgrade</title>
+<title>Upgrade Your Plan | TheMonishop</title>
+<meta name="description" content="Upgrade your TheMonishop plan to unlock unlimited items and team accounts.">
+<meta name="robots" content="noindex">
+<link rel="canonical" href="https://themonishop.com.ng/pay.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316432F'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-weight='700' font-size='26' fill='white' text-anchor='middle'%3ETM%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -45,14 +49,14 @@ h1,h2,.brand{font-family:'Fraunces',serif}
 </head>
 <body>
 <div class="wrap">
-  <div class="brand"><span class="mark">SA</span> Shop Audit</div>
+  <div class="brand"><span class="mark">TM</span> TheMonishop</div>
 
   <div id="authCard" class="card">
     <h2 style="font-size:18px;margin-bottom:16px">Sign in to upgrade</h2>
     <div class="field"><label>Email</label><input id="email" type="email" placeholder="you@email.com"></div>
     <div class="field"><label>Password</label><input id="pass" type="password" placeholder="Your password"></div>
     <button class="btn" id="signInBtn" onclick="doSignIn()">Sign in</button>
-    <p class="hint">Don't have a Shop Audit account yet? Create one in the app first, then come back here.</p>
+    <p class="hint">Don't have a TheMonishop account yet? Create one in the app first, then come back here.</p>
   </div>
 
   <div id="payCard" class="card hidden" style="display:none"></div>
@@ -118,7 +122,7 @@ async function afterSignIn(){
       <div class="price">${discounted?`<span class="was">${money(BASE_PRICE)}</span>`:''}${money(CURRENT_PRICE)}</div>
       <button class="btn" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}")'>Pay ${money(CURRENT_PRICE)} — one time</button>
     </div>
-  `).join('') + `<p class="hint">One-time payment. No subscription, nothing recurring.</p>`;
+  `).join('') + `<p class="hint">One-time payment. No subscription, nothing recurring. All payments are final. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
 }
 
 function payFor(businessId, businessName){

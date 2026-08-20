@@ -3,1946 +3,388 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Shop Audit</title>
+<title>TheMonishop | Stock, Sales & Profit Tracking for Shop Owners</title>
+<meta name="description" content="Track stock, sales, credit and profit for your shop. Send WhatsApp reminders, catch dishonest staff, and see real profit. Free to start with TheMonishop.">
+<link rel="canonical" href="https://themonishop.com.ng/">
+<meta property="og:title" content="TheMonishop">
+<meta property="og:description" content="Stock, sales, credit and profit tracking for your shop, with WhatsApp reminders and staff accountability built in.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://themonishop.com.ng/">
+<meta property="og:locale" content="en_NG">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="TheMonishop">
+<meta name="twitter:description" content="Stock, sales, credit and profit tracking for your shop, with WhatsApp reminders and staff accountability built in.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316432F'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-weight='700' font-size='26' fill='white' text-anchor='middle'%3ETM%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "TheMonishop",
+  "description": "Stock, sales, credit and profit tracking app for shop owners, with WhatsApp reminders, team roles and staff accountability built in.",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web",
+  "url": "https://themonishop.com.ng/",
+  "offers": {
+    "@type": "Offer",
+    "price": "20000",
+    "priceCurrency": "NGN"
+  }
+}
+</script>
 <style>
 :root{
-  --paper:#FBF8F1; --card:#FFFFFF; --ink:#17150F; --muted:#6F6A5E; --line:#E8E1D3;
+  --paper:#FBF8F1; --card:#FFFFFF; --band:#F3EEE0; --ink:#17150F; --muted:#6F6A5E; --line:#E8E1D3;
   --green:#1F5A41; --green-d:#16432F; --gold:#A9772E; --red:#B23A33; --amber:#B5821A;
   --shadow:0 1px 2px rgba(23,21,15,.05),0 8px 24px -12px rgba(23,21,15,.18);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
+html{scroll-behavior:smooth}
 body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);color:var(--ink);
-  font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
-  background-image:radial-gradient(circle at 12% -10%,rgba(31,90,65,.06),transparent 40%),radial-gradient(circle at 100% 0,rgba(169,119,46,.05),transparent 35%);}
-.num{font-variant-numeric:tabular-nums lining-nums}
+  font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 h1,h2,h3,.brand{font-family:'Fraunces',serif}
 a{color:var(--green);text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
-input,select{font-family:inherit;font-size:15px}
-.hidden{display:none!important}
+svg{display:block}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px}
 
-/* layout */
-.wrap{max-width:1080px;margin:0 auto;padding:0 16px}
-.topbar{position:sticky;top:0;z-index:40;background:rgba(251,248,241,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.topbar .wrap{display:flex;align-items:center;gap:14px;height:62px}
-.brand{font-weight:700;font-size:21px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
-.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--green-d);display:grid;place-items:center;color:#fff;font-size:14px;font-family:'Hanken Grotesk'}
-.ic{width:16px;height:16px;flex:0 0 auto;vertical-align:-3px}
-.ic.lg{width:20px;height:20px}
+/* topbar */
+.topbar{position:sticky;top:0;z-index:40;background:rgba(251,248,241,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex;align-items:center;gap:18px;height:64px}
+.brand{font-weight:700;font-size:20px;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:var(--green-d);display:grid;place-items:center;color:#fff;font-size:13px;font-family:'Hanken Grotesk';font-weight:700}
+.topnav{display:flex;gap:22px;margin-left:8px}
+.topnav a{color:var(--muted);font-weight:600;font-size:14px}
+.topnav a:hover{color:var(--ink)}
 .spacer{flex:1}
-.bizsel{display:flex;align-items:center;gap:8px}
-select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);font-weight:600;max-width:180px}
-.rolepill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px;background:#EFE8DA;color:var(--green-d)}
-.rolepill.recept{background:#EAEEF6;color:#2C4A78}
-.rolepill.mgr{background:#F3E8D2;color:#8A5A12}
-.iconbtn{padding:8px 12px;border-radius:9px;border:1px solid var(--line);background:var(--card);font-weight:600;color:var(--ink)}
-.iconbtn:hover{border-color:var(--green)}
+.topcta{display:flex;align-items:center;gap:10px}
+@media(max-width:680px){.topnav{display:none}}
 
-/* nav */
-.nav{display:flex;gap:4px;overflow-x:auto;padding:10px 0 0;-webkit-overflow-scrolling:touch}
-.nav button{white-space:nowrap;padding:9px 14px;border-radius:9px;color:var(--muted);font-weight:600;font-size:14px}
-.nav button.active{background:var(--ink);color:var(--paper)}
-.nav button:hover:not(.active){background:#F0EADC}
-
-/* cards & grid */
-.view{padding:22px 0 80px}
-.row{display:flex;gap:14px;flex-wrap:wrap}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:var(--shadow)}
-.stat .label{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
-.stat .value{font-family:'Fraunces';font-weight:600;font-size:26px;margin-top:5px;letter-spacing:-.02em}
-.stat .sub{font-size:12.5px;color:var(--muted);margin-top:2px}
-.stat.good .value{color:var(--green)} .stat.bad .value{color:var(--red)} .stat.warn .value{color:var(--amber)}
-
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;margin-bottom:18px}
-.card .hd{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
-.card .hd h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
-.card .hd .desc{font-size:13px;color:var(--muted);font-weight:400;font-family:'Hanken Grotesk'}
-.card .bd{padding:16px 18px}
-.card .bd.tight{padding:6px 0}
-
-/* table */
-table{width:100%;border-collapse:collapse}
-th,td{text-align:left;padding:11px 18px;font-size:14px;border-bottom:1px solid var(--line)}
-th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
-tr:last-child td{border-bottom:none}
-td.r,th.r{text-align:right} td.c,th.c{text-align:center}
-.itemname{font-weight:600}
-.cat{font-size:12px;color:var(--muted)}
-.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
-.badge.low{background:#FBEFD8;color:var(--amber)} .badge.ok{background:#E6F0E9;color:var(--green)} .badge.out{background:#F8E2E0;color:var(--red)}
-.badge.pos{background:#E6F0E9;color:var(--green)} .badge.neg{background:#F8E2E0;color:var(--red)} .badge.zero{background:#EFEBE0;color:var(--muted)}
-.badge.gold{background:#F3E8D2;color:#8A5A12} .badge.blue{background:#EAEEF6;color:#2C4A78}
-.badge.lg{font-size:13px;padding:6px 13px;font-weight:800}
-
-/* forms */
-.field{margin-bottom:13px}
-.field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
-.field input,.field select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;color:var(--ink)}
-.field input:focus,.field select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
-.frow{display:flex;gap:12px;flex-wrap:wrap}.frow>.field{flex:1;min-width:130px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:10px;font-weight:700;font-size:14px;transition:.15s}
+/* buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 20px;border-radius:10px;font-weight:700;font-size:14px;transition:.15s}
 .btn.primary{background:var(--green);color:#fff}.btn.primary:hover{background:var(--green-d)}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}.btn.ghost:hover{border-color:var(--green)}
-.btn.danger{background:transparent;color:var(--red);border:1px solid #E8C9C5}.btn.danger:hover{background:#FBEEEC}
-.btn.sm{padding:7px 12px;font-size:13px}
-.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.lg{padding:14px 26px;font-size:15px}
 
-/* quick sell stepper */
-.qty{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#FCFAF5}
-.qty button{width:34px;height:38px;font-size:18px;font-weight:700;color:var(--green)}
-.qty input{width:44px;height:38px;border:none;text-align:center;background:transparent;font-weight:700;font-size:15px}
+/* hero */
+.hero{padding:72px 0 88px}
+.hero .split{display:grid;grid-template-columns:1.05fr .95fr;gap:44px;align-items:center}
+.hero h1{font-size:42px;font-weight:600;letter-spacing:-.02em;line-height:1.18;margin-bottom:20px}
+.hero p{font-size:16.5px;color:var(--muted);max-width:460px;margin-bottom:30px}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap}
+.hero .art{width:100%;max-width:420px;justify-self:center}
+@media(max-width:820px){.hero .split{grid-template-columns:1fr}.hero .art{order:-1;max-width:320px;margin:0 auto}.hero h1{font-size:32px}}
 
-/* auth */
-.auth{min-height:100vh;display:grid;place-items:center;padding:24px}
-.authcard{width:100%;max-width:400px;background:var(--card);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:30px 28px}
-.authcard .brand{justify-content:center;margin-bottom:6px;font-size:24px}
-.authcard .tag{text-align:center;color:var(--muted);font-size:14px;margin-bottom:22px}
-.tabs{display:flex;background:#F0EADC;border-radius:11px;padding:4px;margin-bottom:18px}
-.tabs button{flex:1;padding:9px;border-radius:8px;font-weight:600;color:var(--muted)}
-.tabs button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+/* sections */
+section{padding:92px 0}
+section.band{background:var(--band);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.section-head{text-align:center;max-width:580px;margin:0 auto 52px}
+.section-head .eyebrow{font-size:14.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:12px}
+.section-head h2{font-size:30px;font-weight:600;letter-spacing:-.01em;margin-bottom:14px}
+.section-head p{color:var(--muted);font-size:17px}
 
-/* POS — point of sale */
-.pos{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start}
-@media(max-width:860px){.pos{grid-template-columns:1fr}}
-.searchWrap{position:relative;margin-bottom:12px}
-.searchWrap .ic{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
-.posSearch{width:100%;padding:13px 15px 13px 40px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px}
-.posSearch:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
-.prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:start}
-.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:8px;transition:.12s;cursor:pointer}
-.prod:hover{border-color:var(--green)}
-.prod.expanded{border-color:var(--green);box-shadow:0 0 0 2px rgba(31,90,65,.1)}
-.prod .phead{display:flex;align-items:center;gap:9px}
-.prod .pIcon{width:34px;height:34px;flex:0 0 auto;border-radius:9px;background:#EFE8DA;color:var(--green-d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-.prod .pname{font-weight:700;font-size:14px;line-height:1.25}
-.prod .pmeta{font-size:12px;color:var(--muted)}
-.prod .pprice{font-weight:700;color:var(--green);font-size:14px}
-.prod.disabled{opacity:.45;pointer-events:none}
-.prod .opts{display:flex;flex-direction:column;gap:6px;cursor:default}
-.prod .opt{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer}
-.prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
-.prod .opt small{font-weight:600;color:var(--green)}
-/* cart */
-.cart{position:sticky;top:78px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
-.cart .chd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
-.cart .chd h2{font-size:17px}
-.cart .citems{overflow-y:auto;flex:1;min-height:60px}
-.citem{display:flex;align-items:center;gap:8px;padding:11px 16px;border-bottom:1px solid var(--line)}
-.citem .ci-n{flex:1;font-weight:600;font-size:13.5px;line-height:1.2}
-.citem .ci-n small{display:block;color:var(--muted);font-weight:500;font-size:11.5px}
-.citem .ci-t{font-weight:700;font-size:13.5px;white-space:nowrap}
-.citem .x{color:var(--red);font-size:18px;width:24px;text-align:center}
-.cstep{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.cstep button{width:26px;height:30px;font-size:15px;font-weight:700;color:var(--green)}
-.cstep span{min-width:26px;text-align:center;font-weight:700;font-size:13px}
-.cart .cfoot{border-top:1px solid var(--line);padding:14px 16px;background:#FCFAF5}
-.cart .total{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
-.cart .total .lbl{font-weight:600;color:var(--muted)}
-.cart .total .amt{font-family:'Fraunces';font-weight:700;font-size:30px;letter-spacing:-.02em}
-.cart .ccount{font-size:12.5px;color:var(--muted);margin-bottom:12px}
-.cartEmpty{padding:34px 16px;text-align:center;color:var(--muted);font-size:13.5px}
-.modeRow{display:flex;gap:8px;padding:0 16px 12px}
-.modeRow label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line);border-radius:9px;padding:8px;font-weight:600;font-size:13px;cursor:pointer}
-.modeRow input{width:auto}
-.custBox{padding:0 16px 12px}
-.custInput{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;font-size:14px}
-.custInput:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
-.custResults{display:flex;flex-direction:column;gap:4px;margin-top:4px}
-.custHit{text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:13.5px}
-.custHit:hover{border-color:var(--green);background:#F0F5F1}
-.custChosen{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid var(--green);background:#EFF5F1;border-radius:10px}
-.fab{position:fixed;right:18px;bottom:18px;z-index:60;background:var(--green);color:#fff;border-radius:99px;padding:14px 20px;font-weight:700;box-shadow:0 8px 24px -6px rgba(31,90,65,.5);display:none;align-items:center;gap:8px}
-@media(max-width:860px){.fab.show{display:inline-flex}}
+/* trust / theft-prevention section */
+.trust .split{display:grid;grid-template-columns:.95fr 1.05fr;gap:48px;align-items:center}
+.trust .art{width:100%;max-width:400px;justify-self:center}
+.trust .copy .eyebrow{font-size:14.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+.trust .copy h2{font-size:30px;font-weight:600;letter-spacing:-.01em;margin-bottom:16px;line-height:1.2}
+.trust .copy>p{color:var(--muted);font-size:15.5px;margin-bottom:22px}
+.trust ul{list-style:none}
+.trust li{font-size:14.5px;padding:9px 0;padding-left:28px;position:relative;border-top:1px solid var(--line)}
+.trust li:first-child{border-top:none}
+.trust li::before{content:'';position:absolute;left:0;top:16px;width:10px;height:7px;border-left:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(-45deg)}
+@media(max-width:820px){.trust .split{grid-template-columns:1fr}.trust .art{order:-1;max-width:300px;margin:0 auto}}
 
-/* misc */
-.empty{padding:40px 18px;text-align:center;color:var(--muted)}
-.empty .big{font-size:40px;margin-bottom:8px}
-.toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);
-  padding:12px 18px;border-radius:12px;font-weight:600;font-size:14px;opacity:0;transition:.25s;z-index:100;box-shadow:var(--shadow);max-width:90vw}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-.toast.err{background:var(--red)}
-.code{font-family:ui-monospace,monospace;background:#F0EADC;padding:3px 9px;border-radius:7px;font-weight:700;letter-spacing:.08em}
-.hint{font-size:13px;color:var(--muted)}
-.setup{max-width:620px;margin:60px auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:var(--shadow)}
-.setup code{background:#F0EADC;padding:2px 6px;border-radius:5px;font-family:ui-monospace,monospace;font-size:13px}
-.split{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.split>*{flex:1;min-width:280px}
-@media(max-width:560px){.card .bd{padding:13px}th,td{padding:10px 13px}.stat .value{font-size:22px}}
+/* feature grid */
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+@media(max-width:860px){.features{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:560px){.features{grid-template-columns:1fr}}
+.feature{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:24px}
+.feature .fic{width:38px;height:38px;border-radius:10px;background:var(--band);display:grid;place-items:center;margin-bottom:16px;color:var(--green-d)}
+.feature .fic svg{width:20px;height:20px}
+.feature h3{font-size:18px;font-weight:700;margin-bottom:9px;font-family:'Hanken Grotesk'}
+.feature p{font-size:15.5px;color:var(--muted)}
+
+/* pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:680px;margin:0 auto}
+@media(max-width:640px){.pricing-grid{grid-template-columns:1fr}}
+.pricecard{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:28px}
+.pricecard.hi{border-color:var(--green);position:relative}
+.pricecard .tier{font-size:13.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:12px}
+.pricecard.hi .tier{color:var(--green)}
+.pricecard .amt{font-family:'Fraunces';font-weight:600;font-size:32px;letter-spacing:-.02em;margin-bottom:4px}
+.pricecard .was{font-size:14px;color:var(--muted);text-decoration:line-through;margin-right:6px;font-family:'Hanken Grotesk';font-weight:600}
+.pricecard .note{font-size:14px;color:var(--muted);margin-bottom:20px}
+.pricecard ul{list-style:none;margin-bottom:22px}
+.pricecard li{font-size:15.5px;padding:7px 0;padding-left:22px;position:relative;color:var(--ink)}
+.pricecard li::before{content:'';position:absolute;left:0;top:12px;width:9px;height:6px;border-left:2px solid var(--green);border-bottom:2px solid var(--green);transform:rotate(-45deg)}
+.discount{display:inline-block;font-size:11px;font-weight:700;background:#E6F0E9;color:var(--green);padding:3px 9px;border-radius:99px;margin-bottom:10px}
+
+/* faq */
+.faq{max-width:680px;margin:0 auto}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+details summary{padding:18px 18px;font-weight:600;font-size:17px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+details summary::-webkit-details-marker{display:none}
+details summary::after{content:'+';font-size:20px;color:var(--muted);font-weight:400;flex:0 0 auto}
+details[open] summary::after{content:'\2212'}
+details p{padding:0 18px 18px;color:var(--muted);font-size:15.5px}
+
+/* footer */
+footer{padding:40px 0}
+footer .wrap{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between}
+footer .contact{display:flex;gap:18px;flex-wrap:wrap}
+footer .contact a{color:var(--muted);font-weight:600;font-size:13.5px;display:inline-flex;align-items:center;gap:6px}
+footer .contact a:hover{color:var(--green)}
+footer .copy{color:var(--muted);font-size:12.5px}
 </style>
 </head>
 <body>
 
-<!-- ===================== SETUP NOTICE (shown if keys missing) ===================== -->
-<div id="setupNotice" class="setup hidden">
-  <div class="brand" style="font-size:22px;margin-bottom:14px"><span class="mark">SA</span> Shop Audit — one quick step</div>
-  <p class="hint" style="margin-bottom:14px">Open this file in a text editor and paste your Supabase project keys near the top of the script:</p>
-  <p style="margin-bottom:8px"><code>const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";</code></p>
-  <p style="margin-bottom:14px"><code>const SUPABASE_ANON_KEY = "your-anon-public-key";</code></p>
-  <p class="hint">Find them in Supabase → <b>Project Settings → API</b>. Then reload this page. Full steps are in the setup guide.</p>
+<div class="topbar">
+  <div class="wrap">
+    <div class="brand"><span class="mark">TM</span> TheMonishop</div>
+    <nav class="topnav">
+      <a href="#trust">Prevent theft</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="topcta">
+      <a class="btn ghost" href="Shopaudit.html">Sign in</a>
+      <a class="btn primary" href="Shopaudit.html">Get started</a>
+    </div>
+  </div>
 </div>
 
-<!-- ===================== AUTH ===================== -->
-<div id="authScreen" class="auth hidden">
-  <div class="authcard">
-    <div class="brand"><span class="mark">SA</span> Shop Audit</div>
-    <div class="tag">Stock, sales & audit for your shops</div>
-    <div class="tabs">
-      <button id="tabSignin" class="active" onclick="setAuthMode('signin')">Sign in</button>
-      <button id="tabSignup" onclick="setAuthMode('signup')">Create account</button>
-    </div>
-    <div id="nameField" class="field hidden">
-      <label>Full name</label><input id="auName" placeholder="e.g. Amaka O.">
-    </div>
-    <div class="field"><label>Email</label><input id="auEmail" type="email" placeholder="you@email.com"></div>
-    <div class="field"><label>Password</label>
-      <div style="position:relative">
-        <input id="auPass" type="password" placeholder="At least 6 characters" style="padding-right:64px">
-        <button type="button" onclick="togglePass()" id="pwToggle" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--green);padding:6px 8px;border-radius:7px">Show</button>
+<div class="hero wrap">
+  <div class="split">
+    <div>
+      <h1>Run your shop from your phone, not your memory</h1>
+      <p>Track stock, sales and credit automatically, send WhatsApp reminders, and stop dishonest staff before they cost you.</p>
+      <div class="ctas">
+        <a class="btn primary lg" href="Shopaudit.html">Get started free</a>
+        <a class="btn ghost lg" href="#trust">See how it protects you</a>
       </div>
     </div>
-    <p id="forgotLink" class="hint" style="text-align:right;margin:-6px 0 2px"><a href="#" onclick="forgotPassword();return false">Forgot password?</a></p>
-    <button id="auBtn" class="btn primary" style="width:100%;margin-top:6px" onclick="doAuth()">Sign in</button>
-    <p id="authMsg" class="hint" style="text-align:center;margin-top:12px"></p>
+    <svg class="art" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a shop owner checking stock on a phone behind a counter of goods">
+      <circle cx="250" cy="95" r="95" fill="#F0EADC"/>
+      <rect x="10" y="230" width="380" height="70" rx="16" fill="#A9772E"/>
+      <rect x="10" y="230" width="380" height="12" rx="6" fill="#C4964F"/>
+      <path d="M60,230 C60,170 96,150 100,150 C104,150 140,170 140,230 Z" fill="#16432F"/>
+      <rect x="94" y="140" width="12" height="12" rx="3" fill="#0F2F20"/>
+      <path d="M150,230 C150,182 176,170 180,170 C184,170 210,182 210,230 Z" fill="#1F5A41"/>
+      <rect x="225" y="185" width="16" height="45" rx="5" fill="#1F5A41"/>
+      <rect x="229" y="176" width="8" height="11" rx="2" fill="#16432F"/>
+      <rect x="248" y="190" width="16" height="40" rx="5" fill="#A9772E"/>
+      <rect x="252" y="181" width="8" height="11" rx="2" fill="#8A5A12"/>
+      <path d="M210,230 Q210,140 260,140 Q310,140 310,230 Z" fill="#1F5A41"/>
+      <rect x="250" y="128" width="20" height="16" rx="6" fill="#17150F"/>
+      <circle cx="260" cy="105" r="32" fill="#17150F"/>
+      <path d="M300,175 Q335,168 340,135" stroke="#1F5A41" stroke-width="20" stroke-linecap="round"/>
+      <rect x="322" y="95" width="38" height="60" rx="7" fill="#17150F"/>
+      <rect x="328" y="102" width="26" height="46" rx="3" fill="#FBF8F1"/>
+      <rect x="332" y="109" width="18" height="5" rx="2" fill="#1F5A41"/>
+      <rect x="332" y="118" width="18" height="5" rx="2" fill="#A9772E"/>
+      <rect x="332" y="127" width="12" height="5" rx="2" fill="#1F5A41"/>
+      <circle cx="343" cy="140" r="6" fill="#1F5A41"/>
+      <path d="M340,140 l2,3 l5,-6" stroke="#FBF8F1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
   </div>
 </div>
 
-<!-- ===================== RESET PASSWORD (shown after tapping the emailed link) ===================== -->
-<div id="resetScreen" class="auth hidden">
-  <div class="authcard">
-    <div class="brand"><span class="mark">SA</span> Shop Audit</div>
-    <div class="tag">Set a new password</div>
-    <div class="field"><label>New password</label><input id="rpPass1" type="password" placeholder="At least 6 characters"></div>
-    <div class="field"><label>Confirm new password</label><input id="rpPass2" type="password" placeholder="Repeat password"></div>
-    <button id="rpBtn" class="btn primary" style="width:100%;margin-top:6px" onclick="doPasswordReset()">Set new password</button>
-    <p id="rpMsg" class="hint" style="text-align:center;margin-top:12px"></p>
-  </div>
-</div>
-
-<!-- ===================== APP ===================== -->
-<div id="app" class="hidden">
-  <div class="topbar">
-    <div class="wrap">
-      <div class="brand"><span class="mark">SA</span> Shop Audit</div>
-      <div class="spacer"></div>
-      <div class="bizsel">
-        <select id="bizSelect" class="biz" onchange="switchBiz(this.value)"></select>
-        <span id="rolePill" class="rolepill">—</span>
-      </div>
-      <button class="iconbtn" onclick="signOut()">Sign out</button>
+<section id="trust" class="trust band">
+  <div class="wrap split">
+    <svg class="art" viewBox="0 0 400 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a shop owner reviewing a checklist on a tablet with one flagged item, while a staff member restocks a shelf in the background">
+      <rect x="30" y="10" width="190" height="210" rx="28" fill="#F0EADC"/>
+      <rect x="250" y="50" width="130" height="8" rx="3" fill="#DCD3BC"/>
+      <rect x="260" y="28" width="16" height="22" rx="3" fill="#8A8471"/>
+      <rect x="282" y="30" width="16" height="20" rx="3" fill="#8A8471"/>
+      <rect x="304" y="26" width="16" height="24" rx="3" fill="#8A8471"/>
+      <rect x="250" y="110" width="130" height="8" rx="3" fill="#DCD3BC"/>
+      <rect x="260" y="88" width="16" height="22" rx="3" fill="#8A8471"/>
+      <rect x="282" y="90" width="16" height="20" rx="3" fill="#8A8471"/>
+      <path d="M320,180 Q320,140 345,140 Q370,140 370,180 Z" fill="#B9B2A0"/>
+      <circle cx="345" cy="122" r="17" fill="#B9B2A0"/>
+      <path d="M360,150 Q380,130 385,105" stroke="#B9B2A0" stroke-width="12" stroke-linecap="round"/>
+      <path d="M70,300 Q70,180 130,180 Q190,180 190,300 Z" fill="#1F5A41"/>
+      <rect x="118" y="175" width="24" height="16" rx="6" fill="#17150F"/>
+      <circle cx="130" cy="150" r="36" fill="#17150F"/>
+      <rect x="95" y="210" width="90" height="64" rx="8" fill="#17150F"/>
+      <rect x="103" y="217" width="74" height="50" rx="4" fill="#FBF8F1"/>
+      <circle cx="112" cy="226" r="4" fill="#1F5A41"/>
+      <rect x="122" y="223" width="45" height="5" rx="2" fill="#E8E1D3"/>
+      <circle cx="112" cy="238" r="4" fill="#1F5A41"/>
+      <rect x="122" y="235" width="45" height="5" rx="2" fill="#E8E1D3"/>
+      <circle cx="112" cy="250" r="4" fill="#B23A33"/>
+      <rect x="122" y="247" width="45" height="5" rx="2" fill="#E8E1D3"/>
+      <circle cx="112" cy="262" r="4" fill="#1F5A41"/>
+      <rect x="122" y="259" width="45" height="5" rx="2" fill="#E8E1D3"/>
+      <circle cx="175" cy="205" r="16" fill="none" stroke="#17150F" stroke-width="4"/>
+      <line x1="186" y1="216" x2="200" y2="230" stroke="#17150F" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <div class="copy">
+      <div class="eyebrow">The real reason shops choose us</div>
+      <h2>Stop dishonest staff before they ruin your business</h2>
+      <p>Most shop losses do not happen at the till, they happen quietly, over weeks, from staff who know nobody is checking. TheMonishop makes sure someone always is.</p>
+      <ul>
+        <li>Every sale, credit entry, restock and reconciliation is logged with who did it and when</li>
+        <li>Item prices, stock and deletions need your approval before they take effect</li>
+        <li>Reconciliation flags shortages the moment you count stock, not weeks later</li>
+        <li>Receptionists can sell, nothing more. Managers can restock, nothing they are not allowed to touch</li>
+      </ul>
     </div>
-    <div class="wrap"><div id="nav" class="nav"></div></div>
   </div>
-  <div class="wrap"><div id="view" class="view"></div></div>
-</div>
+</section>
 
-<div id="toast" class="toast"></div>
+<section id="features" class="wrap">
+  <div class="section-head">
+    <div class="eyebrow">What it does</div>
+    <h2>Built for how Nigerian shops actually sell</h2>
+    <p>Not a generic inventory app. Pack-based pricing, WhatsApp built in, and roles for the people who work with you.</p>
+  </div>
+  <div class="features">
+    <div class="feature">
+      <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-5 9 5-9 5-9-5Z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div>
+      <h3>Stock and sales, by the pack</h3>
+      <p>Sell a full bag, a half bag, a mudu or any pack size you use. Cost and stock stay proportional automatically.</p>
+    </div>
+    <div class="feature">
+      <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v11H9l-4 4V4Z"/><path d="M8 9.5l2 2 4-4"/></svg></div>
+      <h3>WhatsApp reminders</h3>
+      <p>Send a payment reminder or thank-you to any customer in one tap, or run an end-of-day round through everyone who bought that day.</p>
+    </div>
+    <div class="feature">
+      <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.1"/><path d="M3.3 19.5c.7-3.3 2.9-5.2 5.7-5.2s5 1.9 5.7 5.2"/><circle cx="17.2" cy="8.8" r="2.4"/><path d="M15.3 14.5c1.9.3 3.4 1.9 3.9 4.4"/></svg></div>
+      <h3>Team roles, admin approved</h3>
+      <p>Managers can sell and restock right away. Receptionists sell only. New members and item changes wait for your approval.</p>
+    </div>
+    <div class="feature">
+      <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg></div>
+      <h3>Real profit, not just revenue</h3>
+      <p>Log rent, transport and other expenses. Dashboard and Reports show actual net profit after cost and approved expenses.</p>
+    </div>
+    <div class="feature">
+      <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h11M4 12h11M4 18h7"/><path d="M17 16.5l1.8 1.8L22 15"/></svg></div>
+      <h3>Every action logged</h3>
+      <p>Sales, credit, restocks, reconciliations and approvals all land in one audit log, color-coded so nothing gets lost.</p>
+    </div>
+    <div class="feature">
+      <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg></div>
+      <h3>Live across every device</h3>
+      <p>Stock updates push instantly to every open session. No refreshing, and no two people selling the same last unit.</p>
+    </div>
+  </div>
+</section>
+
+<section id="pricing" class="band">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="eyebrow">Pricing</div>
+      <h2>Start free. Upgrade when you need more.</h2>
+      <p>No subscription. The paid plan is a single one-time payment, forever.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricecard">
+        <div class="tier">Free</div>
+        <div class="amt">₦0</div>
+        <div class="note">Forever, no card needed</div>
+        <ul>
+          <li>Up to 15 items</li>
+          <li>Stock, sales & customer tracking</li>
+          <li>WhatsApp reminders</li>
+          <li>Solo owner, no team accounts</li>
+        </ul>
+        <a class="btn ghost" href="Shopaudit.html" style="width:100%">Start free</a>
+      </div>
+      <div class="pricecard hi">
+        <div class="tier">Paid</div>
+        <div id="priceDiscount"></div>
+        <div class="amt" id="priceAmt">₦20,000</div>
+        <div class="note">One-time payment, not a subscription</div>
+        <ul>
+          <li>Unlimited items</li>
+          <li>Team accounts, managers & receptionists</li>
+          <li>Admin approval on new members & item changes</li>
+          <li>Everything in Free, no limits</li>
+        </ul>
+        <a class="btn primary" href="Shopaudit.html" style="width:100%">Get started</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="faq" class="wrap">
+  <div class="section-head">
+    <div class="eyebrow">Questions</div>
+    <h2>Before you get started</h2>
+  </div>
+  <div class="faq">
+    <details>
+      <summary>How does it stop staff theft?</summary>
+      <p>Every sale and stock change is tied to the person who made it, and item edits need your approval before they apply. When you reconcile physical stock against what the system expects, any shortage shows up immediately as a logged variance, not a mystery at month end.</p>
+    </details>
+    <details>
+      <summary>Is my data safe?</summary>
+      <p>Yes. Everything is stored in a secured database with row-level access control. Only people you have approved into your shop can see your data, and each role sees only what it needs to.</p>
+    </details>
+    <details>
+      <summary>Does it work without internet?</summary>
+      <p>No. TheMonishop is cloud-synced across your devices so your team always sees the same numbers, which means it needs an internet connection to save and load data.</p>
+    </details>
+    <details>
+      <summary>Can my staff use it too?</summary>
+      <p>Yes. Share your shop's invite code. New members land as pending until you approve them and pick their role, Manager or Receptionist.</p>
+    </details>
+    <details>
+      <summary>What does the one-time fee cover?</summary>
+      <p>It removes the 15-item limit and unlocks team accounts, permanently. No subscription, no recurring charge. Pay once for that shop.</p>
+    </details>
+    <details>
+      <summary>How do I get started?</summary>
+      <p>Create a free account, add your items, and start selling. Upgrade only when you outgrow 15 items or need to add your team.</p>
+    </details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand" style="font-size:15px"><span class="mark" style="width:22px;height:22px;font-size:11px">TM</span> TheMonishop</div>
+    <div class="contact">
+      <a href="mailto:hello@themonishop.com.ng">hello@themonishop.com.ng</a>
+      <a href="https://wa.me/2348088334592" target="_blank" rel="noopener">WhatsApp: 0808 833 4592</a>
+      <a href="terms.html">Terms</a>
+      <a href="privacy.html">Privacy</a>
+    </div>
+    <div class="copy">&copy; <span id="yr"></span> TheMonishop</div>
+  </div>
+</footer>
 
 <script>
-/* ============================================================
-   1) CONFIG — paste your Supabase keys here
-   ============================================================ */
+document.getElementById('yr').textContent = new Date().getFullYear();
+
 const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
 
-// Card terminal queue (see migration-terminal-transactions.sql): manual entry stays hidden
-// until you flip this on — flip it once you either want manual capture or wire up a real
-// terminal webhook/API that inserts rows into terminal_transactions for you.
-const TERMINAL_ENABLED = false;
-
-/* ============================================================ */
-let sb = null;
-const S = { user:null, businesses:[], biz:null, role:null, items:[], stock:{}, customers:[], balances:{}, cart:[], payMode:'cash', tab:'dashboard' };
-
-/* ---------- helpers ---------- */
-const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
-const today = () => new Date().toISOString().slice(0,10);
-const monthStart = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); };
-const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-// tiny inline icon set — plain geometric strokes, no emoji, no external icon library/CDN
-const ICON_PATHS = {
-  search:'<circle cx="10" cy="10" r="6.5"/><line x1="19" y1="19" x2="14.5" y2="14.5"/>',
-  chat:'<path d="M4 4h16v11H9l-4 4V4Z"/>',
-  alert:'<path d="M12 3 22 20H2Z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17" r="1" fill="currentColor" stroke="none"/>',
-  cart:'<path d="M3 3h3l2.2 12h10.6L21 8H7"/><circle cx="10" cy="20" r="1.3" fill="currentColor" stroke="none"/><circle cx="18" cy="20" r="1.3" fill="currentColor" stroke="none"/>',
-  user:'<circle cx="12" cy="8" r="4"/><path d="M5 20l2-6h10l2 6"/>',
-  x:'<line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>',
-  cash:'<rect x="2" y="6" width="20" height="12" rx="1.5"/><circle cx="12" cy="12" r="3"/>',
-  bank:'<path d="M4 10h16M5 10v9M9 10v9M15 10v9M19 10v9M3 21h18M12 3 21 8H3Z"/>',
-  card:'<rect x="2" y="5" width="20" height="14" rx="1.5"/><line x1="2" y1="10" x2="22" y2="10"/>',
-  check:'<path d="M4 12l6 6L20 6"/>'
-};
-function icon(name,cls){ return `<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`; }
-// opens the payment page in the device's own browser, never embedded in-app —
-// once this is wrapped in Capacitor, swap this for @capacitor/browser's
-// Browser.open() to guarantee it leaves the app rather than opening in a webview
-function openUpgrade(){ window.open('pay.html','_blank'); }
-let toastT;
-function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',2600); }
-function err(e){ console.error(e); toast((e&&e.message)||'Something went wrong',true); }
 
-/* ---------- boot ---------- */
-function boot(){
-  if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_ANON_KEY.startsWith('PASTE_')){
-    $('#setupNotice').classList.remove('hidden'); return;
+fetch(SUPABASE_URL + '/rest/v1/pricing?id=eq.1&select=*', {
+  headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+}).then(r => r.ok ? r.json() : null).then(rows => {
+  if (!rows || !rows[0]) return;
+  const p = rows[0];
+  const base = Number(p.base_price);
+  const current = Math.round(base * (1 - Number(p.discount_percent) / 100));
+  document.getElementById('priceAmt').innerHTML =
+    (p.discount_percent > 0 ? '<span class="was">' + money(base) + '</span>' : '') + money(current);
+  if (p.discount_percent > 0) {
+    document.getElementById('priceDiscount').innerHTML =
+      '<span class="discount">' + (p.discount_note || (p.discount_percent + '% off')) + '</span>';
   }
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  // a "reset password" email link lands back here with type=recovery in the URL —
-  // supabase-js turns that into a session automatically, so intercept it via this
-  // event instead of letting the normal getSession() below log straight into the app
-  sb.auth.onAuthStateChange((event)=>{
-    if(event==='PASSWORD_RECOVERY'){
-      $('#authScreen').classList.add('hidden'); $('#app').classList.add('hidden');
-      $('#resetScreen').classList.remove('hidden');
-    }
-  });
-  if(window.location.hash.includes('type=recovery')) return;
-  sb.auth.getSession().then(({data})=>{ if(data.session){ S.user=data.session.user; afterLogin(); } else showAuth(); });
-}
-boot();
-
-/* ---------- auth ---------- */
-let authMode='signin';
-function showAuth(){ $('#app').classList.add('hidden'); $('#resetScreen').classList.add('hidden'); $('#authScreen').classList.remove('hidden'); }
-function setAuthMode(m){ authMode=m;
-  $('#tabSignin').classList.toggle('active',m==='signin');
-  $('#tabSignup').classList.toggle('active',m==='signup');
-  $('#nameField').classList.toggle('hidden',m!=='signup');
-  $('#forgotLink').classList.toggle('hidden',m!=='signin');
-  $('#auBtn').textContent = m==='signin'?'Sign in':'Create account';
-  $('#authMsg').textContent='';
-}
-async function forgotPassword(){
-  const email=$('#auEmail').value.trim();
-  if(!email) return toast('Enter your email above first, then tap Forgot password',true);
-  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href.split('#')[0]});
-  if(error) return err(error);
-  toast('Reset link sent — check your email');
-}
-async function doPasswordReset(){
-  const p1=$('#rpPass1').value, p2=$('#rpPass2').value;
-  if(!p1||p1.length<6) return toast('Password must be at least 6 characters',true);
-  if(p1!==p2) return toast('Passwords do not match',true);
-  $('#rpBtn').disabled=true;
-  const {error}=await sb.auth.updateUser({password:p1});
-  if(error){ err(error); $('#rpBtn').disabled=false; return; }
-  toast('Password updated');
-  $('#resetScreen').classList.add('hidden');
-  const {data}=await sb.auth.getSession();
-  if(data.session){ S.user=data.session.user; afterLogin(); } else { showAuth(); }
-  $('#rpBtn').disabled=false;
-}
-function togglePass(){ const i=$('#auPass'),b=$('#pwToggle'); if(i.type==='password'){i.type='text';b.textContent='Hide';}else{i.type='password';b.textContent='Show';} }
-async function doAuth(){
-  const email=$('#auEmail').value.trim(), pass=$('#auPass').value, name=$('#auName').value.trim();
-  if(!email||!pass) return toast('Enter email and password',true);
-  $('#auBtn').disabled=true;
-  try{
-    if(authMode==='signup'){
-      const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name}}});
-      if(error) throw error;
-      if(!data.session){ $('#authMsg').textContent='Account created. Check your email to confirm, then sign in.'; setAuthMode('signin'); $('#auBtn').disabled=false; return; }
-      S.user=data.user; afterLogin();
-    }else{
-      const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
-      if(error) throw error;
-      S.user=data.user; afterLogin();
-    }
-  }catch(e){ err(e); }
-  $('#auBtn').disabled=false;
-}
-async function signOut(){ await sb.auth.signOut(); S.user=null; location.reload(); }
-
-/* ---------- after login: load businesses ---------- */
-async function afterLogin(){
-  $('#authScreen').classList.add('hidden'); $('#app').classList.remove('hidden');
-  await loadBusinesses();
-}
-async function loadBusinesses(){
-  const {data,error}=await sb.from('business_members').select('role,business:businesses(*)').eq('user_id',S.user.id);
-  if(error) return err(error);
-  S.businesses = (data||[]).map(r=>({...r.business, _role:r.role})).filter(b=>b.id).sort((a,b)=>a.name.localeCompare(b.name));
-  const sel=$('#bizSelect'); sel.innerHTML='';
-  S.businesses.forEach(b=>{ const o=document.createElement('option'); o.value=b.id; o.textContent=b.name; sel.appendChild(o); });
-  if(S.businesses.length===0){ S.biz=null; renderNoBiz(); return; }
-  const saved=localStorage.getItem('lastBiz');
-  const pick=S.businesses.find(b=>b.id===saved)||S.businesses[0];
-  sel.value=pick.id; await switchBiz(pick.id);
-}
-async function switchBiz(id){
-  S.biz=S.businesses.find(b=>b.id===id); S.role=S.biz._role; localStorage.setItem('lastBiz',id);
-  S.cart=[]; S.payMode='cash';
-  $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':S.role==='manager'?' mgr':'');
-  S.tab = (S.role==='admin'||S.role==='manager')?'dashboard':'sell';
-  buildNav(); await loadData(); render();
-  subscribeRealtime();
-}
-
-/* ---------- realtime: items + stock stay live across sessions without a refresh ---------- */
-let realtimeChannel=null, realtimeTimer=null;
-function subscribeRealtime(){
-  if(realtimeChannel){ sb.removeChannel(realtimeChannel); realtimeChannel=null; }
-  if(!S.biz) return;
-  const bid=S.biz.id;
-  realtimeChannel = sb.channel('biz-'+bid)
-    .on('postgres_changes',{event:'*',schema:'public',table:'items',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
-    .on('postgres_changes',{event:'*',schema:'public',table:'purchases',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
-    .on('postgres_changes',{event:'*',schema:'public',table:'sales',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
-    .on('postgres_changes',{event:'*',schema:'public',table:'adjustments',filter:'business_id=eq.'+bid}, scheduleRealtimeRefresh)
-    .subscribe();
-}
-function scheduleRealtimeRefresh(){
-  // a single checkout can touch sales + trigger several events at once — debounce
-  // so a burst of changes only triggers one refresh instead of several in a row
-  clearTimeout(realtimeTimer);
-  realtimeTimer=setTimeout(doRealtimeRefresh,300);
-}
-async function doRealtimeRefresh(){
-  if(!S.biz) return;
-  const bid=S.biz.id;
-  const [it,stk]=await Promise.all([
-    sb.from('items').select('*').eq('business_id',bid).order('name'),
-    sb.from('item_stock').select('item_id,on_hand').eq('business_id',bid)
-  ]);
-  if(it.error) return; // stay silent — this is a background sync, not a user action
-  S.items=it.data||[];
-  if(!stk.error){ S.stock={}; (stk.data||[]).forEach(r=>S.stock[r.item_id]=Number(r.on_hand||0)); }
-  else{ await computeStockFallback(); }
-  // Dashboard/StockList are pure read-only display — safe to fully re-render.
-  // Sell page has a live cart + customer search mid-typing — only patch the
-  // product grid (same function the cart already calls after every action)
-  // so nobody's in-progress sale gets wiped out from under them.
-  // Every other tab (Items/Restock/Reconcile/etc.) may have half-filled forms —
-  // leave the screen as-is; S.items/S.stock are current underneath regardless,
-  // so whatever they submit next already uses fresh data.
-  if(S.tab==='dashboard'||S.tab==='stocklist') render();
-  else if(S.tab==='sell'){ const grid=$('#prodGrid'); if(grid) grid.innerHTML=productCards(); }
-}
-async function loadData(){
-  if(!S.biz) return;
-  const [it,stk,cu,cb]=await Promise.all([
-    sb.from('items').select('*').eq('business_id',S.biz.id).order('name'),
-    sb.from('item_stock').select('item_id,on_hand').eq('business_id',S.biz.id),
-    sb.from('customers').select('*').eq('business_id',S.biz.id).order('name'),
-    sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id)
-  ]);
-  if(it.error) return err(it.error);
-  S.items=it.data||[];
-  S.customers=cu.data||[]; S.balances={}; (cb.data||[]).forEach(r=>S.balances[r.customer_id]=Number(r.balance||0));
-  S.stock={};
-  if(stk.error){
-    // the stock view couldn't be read — compute it directly so stock isn't wrongly 0
-    console.warn('item_stock unreadable, computing from movements:',stk.error.message);
-    toast('Updating stock settings… run migration-5 if this repeats',true);
-    await computeStockFallback();
-  }else{
-    (stk.data||[]).forEach(r=>S.stock[r.item_id]=Number(r.on_hand||0));
-  }
-}
-async function computeStockFallback(){
-  const bid=S.biz.id;
-  const [p,s,a]=await Promise.all([
-    sb.from('purchases').select('item_id,base_units,quantity').eq('business_id',bid),
-    sb.from('sales').select('item_id,base_units,quantity').eq('business_id',bid),
-    sb.from('adjustments').select('item_id,quantity_delta').eq('business_id',bid)
-  ]);
-  const add=(arr,sign,f)=>{(arr.data||[]).forEach(r=>{S.stock[r.item_id]=(S.stock[r.item_id]||0)+sign*f(r);});};
-  add(p,+1,r=>Number(r.base_units||r.quantity||0));
-  add(s,-1,r=>Number(r.base_units||r.quantity||0));
-  add(a,+1,r=>Number(r.quantity_delta||0));
-}
-const onHand = id => S.stock[id]??0;
-const balanceOf = id => S.balances[id]??0;
-const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
-// pack-based selling modes: every item has an implicit Pack (pack_price/cost_price);
-// modes are extra ways to sell a fraction of a pack, e.g. Half bag, Mudu.
-const itemModes = i => Array.isArray(i.modes) ? i.modes : [];
-const fullPackPrice = i => Number(i.pack_price)||0;
-const fullPackCost = i => Number(i.cost_price)||0;
-const modeCost = (i,per_pack) => per_pack>0 ? fullPackCost(i)/per_pack : fullPackCost(i);
-const pct = per_pack => per_pack>0 ? (100/per_pack) : 100;
-// format a decimal pack quantity for display, trimming to whole numbers where possible
-function fmtPacks(n){
-  n=Number(n||0);
-  if(Number.isInteger(n)) return String(n);
-  return n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
-}
-// spell out remaining stock as whole packs + mode units, e.g. "9 packs + 1 Mudu"
-// (greedy: biggest portion first, so it reads the way a shop owner would count it)
-function packBreakdown(i){
-  const total=onHand(i.id);
-  const modes=itemModes(i).slice().sort((a,b)=>a.per_pack-b.per_pack);
-  let whole=Math.floor(total+1e-6);
-  let rem=total-whole;
-  const parts=[];
-  modes.forEach(m=>{
-    if(rem<=1e-6) return;
-    const portion=1/m.per_pack;
-    const count=Math.floor(rem/portion+1e-6);
-    if(count>0){ parts.push(`${count} ${m.name}`); rem-=count*portion; }
-  });
-  if(rem>1e-6) parts.push(`${fmtPacks(rem)} pack`);
-  if(whole>0||!parts.length) parts.unshift(`${whole} pack${whole===1?'':'s'}`);
-  return parts.join(' + ');
-}
-function stockLabel(i){ return `${packBreakdown(i)} in stock`; }
-function stockShort(i){ return packBreakdown(i); }
-// turn a local NG number into wa.me international format
-function waNumber(phone){
-  let n=String(phone||'').replace(/[^0-9]/g,'');
-  if(n.startsWith('0')) n='234'+n.slice(1);
-  else if(n.startsWith('234')) {}
-  else if(n.length===10) n='234'+n;
-  return n;
-}
-
-/* ---------- navigation ---------- */
-function buildNav(){
-  let tabs;
-  if(S.role==='admin'){
-    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
-  }else if(S.role==='manager'){
-    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['reports','Reports'],['expenses','Expenses']];
-  }else{
-    tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
-  }
-  if(TERMINAL_ENABLED) tabs.splice(1,0,['terminal','Card terminal']);
-  $('#nav').innerHTML = tabs.map(([k,l])=>`<button class="${S.tab===k?'active':''}" onclick="go('${k}')">${l}</button>`).join('');
-}
-function go(t){ S.tab=t; buildNav(); render(); }
-
-/* ---------- top-level render ---------- */
-async function render(){
-  if(!S.biz){ renderNoBiz(); return; }
-  const v=$('#view');
-  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals};
-  (map[S.tab]||vDashboard)(v);
-}
-
-/* ============================================================
-   NO BUSINESS YET  (create / join)
-   ============================================================ */
-async function renderNoBiz(){
-  $('#bizSelect').innerHTML='<option>No business yet</option>'; $('#rolePill').textContent='—'; $('#nav').innerHTML='';
-  const {data:pending}=await sb.from('join_requests').select('*, business:businesses(name)').eq('user_id',S.user.id).eq('status','pending');
-  const pendingHtml = (pending&&pending.length) ? `<div class="card"><div class="hd"><h2>Waiting for approval</h2></div><div class="bd">
-    ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending — the admin needs to approve it before you get access.</p>`).join('')}
-  </div></div>` : '';
-  $('#view').innerHTML= pendingHtml + `
-  <div class="split">
-    <div class="card"><div class="hd"><h2>Create a business</h2></div><div class="bd">
-      <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b> — set prices, stock and see all reports.</p>
-      <div class="field"><label>Business name</label><input id="nbName" placeholder="e.g. Mama's Provision Store"></div>
-      <button class="btn primary" onclick="createBiz()">Create business</button>
-    </div></div>
-    <div class="card"><div class="hd"><h2>Join a business</h2></div><div class="bd">
-      <p class="hint" style="margin-bottom:12px">Joining with a code sends a request — the shop's admin has to approve it before you get access.</p>
-      <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
-      <button class="btn primary" onclick="joinBiz()">Request to join</button>
-    </div></div>
-  </div>`;
-}
-async function createBiz(){
-  const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
-  const {error}=await sb.from('businesses').insert({name,owner_id:S.user.id});
-  if(error) return err(error);
-  toast('Business created'); await loadBusinesses();
-}
-async function joinBiz(){
-  const code=$('#nbCode')?.value.trim()||$('#mCode')?.value.trim();
-  if(!code) return toast('Enter an invite code',true);
-  const {data,error}=await sb.rpc('join_business',{code});
-  if(error) return err(error);
-  await loadBusinesses();
-  const joined = S.businesses.some(b=>b.id===data);
-  toast(joined?'Joined business':'Request sent — waiting for admin approval');
-}
-
-/* ============================================================
-   ADMIN — DASHBOARD
-   ============================================================ */
-async function vDashboard(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const [salesRes,expRes]=await Promise.all([
-    sb.from('sales').select('*').eq('business_id',S.biz.id),
-    sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved')
-  ]);
-  if(salesRes.error) return err(salesRes.error);
-  const sales=salesRes.data, exps=expRes.data||[];
-  const t=today(), m=monthStart();
-  const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
-  const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const dayS=sales.filter(s=>s.entry_date===t), monS=sales.filter(s=>s.entry_date>=m);
-  const dayExp=sum(exps.filter(e=>e.entry_date===t),e=>Number(e.amount));
-  const monExp=sum(exps.filter(e=>e.entry_date>=m),e=>Number(e.amount));
-  const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
-  const stockValue=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
-
-  // day-by-day (net of that day's approved expenses)
-  const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({u:0,r:0,p:0})); byDay[s.entry_date].u+=(s.base_units||s.quantity); byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
-  const byDayExp={}; exps.forEach(e=>{ byDayExp[e.entry_date]=(byDayExp[e.entry_date]||0)+Number(e.amount); });
-  Object.keys(byDayExp).forEach(d=>{ (byDay[d]??=({u:0,r:0,p:0})); });
-  const days=Object.entries(byDay).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
-
-  // per-item sold + remaining (in base units)
-  const sold={}; sales.forEach(s=>sold[s.item_id]=(sold[s.item_id]||0)+(s.base_units||s.quantity));
-
-  // today's customers, for the end-of-day thank-you round
-  const todayCustIds=[...new Set(dayS.filter(s=>s.customer_id).map(s=>s.customer_id))];
-  const todayCusts=todayCustIds.map(id=>S.customers.find(c=>c.id===id)).filter(Boolean);
-  S._todayCusts=todayCusts;
-
-  v.innerHTML=`
-    <div class="stats">
-      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${fmtPacks(sum(dayS,s=>(s.base_units||s.quantity)))} pack(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
-      <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
-      <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
-      <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
-      <div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>
-    </div>
-    ${S.biz.wa_enabled?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px"><b>WhatsApp daily summary</b><div class="hint">Composes today's numbers and opens WhatsApp ready to send.</div></div>
-      <button class="btn primary" onclick="sendWhatsAppSummary()">Send today's summary</button>
-    </div></div>`:''}
-    ${todayCusts.length?`<div class="card"><div class="hd"><h2>Today's customers</h2><span class="desc">${todayCusts.filter(c=>c.phone).length} with phone · say thanks before you close up</span><div class="spacer"></div>
-      ${todayCusts.some(c=>c.phone)?`<button class="btn primary sm" onclick="openThanksRound()">Start thank-you round →</button>`:''}</div><div class="bd tight">
-      <table><tbody>${todayCusts.map(c=>`<tr>
-        <td class="itemname">${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:'<div class="cat">no phone saved</div>'}</td>
-        <td class="r">${c.phone?`<button class="btn ghost sm" onclick='waCustomer("${c.id}","thanks")'>${icon('chat')} Thank you</button>`:'<span class="hint">—</span>'}</td>
-      </tr>`).join('')}</tbody></table>
-    </div></div>`:''}
-    ${lowItems.length?`<div class="card"><div class="hd"><h2>${icon('alert')} Needs restocking</h2></div><div class="bd tight">
-      <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${fmtPacks(i.low_stock_threshold)} pack(s)</td></tr>`).join('')}</tbody></table>
-    </div></div>`:''}
-    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days · net of approved expenses</span></div><div class="bd tight">
-      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Expenses</th><th class="r">Net profit</th></tr></thead>
-      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num">${fmtPacks(o.u)}</td><td class="r num">${money(o.r)}</td><td class="r num">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
-      :'<div class="empty">No sales recorded yet.</div>'}
-    </div></div>
-    <div class="card"><div class="hd"><h2>Stock & sales per item</h2></div><div class="bd tight">
-      <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Total sold</th></tr></thead>
-      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td><td class="r num">${fmtPacks(sold[i.id]||0)}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
-    </div></div>`;
-}
-
-/* ============================================================
-   ADMIN — ITEMS  (set prices, stock thresholds)
-   ============================================================ */
-let draftModes=[];
-const FREE_ITEM_CAP=15;
-function vItems(v){
-  draftModes=[];
-  const isManager=S.role==='manager';
-  const isPaid=!!S.biz.is_paid;
-  const atCap=!isPaid && S.items.length>=FREE_ITEM_CAP;
-  v.innerHTML=`
-  ${!isPaid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?' — limit reached':''}</div>
-    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
-  </div></div>`:''}
-  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">${isManager?'sent to the admin for approval':'every item has a pack price; add other ways to sell it below'}</span></div><div class="bd">
-    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached — <a href="#" onclick="openUpgrade();return false">upgrade</a> to add more items.</p>':''}
-    <div class="frow">
-      <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Rice"></div>
-      <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
-    </div>
-    <div class="frow">
-      <div class="field"><label>Pack price — sell (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 45000"></div>
-      <div class="field"><label>Pack price — cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for" oninput="renderDraftModes()"></div>
-    </div>
-    <div class="frow">
-      <div class="field"><label>Opening stock (packs)</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5"></div>
-      <div class="field"><label>Low-stock alert (packs)</label><input id="iThr" type="number" min="0" step="any" value="2"></div>
-    </div>
-    <div class="field">
-      <label>Other ways to sell this (optional)</label>
-      <div id="draftModesBox"></div>
-      <button class="btn ghost sm" type="button" onclick="addDraftMode()">+ Add a mode (e.g. Half bag, Mudu)</button>
-    </div>
-    <button class="btn primary" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?' — changes go to the admin for approval':''}</span></div><div class="bd tight">
-    <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
-    <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="5" class="empty">No items yet.</td></tr>'}</tbody></table>
-  </div></div>
-  ${isManager?'<div class="card"><div class="hd"><h2>My submitted changes</h2></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
-  renderDraftModes();
-  if(isManager) loadMyChanges();
-}
-async function loadMyChanges(){
-  const {data,error}=await sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('requested_by',S.user.id).order('created_at',{ascending:false}).limit(30);
-  if(error) return;
-  const box=$('#myChangesList'); if(!box) return;
-  const label={add_item:'Add item',edit_item:'Edit item',delete_item:'Delete item'};
-  const badgeCls={pending:'zero',approved:'ok',rejected:'neg'};
-  box.outerHTML = `<div id="myChangesList">${data.length?`<table><tbody>${data.map(c=>{
-    const nm = c.payload?.name || (S.items.find(i=>i.id===c.item_id)||{}).name || '(item)';
-    return `<tr><td class="itemname">${esc(label[c.action_type]||c.action_type)}<div class="cat">${esc(nm)}</div></td><td class="r"><span class="badge ${badgeCls[c.status]||'zero'}">${esc(c.status)}</span></td></tr>`;
-  }).join('')}</tbody></table>`:'<div class="empty">No submissions yet.</div>'}</div>`;
-}
-function rowItem(i){
-  const modes=itemModes(i), oh=onHand(i.id);
-  const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
-  return `<tr>
-    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div></td>
-    <td class="r num">${money(fullPackPrice(i))}</td>
-    <td class="r">${modes.length?esc(modes.map(m=>m.name).join(', ')):'<span class="hint">—</span>'}</td>
-    <td class="r"><span class="badge ${b}">${stockShort(i)}</span></td>
-    <td class="r"><button class="btn ghost sm" onclick='editItem("${i.id}")'>Edit</button></td>
-  </tr>`;
-}
-// ---- mode builder (Add item): mutate draftModes directly on input so typing never loses focus ----
-function renderDraftModes(){
-  const box=$('#draftModesBox'); if(!box) return;
-  if(!draftModes.length){ box.innerHTML='<p class="hint">No extra modes yet — item sells only by the pack.</p>'; return; }
-  box.innerHTML = draftModes.map((m,idx)=>`
-    <div class="frow" style="align-items:flex-end;margin-bottom:6px">
-      <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" placeholder="e.g. Half bag" oninput="draftModes[${idx}].name=this.value"></div>
-      <div class="field" style="margin-bottom:0"><label>Price (₦)</label><input type="number" min="0" step="1" value="${m.price||''}" oninput="draftModes[${idx}].price=+this.value||0;modePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="1" step="1" value="${m.per_pack||''}" oninput="draftModes[${idx}].per_pack=+this.value||0;modePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeDraftMode(${idx})">${icon('x')}</button></div>
-    </div>
-    <p class="hint" id="dmPrev${idx}" style="margin:-2px 0 10px">${draftModePreviewText(idx)}</p>`).join('');
-}
-function draftModePreviewText(idx){
-  const m=draftModes[idx]; if(!m||!m.per_pack) return '';
-  if(m.per_pack===1) return 'Same quantity as a full pack — just a different price (e.g. wholesale vs retail).';
-  const packCost=+($('#iPackCost')?.value||0);
-  return `= ${pct(m.per_pack).toFixed(1)}% of a pack${packCost?` · cost ≈ ${money(packCost/m.per_pack)}`:''}`;
-}
-function modePreview(idx){ const el=$('#dmPrev'+idx); if(el) el.textContent=draftModePreviewText(idx); }
-function addDraftMode(){ draftModes.push({name:'',price:0,per_pack:2}); renderDraftModes(); }
-function removeDraftMode(idx){ draftModes.splice(idx,1); renderDraftModes(); }
-async function addItem(){
-  if(S.role!=='manager' && !S.biz.is_paid && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached — upgrade to add more items',true);
-  const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
-  const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
-  const openPacks=+$('#iOpen').value||0, threshold=+$('#iThr').value||0;
-  if(!packSell) return toast('Enter the pack sell price',true);
-  const incomplete=draftModes.find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
-  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1 — or remove it`,true);
-  const modes=draftModes.filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
-    .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
-  const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
-    pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold};
-
-  if(S.role==='manager'){
-    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks}});
-    if(error) return err(error);
-    toast('Sent for approval'); draftModes=[]; render();
-    return;
-  }
-
-  const {data,error}=await sb.from('items').insert(rec).select().single();
-  if(error) return err(error);
-  if(openPacks>0){
-    const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:data.id,quantity:openPacks,base_units:openPacks,unit_cost:packCost,entry_date:today(),created_by:S.user.id});
-    if(r.error) return err(r.error);
-  }
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_added',detail:name});
-  toast('Item added'); draftModes=[]; await loadData(); render();
-}
-function editItem(id){
-  const i=S.items.find(x=>x.id===id);
-  let modes=itemModes(i).map(m=>({...m}));
-  // this item predates the modes system and used to sell by single unit — offer that
-  // back as a suggested mode instead of silently dropping it (nothing is saved until
-  // the owner reviews and hits Save)
-  const suggestedUnit = !modes.length && Number(i.units_per_pack)>1 && Number(i.sell_price)>0;
-  if(suggestedUnit) modes=[{name:'Unit',price:Number(i.sell_price),per_pack:Number(i.units_per_pack)}];
-  window._editModes = modes;
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="editCard"><div class="hd"><h2>Edit ${esc(i.name)}</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Name</label><input id="eName" value="${esc(i.name)}"></div>
-      <div class="field"><label>Category</label><input id="eCat" value="${esc(i.category||'')}"></div>
-    </div>
-    <div class="frow">
-      <div class="field"><label>Pack price — sell (₦)</label><input id="ePack" type="number" value="${fullPackPrice(i)}"></div>
-      <div class="field"><label>Pack price — cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>
-      <div class="field"><label>Low-stock alert (packs)</label><input id="eThr" type="number" step="any" value="${i.low_stock_threshold}"></div>
-    </div>
-    ${suggestedUnit?`<p class="hint" style="margin:-2px 0 10px;color:var(--amber)">This item used to sell by single unit (${money(i.sell_price)} · ${i.units_per_pack}/pack) — added back below as a <b>Unit</b> mode. Review and hit Save to restore it, or remove it if you don't want it.</p>`:''}
-    <div class="field">
-      <label>Other ways to sell this</label>
-      <div id="editModesBox"></div>
-      <button class="btn ghost sm" type="button" onclick="addEditMode()">+ Add a mode</button>
-    </div>
-    <p class="hint" style="margin:10px 0 12px">Adjust actual stock counts under <b>Restock</b> or <b>Reconcile</b> — not here.</p>
-    <div class="frow"><button class="btn primary" onclick='saveItem("${id}")'>Save</button>
-    <button class="btn ghost" onclick="document.getElementById('editCard').remove()">Cancel</button>
-    <div class="spacer"></div><button class="btn danger" onclick='delItem("${id}")'>Delete</button></div>
-  </div></div>`);
-  renderEditModes();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-// ---- mode builder (Edit item): same non-destructive update pattern as draft modes ----
-function renderEditModes(){
-  const box=$('#editModesBox'); if(!box) return;
-  const modes=window._editModes||[];
-  if(!modes.length){ box.innerHTML='<p class="hint">No extra modes — item sells only by the pack.</p>'; return; }
-  box.innerHTML = modes.map((m,idx)=>`
-    <div class="frow" style="align-items:flex-end;margin-bottom:6px">
-      <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" oninput="window._editModes[${idx}].name=this.value"></div>
-      <div class="field" style="margin-bottom:0"><label>Price (₦)</label><input type="number" min="0" step="1" value="${m.price||''}" oninput="window._editModes[${idx}].price=+this.value||0;editModePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0"><label>Fit per pack</label><input type="number" min="1" step="1" value="${m.per_pack||''}" oninput="window._editModes[${idx}].per_pack=+this.value||0;editModePreview(${idx})"></div>
-      <div class="field" style="margin-bottom:0;flex:0 0 auto"><button class="btn danger sm" type="button" onclick="removeEditMode(${idx})">${icon('x')}</button></div>
-    </div>
-    <p class="hint" id="emPrev${idx}" style="margin:-2px 0 10px">${editModePreviewText(idx)}</p>`).join('');
-}
-function editModePreviewText(idx){
-  const m=(window._editModes||[])[idx]; if(!m||!m.per_pack) return '';
-  if(m.per_pack===1) return 'Same quantity as a full pack — just a different price (e.g. wholesale vs retail).';
-  const packCost=+($('#eCost')?.value||0);
-  return `= ${pct(m.per_pack).toFixed(1)}% of a pack${packCost?` · cost ≈ ${money(packCost/m.per_pack)}`:''}`;
-}
-function editModePreview(idx){ const el=$('#emPrev'+idx); if(el) el.textContent=editModePreviewText(idx); }
-function addEditMode(){ window._editModes=window._editModes||[]; window._editModes.push({name:'',price:0,per_pack:2}); renderEditModes(); }
-function removeEditMode(idx){ window._editModes.splice(idx,1); renderEditModes(); }
-async function saveItem(id){
-  const incomplete=(window._editModes||[]).find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
-  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1 — or remove it`,true);
-  const modes=(window._editModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
-    .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
-  const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
-    pack_price:+$('#ePack').value||0, cost_price:+$('#eCost').value||0,
-    low_stock_threshold:+$('#eThr').value||0, modes};
-
-  if(S.role==='manager'){
-    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'edit_item', item_id:id, payload:rec});
-    if(error) return err(error);
-    window._editModes=null; toast('Sent for approval'); document.getElementById('editCard')?.remove(); render();
-    return;
-  }
-
-  const {error}=await sb.from('items').update(rec).eq('id',id);
-  if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_updated',detail:rec.name});
-  window._editModes=null; toast('Saved'); await loadData(); render();
-}
-async function delItem(id){
-  if(!confirm('Delete this item and all its history?')) return;
-  const i=S.items.find(x=>x.id===id);
-
-  if(S.role==='manager'){
-    const snapshot={name:i.name,category:i.category,pack_price:fullPackPrice(i),cost_price:fullPackCost(i),modes:itemModes(i)};
-    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'delete_item', item_id:id, payload:snapshot});
-    if(error) return err(error);
-    toast('Delete sent for approval'); document.getElementById('editCard')?.remove(); render();
-    return;
-  }
-
-  const {error}=await sb.from('items').delete().eq('id',id);
-  if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_deleted',detail:i?.name||''});
-  toast('Item deleted'); await loadData(); render();
-}
-
-/* ============================================================
-   ADMIN — RESTOCK (record stock bought in)
-   ============================================================ */
-function vRestock(v){
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Record stock bought in</h2><span class="desc">increases available stock</span></div><div class="bd">
-    <div class="field"><label>Item</label><select id="rItem" onchange="rModeOptions()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} — now ${stockShort(i)}</option>`).join('')}</select></div>
-    <div class="frow">
-      <div class="field"><label>Buying as</label><select id="rMode" onchange="rPackInfo()"></select></div>
-      <div class="field"><label>Quantity bought</label><input id="rQty" type="number" min="0" step="any" placeholder="0" oninput="rPackInfo()"></div>
-      <div class="field"><label>Date</label><input id="rDate" type="date" value="${today()}"></div>
-    </div>
-    <p class="hint" id="rInfo" style="margin:-4px 0 12px"></p>
-    <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
-    ${S.items.length?'':'<p class="hint" style="margin-top:10px">Add items first under the Items tab.</p>'}
-  </div></div>`;
-  rModeOptions();
-}
-function rModeOptions(){
-  const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
-  const opts=[`<option value="pack">Packs</option>`].concat(itemModes(i).map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`));
-  $('#rMode').innerHTML=opts.join('');
-  rPackInfo();
-}
-function rPackInfo(){
-  const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
-  const modeName=$('#rMode').value, qty=+$('#rQty').value||0;
-  const mode=itemModes(i).find(m=>m.name===modeName);
-  const baseUnits = mode ? qty/mode.per_pack : qty;
-  $('#rInfo').innerHTML = mode
-    ? `${qty||0} × ${esc(mode.name)} = <b>${fmtPacks(baseUnits)}</b> pack(s) added to stock.`
-    : `Adds <b>${fmtPacks(qty||0)}</b> pack(s) to stock.`;
-}
-async function addPurchase(){
-  const item_id=$('#rItem').value, qty=+$('#rQty').value;
-  if(!item_id||!qty||qty<=0) return toast('Enter a valid quantity',true);
-  const it=S.items.find(i=>i.id===item_id);
-  const modeName=$('#rMode').value, mode=itemModes(it).find(m=>m.name===modeName);
-  const base = mode ? qty/mode.per_pack : qty;
-  const unit_cost = mode ? modeCost(it,mode.per_pack) : fullPackCost(it);
-  const rec={business_id:S.biz.id,item_id,quantity:qty,base_units:base,unit_cost:unit_cost||0,entry_date:$('#rDate').value||today(),created_by:S.user.id};
-  const {error}=await sb.from('purchases').insert(rec);
-  if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${fmtPacks(base)} pack(s) of ${it.name}`});
-  toast(`Added ${fmtPacks(base)} pack(s) to stock`); await loadData(); render();
-}
-
-/* ============================================================
-   ADMIN — RECONCILE (physical count vs expected = variance)
-   ============================================================ */
-function vReconcile(v){
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Stock reconciliation</h2><span class="desc">catch shrinkage: count the shelf, compare to the system</span></div><div class="bd">
-    <div class="field"><label>Item</label><select id="cItem" onchange="cExpected()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('')}</select></div>
-    <div class="frow">
-      <div class="field"><label>System says (expected packs)</label><input id="cExp" type="number" readonly style="background:#F0EADC;font-weight:700"></div>
-      <div class="field"><label>You counted (physical packs)</label><input id="cCount" type="number" min="0" step="any" oninput="cVar()" placeholder="0"></div>
-      <div class="field"><label>Variance</label><input id="cVarF" readonly style="font-weight:700"></div>
-    </div>
-    <div class="field"><label>Note (optional)</label><input id="cNote" placeholder="e.g. 2 broken bottles, end-of-day count"></div>
-    <label class="hint" style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="cApply" type="checkbox" checked style="width:auto"> Correct the system stock to match my count</label>
-    <button class="btn primary" onclick="saveRecon()" ${S.items.length?'':'disabled'}>Record count</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Recent counts</h2></div><div class="bd tight"><div id="recList" class="empty">Loading…</div></div></div>`;
-  cExpected(); loadRecon();
-}
-function cExpected(){ const id=$('#cItem').value; $('#cExp').value=Number(onHand(id)).toFixed(3); cVar(); }
-function cVar(){ const exp=+$('#cExp').value||0, cnt=+$('#cCount').value||0, vf=$('#cVarF'); const dv=cnt-exp;
-  vf.value=(dv>0?'+':'')+fmtPacks(dv); vf.style.color=dv<0?'var(--red)':dv>0?'var(--green)':'var(--muted)'; }
-async function saveRecon(){
-  const item_id=$('#cItem').value, exp=+$('#cExp').value, cnt=$('#cCount').value;
-  if(cnt===''||isNaN(+cnt)) return toast('Enter the counted amount',true);
-  const counted=+cnt, variance=counted-exp;
-  const {error}=await sb.from('reconciliations').insert({business_id:S.biz.id,item_id,expected_qty:exp,counted_qty:counted,variance,note:$('#cNote').value.trim(),created_by:S.user.id});
-  if(error) return err(error);
-  if($('#cApply').checked && variance!==0){
-    await sb.from('adjustments').insert({business_id:S.biz.id,item_id,quantity_delta:variance,reason:'reconciliation correction',created_by:S.user.id});
-  }
-  const nm=(S.items.find(i=>i.id===item_id)||{}).name||'';
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: ${variance>0?'+':''}${fmtPacks(variance)} pack(s) variance`});
-  toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded'); await loadData(); render();
-}
-async function loadRecon(){
-  const {data,error}=await sb.from('reconciliations').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
-  if(error) return;
-  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
-  $('#recList').outerHTML=`<div id="recList">${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th class="r">Expected</th><th class="r">Counted</th><th class="r">Variance</th></tr></thead>
-  <tbody>${data.map(r=>{const b=r.variance<0?'neg':r.variance>0?'pos':'zero';return `<tr><td class="num">${r.entry_date}</td><td class="itemname">${esc(nm(r.item_id))}${r.note?`<div class="cat">${esc(r.note)}</div>`:''}</td><td class="r num">${fmtPacks(r.expected_qty)}</td><td class="r num">${fmtPacks(r.counted_qty)}</td><td class="r"><span class="badge ${b}">${r.variance>0?'+':''}${fmtPacks(r.variance)}</span></td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No counts yet.</div>'}</div>`;
-}
-
-/* ============================================================
-   ADMIN — REPORTS (date range + CSV export)
-   ============================================================ */
-function vReports(v){
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Sales report</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>From</label><input id="repFrom" type="date" value="${monthStart()}"></div>
-      <div class="field"><label>To</label><input id="repTo" type="date" value="${today()}"></div>
-      <div class="field" style="display:flex;align-items:flex-end;gap:8px"><button class="btn primary" onclick="runReport()">Run</button></div>
-    </div>
-    <div class="row" style="gap:6px">
-      <button class="btn ghost sm" onclick="repRange('today')">Today</button>
-      <button class="btn ghost sm" onclick="repRange('week')">Last 7 days</button>
-      <button class="btn ghost sm" onclick="repRange('month')">This month</button>
-    </div>
-  </div></div>
-  <div id="repOut"></div>`;
-  runReport();
-}
-function repRange(which){
-  const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
-  if(which==='today'){ $('#repFrom').value=today(); $('#repTo').value=today(); }
-  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#repFrom').value=iso(f); $('#repTo').value=today(); }
-  else if(which==='month'){ $('#repFrom').value=monthStart(); $('#repTo').value=today(); }
-  runReport();
-}
-async function runReport(){
-  const from=$('#repFrom').value, to=$('#repTo').value;
-  const [salesRes,expRes]=await Promise.all([
-    sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-    sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to)
-  ]);
-  if(salesRes.error) return err(salesRes.error);
-  const data=salesRes.data;
-  const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const totU=data.reduce((a,s)=>a+(s.base_units||s.quantity),0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
-  const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0), netProfit=totP-totExp;
-  const byMethod={cash:0,transfer:0,credit:0,card:0};
-  data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
-  const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
-  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
-  const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
-  S._report={from,to,rows,nm,byMethod,totExp,netProfit};
-  $('#repOut').innerHTML=`
-    <div class="stats">
-      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · gross profit ${money(totP)}</div></div>
-      <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
-      <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses</div></div>
-      <div class="stat"><div class="label">${icon('cash')} Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
-      <div class="stat"><div class="label">${icon('bank')} Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
-      <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
-      ${byMethod.card?`<div class="stat"><div class="label">${icon('card')} Card (terminal)</div><div class="value num">${money(byMethod.card)}</div></div>`:''}
-    </div>
-    <div class="card"><div class="hd"><h2>By item</h2><span class="desc">${from} → ${to}</span><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight">
-      ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
-      <tbody>${rows.map(([id,o])=>`<tr><td class="itemname">${esc(nm(id))}</td><td class="r num">${o.u}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
-      :'<div class="empty">No sales in this range.</div>'}
-    </div></div>`;
-}
-function exportCSV(){
-  const r=S._report; if(!r) return;
-  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
-  r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
-  const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`; a.click();
-}
-
-/* ============================================================
-   ADMIN + MANAGER — EXPENDITURES (rent, transport, repairs, etc.)
-   Admin entries land approved immediately; manager entries land pending
-   and need admin approval (enforced at the RLS layer too, not just here).
-   ============================================================ */
-async function vExpenses(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const isManager=S.role==='manager';
-  const {data,error}=await sb.from('expenditures').select('*').eq('business_id',S.biz.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false});
-  if(error) return err(error);
-  S._exp=data||[];
-  S._expFrom=S._expFrom||monthStart(); S._expTo=S._expTo||today();
-  const pending=S._exp.filter(e=>e.status==='pending');
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Record an expense</h2><span class="desc">${isManager?'sent to the admin for approval':'rent, transport, repairs — anything outside stock purchases'}</span></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Amount (₦)</label><input id="exAmt" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
-      <div class="field"><label>Category (optional)</label><input id="exCat" placeholder="e.g. Transport, Rent, Repairs"></div>
-      <div class="field"><label>Date</label><input id="exDate" type="date" value="${today()}"></div>
-    </div>
-    <div class="field"><label>Note</label><input id="exNote" placeholder="What was this for?"></div>
-    <button class="btn primary" onclick="addExpenditure()">${isManager?'Send for approval':'Record expense'}</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Overview</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>From</label><input id="exFrom" type="date" value="${S._expFrom}"></div>
-      <div class="field"><label>To</label><input id="exTo" type="date" value="${S._expTo}"></div>
-      <div class="field" style="display:flex;align-items:flex-end"><button class="btn primary" onclick="runExpReport()">Run</button></div>
-    </div>
-    <div class="row" style="gap:6px">
-      <button class="btn ghost sm" onclick="expRange('today')">Today</button>
-      <button class="btn ghost sm" onclick="expRange('week')">Last 7 days</button>
-      <button class="btn ghost sm" onclick="expRange('month')">This month</button>
-    </div>
-  </div></div>
-  <div id="expOut"></div>
-  ${pending.length?`<div class="card"><div class="hd"><h2>Awaiting approval</h2><span class="desc">${pending.length} pending</span></div><div class="bd tight">${renderExpPending(pending)}</div></div>`:''}
-  <div class="card"><div class="hd"><h2>All expenses</h2></div><div class="bd tight">${renderExpList(S._exp)}</div></div>`;
-  runExpReport();
-}
-function expRange(which){
-  const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
-  if(which==='today'){ $('#exFrom').value=today(); $('#exTo').value=today(); }
-  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#exFrom').value=iso(f); $('#exTo').value=today(); }
-  else if(which==='month'){ $('#exFrom').value=monthStart(); $('#exTo').value=today(); }
-  runExpReport();
-}
-function runExpReport(){
-  const from=$('#exFrom').value, to=$('#exTo').value;
-  S._expFrom=from; S._expTo=to;
-  const inRange=(S._exp||[]).filter(e=>e.entry_date>=from&&e.entry_date<=to);
-  const approved=inRange.filter(e=>e.status==='approved');
-  const total=approved.reduce((a,e)=>a+Number(e.amount),0);
-  const byCat={}; approved.forEach(e=>{ const c=e.category||'Uncategorized'; byCat[c]=(byCat[c]||0)+Number(e.amount); });
-  const catRows=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
-  $('#expOut').innerHTML=`
-    <div class="stats">
-      <div class="stat bad"><div class="label">Total expenses</div><div class="value num">${money(total)}</div><div class="sub">${approved.length} approved entr${approved.length===1?'y':'ies'} · ${from} → ${to}</div></div>
-    </div>
-    <div class="card"><div class="hd"><h2>By category</h2></div><div class="bd tight">
-      ${catRows.length?`<table><thead><tr><th>Category</th><th class="r">Amount</th></tr></thead>
-      <tbody>${catRows.map(([c,amt])=>`<tr><td class="itemname">${esc(c)}</td><td class="r num">${money(amt)}</td></tr>`).join('')}</tbody></table>`
-      :'<div class="empty">No approved expenses in this range.</div>'}
-    </div></div>`;
-}
-function renderExpPending(list){
-  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  return `<table><tbody>${list.map(e=>`<tr>
-    <td class="num hint">${fmt(e.created_at)}</td>
-    <td class="itemname">${esc(e.category||'—')}<div class="cat">${esc(e.note)}</div></td>
-    <td class="r num">${money(e.amount)}</td>
-    ${S.role==='admin'?`<td class="r"><button class="btn primary sm" onclick='approveExpenditure("${e.id}")'>Approve</button>
-    <button class="btn danger sm" onclick='rejectExpenditure("${e.id}")'>Reject</button></td>`:'<td class="r"><span class="badge zero">pending</span></td>'}
-  </tr>`).join('')}</tbody></table>`;
-}
-function renderExpList(list){
-  if(!list.length) return '<div class="empty">No expenses recorded yet.</div>';
-  const badgeCls={approved:'ok',pending:'zero',rejected:'neg'};
-  return `<table><thead><tr><th>Date</th><th>Category</th><th class="r">Amount</th><th class="r">Status</th></tr></thead>
-  <tbody>${list.map(e=>`<tr><td class="num">${e.entry_date}</td><td class="itemname">${esc(e.category||'—')}<div class="cat">${esc(e.note)}</div></td><td class="r num">${money(e.amount)}</td><td class="r"><span class="badge ${badgeCls[e.status]}">${e.status}</span></td></tr>`).join('')}</tbody></table>`;
-}
-async function addExpenditure(){
-  const amount=+$('#exAmt').value;
-  if(!amount||amount<=0) return toast('Enter the amount',true);
-  const note=$('#exNote').value.trim();
-  if(!note) return toast('Add a note explaining the expense',true);
-  const status = S.role==='manager' ? 'pending' : 'approved';
-  const rec={business_id:S.biz.id,amount,category:$('#exCat').value.trim()||null,note,entry_date:$('#exDate').value||today(),status,created_by:S.user.id};
-  const {error}=await sb.from('expenditures').insert(rec);
-  if(error) return err(error);
-  if(status==='approved'){
-    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'expenditure_added',detail:`${money(amount)} — ${note}`});
-  }
-  toast(status==='pending'?'Sent for approval':'Expense recorded'); vExpenses($('#view'));
-}
-async function approveExpenditure(id){
-  const {error}=await sb.rpc('approve_expenditure',{exp_id:id});
-  if(error) return err(error);
-  toast('Approved'); vExpenses($('#view'));
-}
-async function rejectExpenditure(id){
-  const note=prompt('Reason for rejecting (optional):')||null;
-  const {error}=await sb.rpc('reject_expenditure',{exp_id:id,note});
-  if(error) return err(error);
-  toast('Rejected'); vExpenses($('#view'));
-}
-
-/* ============================================================
-   ADMIN — MEMBERS / TEAM
-   ============================================================ */
-async function vMembers(v){
-  const isPaid=!!S.biz.is_paid;
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
-    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner — <a href="#" onclick="openUpgrade();return false">upgrade</a> to approve team members.</p>':''}
-    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it — you'll need to approve them below before they get access.</p>
-    <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
-    <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Join requests</h2><span class="desc">approve before they get access</span></div><div class="bd tight"><div id="joinReqList" class="empty">Loading…</div></div></div>
-  <div class="card"><div class="hd"><h2>Team</h2></div><div class="bd tight"><div id="memList" class="empty">Loading…</div></div></div>`;
-  loadJoinRequests();
-  const {data,error}=await sb.rpc('list_members',{b:S.biz.id});
-  if(error) return err(error);
-  $('#memList').outerHTML=`<div id="memList"><table><tbody>${data.map(m=>`<tr>
-    <td class="itemname">${esc(m.full_name||'(no name)')}${m.is_owner?' <span class="cat">owner</span>':''}</td>
-    <td><span class="rolepill ${m.role==='receptionist'?'recept':m.role==='manager'?'mgr':''}">${m.role}</span></td>
-    <td class="r">${m.is_owner?'':`
-      ${m.role==='receptionist'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","manager")'>Promote to Manager</button>`:''}
-      ${m.role==='manager'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","receptionist")'>Demote to Receptionist</button>`:''}
-      <button class="btn danger sm" onclick='removeMember("${m.user_id}")'>Remove</button>`}</td>
-  </tr>`).join('')}</tbody></table></div>`;
-}
-async function setMemberRole(uid,role){
-  const {error}=await sb.rpc('set_member_role',{b:S.biz.id,target_user:uid,new_role:role});
-  if(error) return err(error);
-  toast('Role updated'); vMembers($('#view'));
-}
-async function loadJoinRequests(){
-  const {data,error}=await sb.rpc('list_join_requests',{b:S.biz.id});
-  if(error) return err(error);
-  const box=$('#joinReqList'); if(!box) return;
-  box.outerHTML = `<div id="joinReqList">${data.length?`<table><tbody>${data.map(r=>`<tr>
-    <td class="itemname">${esc(r.full_name||r.email||'(no name)')}<div class="cat">${esc(r.email||'')}</div></td>
-    <td><span class="rolepill">requested ${esc(r.requested_role)}</span></td>
-    <td class="r"><button class="btn ghost sm" onclick='approveJoinRequest("${r.id}","receptionist")'>Approve as Receptionist</button>
-    <button class="btn primary sm" onclick='approveJoinRequest("${r.id}","manager")'>Approve as Manager</button>
-    <button class="btn danger sm" onclick='rejectJoinRequest("${r.id}")'>Reject</button></td>
-  </tr>`).join('')}</tbody></table>`:'<div class="empty">No pending requests.</div>'}</div>`;
-}
-async function approveJoinRequest(id,role){
-  const {error}=await sb.rpc('approve_join_request',{request_id:id,as_role:role});
-  if(error) return err(error);
-  toast('Approved as '+role); vMembers($('#view'));
-}
-async function rejectJoinRequest(id){
-  if(!confirm('Reject this join request?')) return;
-  const {error}=await sb.rpc('reject_join_request',{request_id:id});
-  if(error) return err(error);
-  toast('Rejected'); vMembers($('#view'));
-}
-async function removeMember(uid){
-  if(!confirm('Remove this team member?')) return;
-  const {error}=await sb.from('business_members').delete().eq('business_id',S.biz.id).eq('user_id',uid);
-  if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'member_removed',detail:''});
-  toast('Removed'); vMembers($('#view'));
-}
-
-/* ============================================================
-   ADMIN — AUDIT LOG
-   ============================================================ */
-// action → { label, cls } — cls picks the badge color so different kinds of
-// activity are visually distinct at a glance (money in vs owed, stock moves,
-// item edits, team/approvals) instead of one flat gray badge for everything
-const AUDIT_META={
-  sale_completed:          {label:'Sale',                cls:'pos'},
-  payment_received:        {label:'Payment received',    cls:'pos'},
-  credit_payment_recorded: {label:'Credit payment',       cls:'pos'},
-  credit_added:            {label:'Credit given',         cls:'neg'},
-  restock_added:           {label:'Restock',              cls:'gold'},
-  reconciliation_recorded: {label:'Reconciliation',       cls:'gold'},
-  expenditure_added:       {label:'Expense recorded',     cls:'gold'},
-  expenditure_approved:    {label:'Expense approved',     cls:'pos'},
-  expenditure_rejected:    {label:'Expense rejected',     cls:'neg'},
-  item_added:              {label:'Item added',           cls:'blue'},
-  item_updated:            {label:'Item updated',         cls:'blue'},
-  item_deleted:            {label:'Item deleted',         cls:'neg'},
-  change_approved:         {label:'Change approved',      cls:'pos'},
-  change_rejected:         {label:'Change rejected',      cls:'neg'},
-  member_removed:          {label:'Member removed',       cls:'neg'},
-  join_requested:          {label:'Join requested',       cls:'blue'},
-  join_approved:           {label:'Join approved',        cls:'pos'},
-  join_rejected:           {label:'Join rejected',        cls:'neg'},
-  role_changed:            {label:'Role changed',         cls:'blue'}
-};
-function auditMeta(action){ return AUDIT_META[action] || {label:(action||'').replace(/_/g,' '), cls:'zero'}; }
-async function vAudit(v){
-  v.innerHTML='<div class="card"><div class="hd"><h2>Audit log</h2><span class="desc">every important change, automatically recorded</span></div><div class="bd tight"><div id="auList" class="empty">Loading…</div></div></div>';
-  const {data,error}=await sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200);
-  if(error) return err(error);
-  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  $('#auList').outerHTML=`<div id="auList">${data.length?`<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead>
-  <tbody>${data.map(a=>{const m=auditMeta(a.action);return `<tr><td class="num hint">${fmt(a.created_at)}</td><td><span class="badge lg ${m.cls}">${esc(m.label)}</span></td><td>${esc(a.detail||'')}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No activity yet.</div>'}</div>`;
-}
-
-/* ============================================================
-   ADMIN — APPROVALS (manager-submitted item changes)
-   ============================================================ */
-async function vApprovals(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const {data,error}=await sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('status','pending').order('created_at',{ascending:true});
-  if(error) return err(error);
-  if(!data.length){ v.innerHTML='<div class="card"><div class="bd"><div class="empty">No pending approvals.</div></div></div>'; return; }
-  v.innerHTML=data.map(renderApprovalCard).join('');
-}
-function renderApprovalCard(c){
-  const item = c.item_id ? S.items.find(i=>i.id===c.item_id) : null;
-  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item'}[c.action_type]||c.action_type;
-  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  let body='';
-  if(c.action_type==='add_item'){
-    body=`<p><b>${esc(c.payload.name)}</b> · ${esc(c.payload.category||'')}</p>
-      <p class="hint">Pack: ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost · low-stock alert ${fmtPacks(c.payload.low_stock_threshold)} pack(s)</p>
-      ${(c.payload.modes||[]).length?`<p class="hint">Modes: ${esc(c.payload.modes.map(m=>`${m.name} (${money(m.price)})`).join(', '))}</p>`:''}
-      ${c.payload._opening_packs?`<p class="hint">Opening stock: ${fmtPacks(c.payload._opening_packs)} pack(s)</p>`:''}`;
-  }else if(c.action_type==='edit_item'){
-    body=`<p><b>${esc(item?item.name:'(item)')}</b></p>
-      <p class="hint">New: ${esc(c.payload.name)} · ${esc(c.payload.category||'')} · pack ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost · low-stock alert ${fmtPacks(c.payload.low_stock_threshold)} pack(s)</p>
-      ${(c.payload.modes||[]).length?`<p class="hint">Modes: ${esc(c.payload.modes.map(m=>`${m.name} (${money(m.price)})`).join(', '))}</p>`:'<p class="hint">No extra modes</p>'}
-      ${item?`<p class="hint" style="color:var(--muted)">Currently: ${esc(item.name)} · pack ${money(fullPackPrice(item))} sell / ${money(fullPackCost(item))} cost</p>`:'<p class="hint" style="color:var(--red)">Original item no longer exists.</p>'}`;
-  }else if(c.action_type==='delete_item'){
-    body=`<p><b>${esc(c.payload.name)}</b> · ${esc(c.payload.category||'')}</p>
-      <p class="hint">Pack: ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost</p>
-      <p class="hint" style="color:var(--red)">This item and its sales/purchase history will be permanently deleted.</p>`;
-  }
-  return `<div class="card"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
-    ${body}
-    <div class="frow" style="margin-top:10px">
-      <button class="btn primary" onclick='approveChange("${c.id}")'>Approve</button>
-      <button class="btn danger" onclick='rejectChange("${c.id}")'>Reject</button>
-    </div>
-  </div></div>`;
-}
-async function approveChange(id){
-  const {data:c,error:e0}=await sb.from('pending_changes').select('*').eq('id',id).single();
-  if(e0) return err(e0);
-  try{
-    if(c.action_type==='add_item'){
-      const {_opening_packs,...rec}=c.payload;
-      const {data:item,error}=await sb.from('items').insert(rec).select().single();
-      if(error) throw error;
-      if(_opening_packs>0){
-        const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:item.id,quantity:_opening_packs,base_units:_opening_packs,unit_cost:rec.cost_price,entry_date:today(),created_by:c.requested_by});
-        if(r.error) throw r.error;
-      }
-    }else if(c.action_type==='edit_item'){
-      const {error}=await sb.from('items').update(c.payload).eq('id',c.item_id);
-      if(error) throw error;
-    }else if(c.action_type==='delete_item'){
-      const {error}=await sb.from('items').delete().eq('id',c.item_id);
-      if(error) throw error;
-    }
-    const {error:e1}=await sb.from('pending_changes').update({status:'approved',reviewed_by:S.user.id,reviewed_at:new Date().toISOString()}).eq('id',id);
-    if(e1) throw e1;
-    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_approved',detail:`${c.action_type} approved`});
-    toast('Approved'); await loadData(); vApprovals($('#view'));
-  }catch(e){ err(e); }
-}
-async function rejectChange(id){
-  const note=prompt('Reason for rejecting (optional):')||null;
-  const {data:c,error}=await sb.from('pending_changes').update({status:'rejected',reviewed_by:S.user.id,reviewed_at:new Date().toISOString(),review_note:note}).eq('id',id).select().single();
-  if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_rejected',detail:note||(c?.action_type+' rejected')});
-  toast('Rejected'); vApprovals($('#view'));
-}
-
-/* ============================================================
-   CARD TERMINAL — quick-capture + reconciliation queue
-   Hidden behind TERMINAL_ENABLED (see CONFIG). Log the amount a card
-   terminal already charged, then complete it later with real item(s)
-   and customer — turns into a normal sale with payment_method:'card'.
-   ============================================================ */
-async function vTerminal(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const {data,error}=await sb.from('terminal_transactions').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(100);
-  if(error) return err(error);
-  S._termTxns=data||[];
-  const pending=S._termTxns.filter(t=>t.status==='pending');
-  const done=S._termTxns.filter(t=>t.status!=='pending').slice(0,30);
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Log a card terminal sale</h2><span class="desc">amount now, details later</span></div><div class="bd">
-    <div class="frow" style="align-items:flex-end">
-      <div class="field"><label>Amount (₦)</label><input id="ttAmt" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
-      <div class="field"><label>Note (optional)</label><input id="ttNote" placeholder="e.g. terminal receipt #"></div>
-    </div>
-    <button class="btn primary" onclick="logTerminalTxn()">Save</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Needs details</h2><span class="desc">${pending.length} pending</span></div><div class="bd tight" id="ttPending">${renderTermPending(pending)}</div></div>
-  <div class="card"><div class="hd"><h2>Recently completed</h2></div><div class="bd tight">${renderTermDone(done)}</div></div>`;
-}
-function renderTermPending(list){
-  if(!list.length) return '<div class="empty">Nothing waiting.</div>';
-  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  return `<table><tbody>${list.map(t=>`<tr>
-    <td class="num hint">${fmt(t.created_at)}</td>
-    <td class="itemname num">${money(t.amount)}</td>
-    <td>${esc(t.note||'')}</td>
-    <td class="r"><button class="btn ghost sm" onclick='openTermDetails("${t.id}")'>Add details</button>
-    <button class="btn danger sm" onclick='voidTerminalTxn("${t.id}")'>Void</button></td>
-  </tr>`).join('')}</tbody></table>`;
-}
-function renderTermDone(list){
-  if(!list.length) return '<div class="empty">None yet.</div>';
-  return `<table><tbody>${list.map(t=>`<tr>
-    <td class="num hint">${t.entry_date}</td>
-    <td class="itemname num">${money(t.amount)}</td>
-    <td class="r"><span class="badge ${t.status==='completed'?'ok':'zero'}">${t.status}</span></td>
-  </tr>`).join('')}</tbody></table>`;
-}
-async function logTerminalTxn(){
-  const amount=+$('#ttAmt').value;
-  if(!amount||amount<=0) return toast('Enter the amount from the terminal',true);
-  const note=$('#ttNote').value.trim()||null;
-  const {error}=await sb.from('terminal_transactions').insert({business_id:S.biz.id,amount,note,source:'manual',entry_date:today(),created_by:S.user.id});
-  if(error) return err(error);
-  toast('Saved — add details when ready'); vTerminal($('#view'));
-}
-async function voidTerminalTxn(id){
-  if(!confirm('Void this terminal transaction? It will not be turned into a sale.')) return;
-  const {error}=await sb.from('terminal_transactions').update({status:'voided',completed_by:S.user.id,completed_at:new Date().toISOString()}).eq('id',id);
-  if(error) return err(error);
-  toast('Voided'); vTerminal($('#view'));
-}
-
-// -- completing a pending transaction: a small dedicated cart, separate from the POS cart --
-let termCart=[];
-function openTermDetails(id){
-  const t=S._termTxns.find(x=>x.id===id); if(!t) return;
-  termCart=[]; S._activeTermId=id;
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="termCard"><div class="hd"><h2>Add details — ${money(t.amount)}</h2>
-    <span class="desc">pick what was bought, then confirm</span><div class="spacer"></div>
-    <button class="btn ghost sm" onclick="closeTermDetails()">Close</button></div>
-  <div class="bd">
-    <div class="searchWrap">${icon('search')}<input class="posSearch" id="termSearch" placeholder="Search item…" oninput="termFilter(this.value)"></div>
-    <div class="prodgrid" id="termGrid" style="margin-bottom:14px">${termProductCards('')}</div>
-    <div id="termCartItems"></div>
-    <div class="frow" style="margin-top:10px">
-      <div class="field"><label>Customer name (optional)</label><input id="termCustName" placeholder="Walk-in"></div>
-      <div class="field"><label>Phone (optional)</label><input id="termCustPhone" placeholder="0803..."></div>
-    </div>
-    <div class="total" style="margin:8px 0"><span class="lbl">Items total</span><span class="amt num" id="termCartTotal">${money(0)}</span></div>
-    <p class="hint" id="termMismatch"></p>
-    <button class="btn primary" style="width:100%" id="termConfirmBtn" onclick='confirmTermDetails("${id}")' disabled>Confirm sale</button>
-  </div></div>`);
-  refreshTermCart();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function closeTermDetails(){ document.getElementById('termCard')?.remove(); termCart=[]; S._activeTermId=null; }
-function termFilter(q){ $('#termGrid').innerHTML=termProductCards(q); }
-function termProductCards(q){
-  q=(q||'').trim().toLowerCase();
-  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q));
-  if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match.</div>';
-  return list.map(i=>{
-    const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
-    return `<div class="prod ${out?'disabled':''}">
-      <div class="pname">${esc(i.name)}</div>
-      <div class="pmeta">${out?'Out of stock':packBreakdown(i)+' left'}</div>
-      ${out?'':`<div class="opts">
-        <button class="opt" onclick='termAdd("${i.id}",-1)'>+ Pack<small>${money(fullPackPrice(i))}</small></button>
-        ${modes.map((m,mi)=>`<button class="opt" onclick='termAdd("${i.id}",${mi})'>+ ${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
-      </div>`}
-    </div>`;
-  }).join('');
-}
-// modeIdx: -1 = the built-in Pack button, >=0 = index into itemModes(i) — using
-// the index (not per_pack) as the discriminator, since a mode's per_pack can now
-// legitimately be 1 (e.g. wholesale vs retail at the same quantity), which would
-// otherwise be indistinguishable from the Pack button itself
-function termAdd(itemId,modeIdx){
-  const i=S.items.find(x=>x.id===itemId); if(!i) return;
-  const isPack = modeIdx===-1;
-  const mode = isPack ? null : itemModes(i)[modeIdx];
-  const per_pack = isPack ? 1 : (mode?mode.per_pack:1);
-  const baseUnits = isPack ? 1 : (1/per_pack);
-  const price = isPack ? fullPackPrice(i) : (mode?mode.price:0);
-  const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
-  const label = isPack ? 'pack' : (mode?mode.name:'');
-  const inCart=termCart.filter(l=>l.itemId===itemId).reduce((a,l)=>a+l.baseUnits*l.qty,0);
-  if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
-  const ex=termCart.find(l=>l.itemId===itemId&&l.mode===label);
-  if(ex) ex.qty++; else termCart.push({itemId,mode:label,baseUnits,price,cost,name:i.name,qty:1});
-  refreshTermCart();
-}
-function termCartRows(){
-  if(!termCart.length) return '<div class="cartEmpty">Tap items above to add them to this sale.</div>';
-  return termCart.map((l,idx)=>`<div class="citem">
-    <div class="ci-n">${esc(l.name)}<small>${esc(l.mode)} · ${money(l.price)} each</small></div>
-    <span class="cstep"><button onclick="termStep(${idx},-1)">−</button><span class="num">${l.qty}</span><button onclick="termStep(${idx},1)">+</button></span>
-    <span class="ci-t num">${money(l.price*l.qty)}</span>
-    <button class="x" onclick="termRemove(${idx})">×</button>
-  </div>`).join('');
-}
-function termCartTotal(){ return termCart.reduce((a,l)=>a+l.price*l.qty,0); }
-function termStep(idx,d){
-  const l=termCart[idx]; if(!l) return;
-  if(d>0){ const inCart=termCart.filter(x=>x.itemId===l.itemId).reduce((a,x)=>a+x.baseUnits*x.qty,0); if(inCart+l.baseUnits>onHand(l.itemId)+1e-9) return toast('Not enough stock',true); }
-  l.qty+=d; if(l.qty<=0) termCart.splice(idx,1); refreshTermCart();
-}
-function termRemove(idx){ termCart.splice(idx,1); refreshTermCart(); }
-function refreshTermCart(){
-  const box=$('#termCartItems'); if(!box) return;
-  box.innerHTML=termCartRows();
-  const total=termCartTotal();
-  $('#termCartTotal').textContent=money(total);
-  const t=S._termTxns.find(x=>x.id===S._activeTermId);
-  const note=$('#termMismatch'), btn=$('#termConfirmBtn');
-  if(!termCart.length){ note.textContent=''; btn.disabled=true; return; }
-  const diff=t?total-t.amount:0;
-  if(Math.abs(diff)<0.5){ note.textContent=''; }
-  else if(diff>0){ note.textContent=`Items total is ${money(diff)} more than the terminal amount.`; note.style.color='var(--red)'; }
-  else{ note.textContent=`Items total is ${money(-diff)} less than the terminal amount — you can still confirm.`; note.style.color='var(--muted)'; }
-  btn.disabled=false;
-}
-async function confirmTermDetails(id){
-  if(!termCart.length) return toast('Add at least one item',true);
-  const t=S._termTxns.find(x=>x.id===id); if(!t) return;
-  const typedName=($('#termCustName').value||'').trim();
-  const typedPhone=($('#termCustPhone').value||'').trim();
-  const cnt=termCart.reduce((a,l)=>a+l.qty,0), total=termCartTotal();
-  if(!confirm(`Confirm this terminal sale?\n\n${cnt} item(s)\nItems total: ${money(total)}\nTerminal amount: ${money(t.amount)}`)) return;
-  $('#termConfirmBtn').disabled=true;
-  try{
-    let custId=null;
-    if(typedName){
-      const lc=typedName.toLowerCase();
-      const match=S.customers.find(c=>c.name.toLowerCase()===lc || (typedPhone&&String(c.phone||'')===typedPhone));
-      if(match){ custId=match.id; if(typedPhone&&!match.phone){ await sb.from('customers').update({phone:typedPhone}).eq('id',match.id); } }
-      else{
-        const ins=await sb.from('customers').insert({business_id:S.biz.id,name:typedName,phone:typedPhone||null}).select().single();
-        if(ins.error) throw ins.error; custId=ins.data.id;
-      }
-    }
-    const rows=termCart.map(l=>({business_id:S.biz.id,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
-      base_units:l.baseUnits*l.qty,unit_price:l.price,unit_cost:l.cost,customer_id:custId,payment_method:'card',created_by:S.user.id}));
-    const ins=await sb.from('sales').insert(rows);
-    if(ins.error) throw ins.error;
-    const upd=await sb.from('terminal_transactions').update({status:'completed',completed_by:S.user.id,completed_at:new Date().toISOString()}).eq('id',id);
-    if(upd.error) throw upd.error;
-    toast('Sale recorded from terminal transaction');
-    closeTermDetails();
-    await loadData(); vTerminal($('#view'));
-  }catch(e){ err(e); $('#termConfirmBtn').disabled=false; }
-}
-
-/* ============================================================
-   RECEPTIONIST — SELL  (point-of-sale cart with live preview)
-   ============================================================ */
-let posQuery='';
-function cartUnits(){ const t={}; S.cart.forEach(l=>{ t[l.itemId]=(t[l.itemId]||0)+l.baseUnits*l.qty; }); return t; }
-function cartTotal(){ return S.cart.reduce((a,l)=>a+l.price*l.qty,0); }
-function cartCount(){ return S.cart.reduce((a,l)=>a+l.qty,0); }
-
-function vSell(v){
-  v.innerHTML=`
-  <div class="pos">
-    <div>
-      <div class="searchWrap">${icon('search')}<input class="posSearch" id="posSearch" placeholder="Search item…" value="${esc(posQuery)}" oninput="posFilter(this.value)"></div>
-      <div class="prodgrid" id="prodGrid">${productCards()}</div>
-    </div>
-    <div class="cart" id="cartBox">
-      <div class="chd"><h2>${icon('cart','lg')} Current sale</h2><div class="spacer"></div>
-        <button class="btn ghost sm" onclick="clearCart()" id="clearBtn" style="${S.cart.length?'':'display:none'}">Clear</button></div>
-      <div class="modeRow">
-        <label><input type="radio" name="payMode" value="cash" checked onchange="setPayMode('cash')"> Cash</label>
-        <label><input type="radio" name="payMode" value="transfer" onchange="setPayMode('transfer')"> Transfer</label>
-        <label><input type="radio" name="payMode" value="credit" onchange="setPayMode('credit')"> Credit</label>
-      </div>
-      <div class="custBox">
-        <div id="custChosen" class="custChosen hidden"></div>
-        <div id="custPick">
-          <input id="custSearch" class="custInput" placeholder="Customer name (type to search)…" autocomplete="off" oninput="custSuggest(this.value)">
-          <div id="custResults" class="custResults"></div>
-          <input id="custPhone" class="custInput" placeholder="Phone (optional, for WhatsApp)" inputmode="tel" style="margin-top:6px">
-          <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — a customer is required so the balance is tracked.</p>
-        </div>
-      </div>
-      <div class="citems" id="cartItems">${cartRows()}</div>
-      <div class="cfoot">
-        <div class="total"><span class="lbl">Total to pay</span><span class="amt num" id="cartTotal">${money(cartTotal())}</span></div>
-        <div class="ccount" id="cartCount">${cartCount()} item(s) in this sale</div>
-        <button class="btn primary" style="width:100%;font-size:16px;padding:14px" id="checkoutBtn" onclick="checkout()" ${S.cart.length?'':'disabled'}>Complete sale</button>
-      </div>
-    </div>
-  </div>
-  <button class="fab ${S.cart.length?'show':''}" id="cartFab" onclick="document.getElementById('cartBox').scrollIntoView({behavior:'smooth'})">${icon('cart')} ${money(cartTotal())} · ${cartCount()}</button>`;
-  S.saleCustId=null; renderChosen();
-}
-// ---- customer picker on the sell page ----
-function custSuggest(q){
-  const box=$('#custResults'); const s=q.trim().toLowerCase();
-  if(!s){ box.innerHTML=''; return; }
-  const hits=S.customers.filter(c=>c.name.toLowerCase().includes(s)||String(c.phone||'').includes(s)).slice(0,6);
-  box.innerHTML = hits.length
-    ? hits.map(c=>`<button class="custHit" onclick='chooseCust("${c.id}")'><b>${esc(c.name)}</b>${c.phone?` <span class="hint">${esc(c.phone)}</span>`:''}${balanceOf(c.id)>0?` <span class="badge neg" style="float:right">owes ${money(balanceOf(c.id))}</span>`:''}</button>`).join('')
-    : `<div class="hint" style="padding:8px 10px">No match — a new customer "<b>${esc(q.trim())}</b>" will be saved with this sale.</div>`;
-}
-function chooseCust(id){ S.saleCustId=id; renderChosen(); }
-function clearChosen(){ S.saleCustId=null; renderChosen(); }
-function renderChosen(){
-  const chosen=$('#custChosen'), pick=$('#custPick'); if(!chosen) return;
-  if(S.saleCustId){
-    const c=S.customers.find(x=>x.id===S.saleCustId);
-    chosen.className='custChosen';
-    chosen.innerHTML=`<div><b>${icon('user')} ${esc(c.name)}</b>${c.phone?`<div class="hint">${esc(c.phone)}</div>`:''}</div><button class="btn ghost sm" onclick="clearChosen()">Change</button>`;
-    pick.classList.add('hidden');
-  }else{
-    chosen.className='custChosen hidden'; chosen.innerHTML='';
-    pick.classList.remove('hidden');
-    const s=$('#custSearch'); if(s){ s.value=''; } const r=$('#custResults'); if(r) r.innerHTML='';
-  }
-}
-// accordion: only one product card open at a time — tapping a card shows its
-// modes/prices, tapping a different one closes the first and opens the new one
-let expandedProductId=null;
-function productCards(){
-  if(!S.items.length) return '<div class="empty" style="grid-column:1/-1">No items available yet. Ask the admin to add some.</div>';
-  const q=posQuery.trim().toLowerCase();
-  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q));
-  if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match for that search.</div>';
-  return list.map(i=>{
-    const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
-    const expanded=expandedProductId===i.id;
-    return `<div class="prod ${out?'disabled':''} ${expanded?'expanded':''}" onclick="${out?'':`toggleProduct('${i.id}')`}">
-      <div class="phead">
-        <div class="pIcon">${esc(i.name.charAt(0).toUpperCase())}</div>
-        <div class="pname">${esc(i.name)}</div>
-      </div>
-      ${expanded?`
-        <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
-        <div class="opts" onclick="event.stopPropagation()">
-          <button class="opt" onclick='addToCart("${i.id}",-1)'>Pack<small>${money(fullPackPrice(i))}</small></button>
-          ${modes.map((m,mi)=>`<button class="opt" onclick='addToCart("${i.id}",${mi})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
-        </div>`:''}
-    </div>`;
-  }).join('');
-}
-function toggleProduct(id){ expandedProductId = expandedProductId===id ? null : id; $('#prodGrid').innerHTML=productCards(); }
-function posFilter(q){ posQuery=q; $('#prodGrid').innerHTML=productCards(); }
-function setPayMode(m){ S.payMode=m; $('#custNote').style.display=(m==='credit')?'block':'none'; }
-
-// modeIdx: -1 = the built-in Pack button, >=0 = index into itemModes(i) — see
-// the same note on termAdd() for why this isn't per_pack anymore
-function addToCart(itemId,modeIdx){
-  const i=S.items.find(x=>x.id===itemId); if(!i) return;
-  const isPack = modeIdx===-1;
-  const mode = isPack ? null : itemModes(i)[modeIdx];
-  const per_pack = isPack ? 1 : (mode?mode.per_pack:1);
-  const baseUnits = isPack ? 1 : (1/per_pack);
-  const price = isPack ? fullPackPrice(i) : (mode?mode.price:0);
-  const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
-  const label = isPack ? 'pack' : (mode?mode.name:'');
-  // stock guard across everything already in the cart (small epsilon for float rounding)
-  const inCart=cartUnits()[itemId]||0;
-  if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
-  const ex=S.cart.find(l=>l.itemId===itemId&&l.mode===label);
-  if(ex) ex.qty++; else S.cart.push({itemId,mode:label,baseUnits,price,cost,name:i.name,qty:1});
-  refreshCart();
-}
-function cartRows(){
-  if(!S.cart.length) return '<div class="cartEmpty">Tap items on the left to add them here. The running total updates automatically.</div>';
-  return S.cart.map((l,idx)=>`<div class="citem">
-    <div class="ci-n">${esc(l.name)}<small>${esc(l.mode)} · ${money(l.price)} each</small></div>
-    <span class="cstep"><button onclick="cartStep(${idx},-1)">−</button><span class="num">${l.qty}</span><button onclick="cartStep(${idx},1)">+</button></span>
-    <span class="ci-t num">${money(l.price*l.qty)}</span>
-    <button class="x" onclick="cartRemove(${idx})" title="Remove">×</button>
-  </div>`).join('');
-}
-function cartStep(idx,d){
-  const l=S.cart[idx]; if(!l) return;
-  if(!Number.isFinite(l.qty)) l.qty=1;
-  if(d>0){ const inCart=cartUnits()[l.itemId]||0; if(inCart+l.baseUnits>onHand(l.itemId)+1e-9) return toast('Not enough stock',true); }
-  l.qty+=d; if(l.qty<=0) S.cart.splice(idx,1); refreshCart();
-}
-function cartRemove(idx){ S.cart.splice(idx,1); refreshCart(); }
-function clearCart(){ S.cart=[]; refreshCart(); }
-function refreshCart(){
-  const items=$('#cartItems'); if(!items) return; // not on sell page
-  items.innerHTML=cartRows();
-  $('#cartTotal').textContent=money(cartTotal());
-  $('#cartCount').textContent=cartCount()+' item(s) in this sale';
-  $('#checkoutBtn').disabled=!S.cart.length;
-  $('#clearBtn').style.display=S.cart.length?'':'none';
-  const fab=$('#cartFab'); if(fab){ fab.classList.toggle('show',S.cart.length>0); fab.innerHTML=`${icon('cart')} ${money(cartTotal())} · ${cartCount()}`; }
-  $('#prodGrid').innerHTML=productCards(); // reflect remaining stock live
-}
-async function checkout(){
-  if(!S.cart.length) return;
-  const onCredit=(S.payMode==='credit');
-  const typedName=($('#custSearch')?.value||'').trim();
-  const typedPhone=($('#custPhone')?.value||'').trim();
-  let custId=S.saleCustId||null;
-  if(onCredit && !custId && !typedName) return toast('Enter a customer name for a credit sale',true);
-  const total=cartTotal(), cnt=cartCount();
-  const shownName = custId ? (S.customers.find(c=>c.id===custId)||{}).name : (typedName||'Walk-in');
-  if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\nCustomer: ${shownName}\n${onCredit?'ON CREDIT':'Paid by '+S.payMode}`)) return;
-  $('#checkoutBtn').disabled=true;
-  try{
-    // resolve customer: chosen → existing by name/phone → create new
-    if(!custId && typedName){
-      const lc=typedName.toLowerCase();
-      const match=S.customers.find(c=>c.name.toLowerCase()===lc || (typedPhone&&String(c.phone||'')===typedPhone));
-      if(match){ custId=match.id; if(typedPhone&&!match.phone){ await sb.from('customers').update({phone:typedPhone}).eq('id',match.id); } }
-      else{
-        const ins=await sb.from('customers').insert({business_id:S.biz.id,name:typedName,phone:typedPhone||null}).select().single();
-        if(ins.error) throw ins.error; custId=ins.data.id;
-      }
-    }
-    const method=onCredit?'credit':S.payMode;
-    const rows=S.cart.map(l=>({business_id:S.biz.id,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
-      base_units:l.baseUnits*l.qty,unit_price:l.price,unit_cost:l.cost,customer_id:custId,payment_method:method,created_by:S.user.id}));
-    const {error}=await sb.from('sales').insert(rows);
-    if(error) throw error;
-    if(onCredit){
-      const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
-      if(r.error) throw r.error;
-      await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} — ${shownName}`});
-    }else{
-      await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} — ${cnt} item(s), ${shownName}`});
-    }
-    S.cart=[]; S.saleCustId=null; toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
-    await loadData(); render();
-  }catch(e){ err(e); $('#checkoutBtn').disabled=false; }
-}
-
-/* ============================================================
-   RECEPTIONIST — MY SALES
-   ============================================================ */
-async function vMySales(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const {data,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).eq('created_by',S.user.id).order('created_at',{ascending:false});
-  if(error) return err(error);
-  const t=today(), m=monthStart(), rev=s=>s.quantity*Number(s.unit_price);
-  const dT=data.filter(s=>s.entry_date===t), dM=data.filter(s=>s.entry_date>=m);
-  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(item)';};
-  const cn=id=>{const c=S.customers.find(x=>x.id===id);return c?c.name:'';};
-  v.innerHTML=`
-    <div class="stats">
-      <div class="stat good"><div class="label">Today</div><div class="value num">${money(dT.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dT.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
-      <div class="stat"><div class="label">This month</div><div class="value num">${money(dM.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dM.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
-    </div>
-    <div class="card"><div class="hd"><h2>My recent sales</h2></div><div class="bd tight">
-      ${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th>Customer</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
-      <tbody>${data.slice(0,80).map(s=>`<tr><td class="num">${s.entry_date}</td><td class="itemname">${esc(nm(s.item_id))}${s.sold_as?` <span class="cat">${esc(s.sold_as)}</span>`:''}</td><td>${esc(cn(s.customer_id))||'<span class="hint">—</span>'}</td><td class="r num">${s.quantity}</td><td class="r num">${money(rev(s))}</td></tr>`).join('')}</tbody></table>`
-      :'<div class="empty">No sales recorded by you yet.</div>'}
-    </div></div>`;
-}
-
-/* ============================================================
-   RECEPTIONIST — ITEM LIST (read only)
-   ============================================================ */
-function vStockList(v){
-  v.innerHTML=`<div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
-    ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Remaining</th></tr></thead>
-    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
-      const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
-      return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;}).join('')}</tbody></table>`
-    :'<div class="empty">No items yet.</div>'}
-  </div></div>`;
-}
-
-/* ============================================================
-   CUSTOMERS — credit / owing  (admin + receptionist)
-   ============================================================ */
-async function vCustomers(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  // total spend per customer (revenue across all their sales)
-  const {data:sales}=await sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id);
-  S._spend={}; S._visits={}; S._last={};
-  (sales||[]).forEach(s=>{ if(!s.customer_id) return;
-    S._spend[s.customer_id]=(S._spend[s.customer_id]||0)+s.quantity*Number(s.unit_price);
-    S._visits[s.customer_id]=(S._visits[s.customer_id]||0)+1;
-    if(!S._last[s.customer_id]||s.entry_date>S._last[s.customer_id]) S._last[s.customer_id]=s.entry_date;
-  });
-  S._custSort=S._custSort||'spend'; S._custQ=S._custQ||'';
-  v.innerHTML=`
-  <div class="stats">
-    <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Total outstanding</div><div class="value num">${money(totalOwed())}</div><div class="sub">${S.customers.filter(c=>balanceOf(c.id)>0).length} owing of ${S.customers.length}</div></div>
-    <div class="stat"><div class="label">Customers</div><div class="value num">${S.customers.length}</div></div>
-  </div>
-  <div class="card"><div class="hd"><h2>Add customer</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Name</label><input id="newCustName" placeholder="e.g. Mr. Bello"></div>
-      <div class="field"><label>Phone (optional)</label><input id="newCustPhone" placeholder="0803..."></div>
-    </div>
-    <button class="btn primary" onclick="addCustomer()">Add customer</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Customers</h2><div class="spacer"></div>
-    <select class="biz" style="max-width:170px" onchange="setCustSort(this.value)">
-      <option value="spend" ${S._custSort==='spend'?'selected':''}>Top spenders</option>
-      <option value="visits" ${S._custSort==='visits'?'selected':''}>Most visits</option>
-      <option value="owing" ${S._custSort==='owing'?'selected':''}>Owing most</option>
-      <option value="recent" ${S._custSort==='recent'?'selected':''}>Most recent</option>
-      <option value="name" ${S._custSort==='name'?'selected':''}>Name (A–Z)</option>
-    </select></div>
-    <div class="bd" style="padding-bottom:6px"><input class="custInput" id="custFilter" placeholder="Search name or phone…" value="${esc(S._custQ)}" oninput="setCustQ(this.value)"></div>
-    <div class="bd tight" id="custTableWrap">${customerTable()}</div>
-  </div>`;
-}
-function customerTable(){
-  const sp=id=>S._spend[id]||0, vs=id=>S._visits[id]||0;
-  let list=S.customers.slice();
-  const q=(S._custQ||'').trim().toLowerCase();
-  if(q) list=list.filter(c=>c.name.toLowerCase().includes(q)||String(c.phone||'').includes(q));
-  const sorters={
-    spend:(a,b)=>sp(b.id)-sp(a.id), visits:(a,b)=>vs(b.id)-vs(a.id),
-    owing:(a,b)=>balanceOf(b.id)-balanceOf(a.id), name:(a,b)=>a.name.localeCompare(b.name),
-    recent:(a,b)=>String(S._last[b.id]||'').localeCompare(String(S._last[a.id]||''))
-  };
-  list.sort(sorters[S._custSort]||sorters.spend);
-  if(!list.length) return '<div class="empty">No customers match.</div>';
-  return `<table><thead><tr><th>Customer</th><th class="r">Spent</th><th class="r">Visits</th><th class="r">Balance</th><th class="r"></th></tr></thead>
-    <tbody>${list.map((c,i)=>{const bal=balanceOf(c.id);const rank=(S._custSort==='spend'&&!q&&i<3)?`<span style="color:var(--gold);font-weight:800;margin-right:4px">#${i+1}</span>`:'';return `<tr>
-      <td class="itemname" style="cursor:pointer" onclick="openCustomer('${c.id}')">${rank}${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
-      <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')">${money(sp(c.id))}</td>
-      <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')">${vs(c.id)}</td>
-      <td class="r" style="cursor:pointer" onclick="openCustomer('${c.id}')">${bal>0?`<span class="badge neg">${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
-      <td class="r">${c.phone?`<button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","thanks")'>Thanks</button>
-        ${bal>0?`<button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","reminder")'>Remind</button>`:''}`:''}</td>
-    </tr>`;}).join('')}</tbody></table>`;
-}
-function setCustSort(s){ S._custSort=s; $('#custTableWrap').innerHTML=customerTable(); }
-function setCustQ(q){ S._custQ=q; $('#custTableWrap').innerHTML=customerTable(); }
-async function addCustomer(){
-  const name=$('#newCustName').value.trim(); if(!name) return toast('Enter a name',true);
-  const {error}=await sb.from('customers').insert({business_id:S.biz.id,name,phone:$('#newCustPhone').value.trim()||null});
-  if(error) return err(error);
-  toast('Customer added'); await loadData(); vCustomers($('#view'));
-}
-async function openCustomer(id){
-  const c=S.customers.find(x=>x.id===id), bal=balanceOf(id);
-  const {data,error}=await sb.from('customer_transactions').select('*').eq('customer_id',id).order('created_at',{ascending:false}).limit(60);
-  if(error) return err(error);
-  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  const isAdmin=S.role==='admin';
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="custCard">
-    <div class="hd"><h2>${esc(c.name)}</h2><span class="desc">${c.phone?esc(c.phone):'no phone saved'}</span><div class="spacer"></div>
-      <button class="btn ghost sm" onclick="document.getElementById('custCard').remove()">Close</button></div>
-    <div class="bd">
-      <div class="stats" style="margin-bottom:14px"><div class="stat ${bal>0?'bad':'good'}"><div class="label">Balance owed</div><div class="value num">${money(bal)}</div></div></div>
-      ${c.phone?`<div class="row" style="margin-bottom:14px">
-        <button class="btn primary sm" onclick='waCustomer("${id}","reminder")'>${icon('chat')} Payment reminder</button>
-        <button class="btn ghost sm" onclick='waCustomer("${id}","thanks")'>${icon('chat')} Thank you</button>
-        <button class="btn ghost sm" onclick='waCustomer("${id}","custom")'>${icon('chat')} Custom message</button>
-      </div>`:'<p class="hint" style="margin-bottom:14px">Add a phone number (edit via re-adding the customer) to message them on WhatsApp.</p>'}
-      <div class="frow" style="align-items:flex-end">
-        <div class="field"><label>Amount (₦)</label><input id="ctxAmt" type="number" min="1" step="1" placeholder="0"></div>
-        <div class="field"><label>Note (optional)</label><input id="ctxNote" placeholder="e.g. part payment"></div>
-        <div class="field" style="display:flex;gap:8px">
-          <button class="btn ghost" onclick="custTx('${id}','credit')">+ Add credit</button>
-          <button class="btn primary" onclick="custTx('${id}','payment')">Record payment</button>
-        </div>
-      </div>
-      <div class="card" style="margin-top:6px;box-shadow:none"><div class="hd"><h2 style="font-size:15px">History</h2></div><div class="bd tight">
-        ${data.length?`<table><tbody>${data.map(t=>`<tr><td class="num hint">${fmt(t.created_at)}</td><td>${t.type==='credit'?'<span class="badge neg">credit</span>':'<span class="badge pos">payment</span>'} ${esc(t.note||'')}</td><td class="r num">${money(t.amount)}</td>${isAdmin?`<td class="r"><button class="btn danger sm" onclick='delCtx("${t.id}")'>${icon('x')}</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="empty">No transactions yet.</div>'}
-      </div></div>
-    </div></div>`);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-async function custTx(id,type){
-  const amount=+$('#ctxAmt').value;
-  if(!amount||amount<=0) return toast('Enter an amount',true);
-  const {error}=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:id,type,amount,note:$('#ctxNote').value.trim()||null,created_by:S.user.id});
-  if(error) return err(error);
-  const cname=(S.customers.find(c=>c.id===id)||{}).name||'';
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:type==='payment'?'credit_payment_recorded':'credit_added',detail:`${money(amount)} — ${cname}`});
-  toast(type==='payment'?'Payment recorded':'Credit added'); await loadData(); render(); setTimeout(()=>openCustomer(id),60);
-}
-async function delCtx(txId){
-  if(!confirm('Delete this transaction?')) return;
-  const {error}=await sb.from('customer_transactions').delete().eq('id',txId);
-  if(error) return err(error);
-  toast('Deleted'); await loadData(); render();
-}
-function waCustomer(id,kind){
-  const c=S.customers.find(x=>x.id===id); if(!c||!c.phone) return toast('No phone number saved',true);
-  const bal=balanceOf(id);
-  let msg;
-  if(kind==='reminder'){
-    if(bal>0){
-      const tmpl=S.biz.reminder_message||`Hello {name}, this is a friendly reminder from ${S.biz.name}. Your outstanding balance is {balance}. Kindly arrange payment when convenient. Thank you!`;
-      msg=tmpl.replace(/\{name\}/g,c.name).replace(/\{balance\}/g,money(bal));
-    }else{
-      msg=`Hello ${c.name}, thank you for your continued patronage!`;
-    }
-  }else if(kind==='thanks'){
-    const tmpl=S.biz.thankyou_message||`Hello {name}, thank you for shopping with us today at ${S.biz.name}! We appreciate your patronage. 🙏`;
-    msg=tmpl.replace(/\{name\}/g,c.name);
-  }else{
-    const typed=prompt(`Message to ${c.name}:`, bal>0?`Hello ${c.name}, you have a balance of ${money(bal)} with ${S.biz.name}.`:`Hello ${c.name}, `);
-    if(typed===null) return;
-    msg=typed.trim(); if(!msg) return;
-  }
-  // a fixed window name (instead of '_blank') makes the browser reuse one tab across
-  // repeated sends instead of piling up a new tab per customer — matters a lot once
-  // you're going through dozens of people back to back
-  window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'waSend');
-}
-
-/* ---------- thank-you round: queue through today's customers with progress tracking ---------- */
-// "sent" state lives in localStorage keyed by business+date — resets naturally each day,
-// survives a refresh/interruption without needing a DB table for something this disposable
-function thanksSentKey(){ return `thanksSent_${S.biz.id}_${today()}`; }
-function getThanksSent(){ try{ return new Set(JSON.parse(localStorage.getItem(thanksSentKey())||'[]')); }catch{ return new Set(); } }
-function markThanksSent(id){ const s=getThanksSent(); s.add(id); localStorage.setItem(thanksSentKey(),JSON.stringify([...s])); }
-let thanksQueue=[], thanksIdx=0;
-function openThanksRound(){
-  const sent=getThanksSent();
-  thanksQueue=(S._todayCusts||[]).filter(c=>c.phone);
-  const firstUnsent=thanksQueue.findIndex(c=>!sent.has(c.id));
-  thanksIdx=firstUnsent===-1?0:firstUnsent;
-  renderThanksRound();
-}
-function renderThanksRound(){
-  document.getElementById('thanksCard')?.remove();
-  const sent=getThanksSent();
-  const total=thanksQueue.length, sentCount=thanksQueue.filter(c=>sent.has(c.id)).length;
-  const c=thanksQueue[thanksIdx];
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="thanksCard"><div class="hd"><h2>Thank-you round</h2>
-    <span class="desc">${sentCount} of ${total} sent</span><div class="spacer"></div>
-    <button class="btn ghost sm" onclick="closeThanksRound()">Close</button></div>
-  <div class="bd">
-    ${c?`<div class="stats" style="margin-bottom:14px"><div class="stat"><div class="label">Now sending to</div><div class="value" style="font-size:20px">${esc(c.name)}</div><div class="sub">${esc(c.phone)}${sent.has(c.id)?' · already sent':''}</div></div></div>
-    <div class="row">
-      <button class="btn primary" onclick='sendThanksAndNext("${c.id}")' style="flex:1;font-size:16px;padding:14px">${icon('chat')} Send &amp; next</button>
-      <button class="btn ghost" onclick="skipThanks()">Skip</button>
-    </div>`
-    :`<div class="empty">${icon('check','lg')} Everyone's been messaged. Use the list below to resend anyone.</div>`}
-    <div class="card" style="margin-top:16px;box-shadow:none"><div class="bd tight">
-      <table><tbody>${thanksQueue.map((x,i)=>`<tr style="${i===thanksIdx?'background:#F0F5F1':''}">
-        <td class="itemname">${esc(x.name)}<div class="cat">${esc(x.phone)}</div></td>
-        <td class="r">${sent.has(x.id)?'<span class="badge ok">sent</span>':'<span class="badge zero">pending</span>'}</td>
-        <td class="r"><button class="btn ghost sm" onclick="jumpThanks(${i})">${sent.has(x.id)?'Resend':'Send'}</button></td>
-      </tr>`).join('')}</tbody></table>
-    </div></div>
-  </div></div>`);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-function sendThanksAndNext(id){ waCustomer(id,'thanks'); markThanksSent(id); thanksIdx++; renderThanksRound(); }
-function skipThanks(){ thanksIdx++; renderThanksRound(); }
-function jumpThanks(i){ thanksIdx=i; sendThanksAndNext(thanksQueue[i].id); }
-function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
-
-/* ============================================================
-   ADMIN — SETTINGS (WhatsApp daily summary toggle)
-   ============================================================ */
-function vSettings(v){
-  v.innerHTML=`
-  ${S.biz.is_paid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div><b>Paid plan</b><div class="hint">Unlimited items and team members.</div></div>
-  </div></div>`:`<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">one-time payment, no subscription</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">You're on the free plan — ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits, permanently.</div>
-    <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
-  </div></div>`}
-  <div class="card"><div class="hd"><h2>WhatsApp</h2></div><div class="bd">
-    <p class="hint" style="margin-bottom:16px">Thank-you and reminder messages to customers just open WhatsApp with the text ready — no number to connect for those. The settings below are only for the daily summary.</p>
-    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
-      <input id="setWa" type="checkbox" ${S.biz.wa_enabled?'checked':''} style="width:auto"> Enable the daily summary button on the dashboard</label>
-    <div class="field"><label>Send summary to this number (international format, e.g. 2348012345678)</label>
-      <input id="setWaNum" value="${esc(S.biz.wa_number||'')}" placeholder="234..."></div>
-    <div class="field"><label>Thank-you message</label>
-      <input id="setThanksMsg" value="${esc(S.biz.thankyou_message||'')}" placeholder="Hello {name}, thank you for shopping with us today at ${esc(S.biz.name)}! We appreciate your patronage. 🙏">
-      <p class="hint" style="margin-top:6px">Use <span class="code">{name}</span> to insert the customer's name. Leave blank to use the default shown above.</p>
-    </div>
-    <div class="field"><label>Payment reminder message</label>
-      <input id="setReminderMsg" value="${esc(S.biz.reminder_message||'')}" placeholder="Hello {name}, this is a friendly reminder from ${esc(S.biz.name)}. Your outstanding balance is {balance}. Kindly arrange payment when convenient. Thank you!">
-      <p class="hint" style="margin-top:6px">Use <span class="code">{name}</span> and <span class="code">{balance}</span>. Leave blank to use the default shown above.</p>
-    </div>
-    <div class="row"><button class="btn primary" onclick="saveSettings()">Save</button>
-    <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send summary now</button></div>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
-    <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span> — share it from the <b>Team</b> tab to add receptionists.</p>
-  </div></div>
-  <div class="card"><div class="hd"><h2 style="color:var(--red)">Reset test data</h2><span class="desc">clear everything you entered while testing</span></div><div class="bd">
-    <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b> — giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
-    <div class="row">
-      <button class="btn danger" onclick="resetData(false)">Clear sales & history (keep items)</button>
-      <button class="btn danger" onclick="resetData(true)">Wipe everything incl. items</button>
-    </div>
-  </div></div>`;
-}
-async function resetData(includeItems){
-  const word=includeItems?'WIPE':'CLEAR';
-  const typed=prompt(`This permanently deletes data for "${S.biz.name}".\n\nType ${word} to confirm.`);
-  if(typed!==word) return toast('Reset cancelled',true);
-  try{
-    const bid=S.biz.id;
-    // delete transactional rows first (FK-safe order)
-    for(const tbl of ['sales','purchases','adjustments','reconciliations','customer_transactions']){
-      const {error}=await sb.from(tbl).delete().eq('business_id',bid); if(error) throw error;
-    }
-    await sb.from('customers').delete().eq('business_id',bid);
-    if(includeItems){ await sb.from('items').delete().eq('business_id',bid); }
-    await sb.from('audit_log').delete().eq('business_id',bid);
-    S.cart=[]; toast('Data reset — clean slate'); await loadData(); render();
-  }catch(e){ err(e); }
-}
-async function saveSettings(){
-  const wa_enabled=$('#setWa').checked, wa_number=$('#setWaNum').value.replace(/[^0-9]/g,'')||null;
-  const thankyou_message=$('#setThanksMsg').value.trim()||null;
-  const reminder_message=$('#setReminderMsg').value.trim()||null;
-  const {error}=await sb.from('businesses').update({wa_enabled,wa_number,thankyou_message,reminder_message}).eq('id',S.biz.id);
-  if(error) return err(error);
-  S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number; S.biz.thankyou_message=thankyou_message; S.biz.reminder_message=reminder_message;
-  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;bz.thankyou_message=thankyou_message;bz.reminder_message=reminder_message;}
-  toast('Settings saved');
-}
-async function sendWhatsAppSummary(){
-  const t=today();
-  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).eq('entry_date',t);
-  if(error) return err(error);
-  const rev=sales.reduce((a,s)=>a+s.quantity*Number(s.unit_price),0);
-  const prof=sales.reduce((a,s)=>a+s.quantity*(Number(s.unit_price)-Number(s.unit_cost)),0);
-  const units=sales.reduce((a,s)=>a+s.quantity,0);
-  const low=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).length;
-  const lines=[
-    `*${S.biz.name}* — daily summary`,
-    new Date().toLocaleDateString('en-NG',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}),
-    ``,
-    `Sales today: ${money(rev)} (${units} items)`,
-    `Profit today: ${money(prof)}`,
-    `Outstanding credit: ${money(totalOwed())}`,
-    `Low/out of stock: ${low} item(s)`
-  ];
-  const num=(S.biz.wa_number||'').replace(/[^0-9]/g,'');
-  const url=`https://wa.me/${num}?text=${encodeURIComponent(lines.join('\n'))}`;
-  window.open(url,'waSend');
-}
+}).catch(() => {});
 </script>
+
 </body>
 </html>

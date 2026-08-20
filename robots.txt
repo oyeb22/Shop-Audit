@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /Shopaudit.html
+Disallow: /pay.html
+
+Sitemap: https://themonishop.com.ng/sitemap.xml

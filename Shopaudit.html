@@ -26,7 +26,12 @@ html,body{height:100%}
 body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);color:var(--ink);
   font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
   background-image:radial-gradient(circle at 12% -10%,rgba(31,90,65,.06),transparent 40%),radial-gradient(circle at 100% 0,rgba(169,119,46,.05),transparent 35%);}
-.num{font-variant-numeric:tabular-nums lining-nums}
+/* the Naira sign (U+20A6) renders broken in Fraunces/Hanken Grotesk on some
+   Android WebViews (shows as a line through the whole amount) — redirect
+   just that one character to a reliable system font, everything else in
+   these families is untouched */
+@font-face{font-family:'Hanken Grotesk';src:local('Noto Sans'),local('Roboto'),local('Arial');unicode-range:U+20A6;}
+@font-face{font-family:'Fraunces';src:local('Noto Sans'),local('Roboto'),local('Arial');unicode-range:U+20A6;}
 h1,h2,h3,.brand{font-family:'Fraunces',serif}
 a{color:var(--green);text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
@@ -70,8 +75,8 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .card .hd{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .card .hd h2{font-size:18px;font-weight:600;letter-spacing:-.01em}
 .card .hd .desc{font-size:13px;color:var(--muted);font-weight:400;font-family:'Hanken Grotesk'}
-.card .bd{padding:16px 18px}
-.card .bd.tight{padding:6px 0}
+.card .bd{padding:16px 18px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.card .bd.tight{padding:6px 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
 
 /* table */
 table{width:100%;border-collapse:collapse}
@@ -179,7 +184,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .setup{max-width:620px;margin:60px auto;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:26px;box-shadow:var(--shadow)}
 .setup code{background:#F0EADC;padding:2px 6px;border-radius:5px;font-family:ui-monospace,monospace;font-size:13px}
 .split{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}.split>*{flex:1;min-width:280px}
-@media(max-width:560px){.card .bd{padding:13px}th,td{padding:10px 13px}.stat .value{font-size:22px}}
+@media(max-width:560px){.card .bd{padding:13px}th,td{padding:10px 13px}.stat .value{font-size:22px}.card .hd{flex-direction:column;align-items:flex-start;gap:2px}}
 
 /* barcode scanner overlay */
 .scanOverlay{position:fixed;inset:0;background:#000;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center}

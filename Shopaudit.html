@@ -1024,8 +1024,10 @@ async function addPurchase(){
   const {error}=await sb.from('purchases').insert(rec);
   if(error) return err(error);
   const stockValueAfter=stockValueBefore+base*Number(it.cost_price);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${it.name} ${fmtPacks(before)}→${fmtPacks(before+base)} pack(s) (+${fmtPacks(base)} restocked, cost ${money((unit_cost||0)*base)}), store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
-  toast(`Added ${fmtPacks(base)} pack(s) to stock`); await loadData(); render();
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${it.name} ${fmtPacks(before)}→${fmtPacks(before+base)} pack(s) (+${fmtPacks(base)} restocked, cost ${money((unit_cost||0)*base)}), store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
+  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Restocked, but audit log entry failed: '+auditErr.message,true); }
+  else toast(`Added ${fmtPacks(base)} pack(s) to stock`);
+  await loadData(); render();
 }
 
 /* ============================================================
@@ -1064,8 +1066,10 @@ async function saveRecon(){
   }
   const nm=(it||{}).name||'';
   const valueLine=applied?`, store value ${money(stockValueBefore)}→${money(stockValueBefore+variance*Number((it||{}).cost_price||0))}${variance<0?' (decreased)':' (increased)'}`:'';
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: expected ${fmtPacks(exp)}, counted ${fmtPacks(counted)} (${variance>0?'+':''}${fmtPacks(variance)} pack(s) variance)${applied?', stock corrected to '+fmtPacks(counted):''}${valueLine}`});
-  toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded'); await loadData(); render();
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: expected ${fmtPacks(exp)}, counted ${fmtPacks(counted)} (${variance>0?'+':''}${fmtPacks(variance)} pack(s) variance)${applied?', stock corrected to '+fmtPacks(counted):''}${valueLine}`});
+  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Recorded, but audit log entry failed: '+auditErr.message,true); }
+  else toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded');
+  await loadData(); render();
 }
 async function loadRecon(){
   const {data,error}=await sb.from('reconciliations').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
@@ -1113,8 +1117,10 @@ async function clearTill(){
   if(amount>before+1e-6) return toast(`Only ${money(before)} ${method} is in the till`,true);
   const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:$('#tNote').value.trim()||null,created_by:S.user.id});
   if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${$('#tNote').value.trim()?' — '+$('#tNote').value.trim():''}`});
-  toast('Clearing recorded'); vTill($('#view'));
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${$('#tNote').value.trim()?' — '+$('#tNote').value.trim():''}`});
+  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Clearing recorded, but audit log entry failed: '+auditErr.message,true); }
+  else toast('Clearing recorded');
+  vTill($('#view'));
 }
 async function loadTillClearings(){
   const {data,error}=await sb.from('till_clearings').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
@@ -1836,23 +1842,27 @@ async function checkout(){
       return `${nm} ${fmtPacks(before)}→${fmtPacks(after)} pack(s)`;
     }).join(', ');
     const staffName=S.user.user_metadata?.full_name||S.user.email;
-    const {data:tsData}=await sb.rpc('till_summary',{b:S.biz.id});
+    const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
+    if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
     const ts=(tsData&&tsData[0])||{total_sold:0,cash_balance:0,transfer_balance:0};
     const soldLine=`total sold ${money(ts.total_sold)}→${money(Number(ts.total_sold)+total)}`;
+    let auditErr;
     if(onCredit){
       const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
       if(r.error) throw r.error;
       const creditBefore=totalOwed();
-      await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received — ${stockMoves} — ${soldLine} — total credit ${money(creditBefore)}→${money(creditBefore+total)}`});
+      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received — ${stockMoves} — ${soldLine} — total credit ${money(creditBefore)}→${money(creditBefore+total)}`}));
     }else{
       const methodLabel={cash:'Cash',transfer:'Transfer'}[S.payMode]||S.payMode;
       const balBefore=S.payMode==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
       const tillLine=`${methodLabel} in till ${money(balBefore)}→${money(balBefore+total)}`;
-      await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName} — ${stockMoves} — ${soldLine} — ${tillLine}`});
+      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName} — ${stockMoves} — ${soldLine} — ${tillLine}`}));
     }
+    if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Sale saved, but audit log entry failed: '+auditErr.message,true); }
     const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,qty:l.qty,price:l.price})),
       total,custName:shownName,method:onCredit?'credit':S.payMode};
-    S.cart=[]; S.saleCustId=null; toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
+    S.cart=[]; S.saleCustId=null;
+    if(!auditErr) toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
     await loadData(); render();
     showReceipt(receiptSnap);
   }catch(e){ err(e); $('#checkoutBtn').disabled=false; }
@@ -2026,7 +2036,8 @@ async function custTx(id,type){
   const creditBefore=totalOwed();
   let detail;
   if(type==='payment'){
-    const {data:tsData}=await sb.rpc('till_summary',{b:S.biz.id});
+    const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
+    if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
     const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
     const balBefore=method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
     const methodLabel=method==='transfer'?'Transfer':'Cash';
@@ -2034,8 +2045,10 @@ async function custTx(id,type){
   }else{
     detail=`${money(amount)} added to ${cname}'s credit balance, not yet received — total credit ${money(creditBefore)}→${money(creditBefore+amount)}`;
   }
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:type==='payment'?'credit_payment_recorded':'credit_added',detail});
-  toast(type==='payment'?'Payment recorded':'Credit added'); await loadData(); render(); setTimeout(()=>openCustomer(id),60);
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:type==='payment'?'credit_payment_recorded':'credit_added',detail});
+  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast((type==='payment'?'Payment recorded':'Credit added')+', but audit log entry failed: '+auditErr.message,true); }
+  else toast(type==='payment'?'Payment recorded':'Credit added');
+  await loadData(); render(); setTimeout(()=>openCustomer(id),60);
 }
 async function delCtx(txId){
   if(!confirm('Delete this transaction?')) return;

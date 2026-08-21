@@ -689,9 +689,12 @@ async function vDashboard(v){
   const stockValue=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
 
   // day-by-day (net of that day's approved expenses)
-  const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({u:0,r:0,p:0})); byDay[s.entry_date].u+=(s.base_units||s.quantity); byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
+  // "items sold" is a plain count of sale line-items, not a sum of base_units —
+  // base_units mixes different items' pack sizes together into a meaningless
+  // decimal (e.g. 2 packs of rice + 5.5 packs of soda showing as "7.5")
+  const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({c:0,r:0,p:0})); byDay[s.entry_date].c+=1; byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
   const byDayExp={}; exps.forEach(e=>{ byDayExp[e.entry_date]=(byDayExp[e.entry_date]||0)+Number(e.amount); });
-  Object.keys(byDayExp).forEach(d=>{ (byDay[d]??=({u:0,r:0,p:0})); });
+  Object.keys(byDayExp).forEach(d=>{ (byDay[d]??=({c:0,r:0,p:0})); });
   const days=Object.entries(byDay).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,30);
 
   // per-item sold + remaining (in base units)
@@ -725,8 +728,8 @@ async function vDashboard(v){
       <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${fmtPacks(i.low_stock_threshold)} pack(s)</td></tr>`).join('')}</tbody></table>
     </div></div>`:''}
     <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days · net of approved expenses</span></div><div class="bd tight rtable">
-      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Expenses</th><th class="r">Net profit</th></tr></thead>
-      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Units">${fmtPacks(o.u)}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
+      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Items sold</th><th class="r">Revenue</th><th class="r">Expenses</th><th class="r">Net profit</th></tr></thead>
+      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Items sold">${o.c}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales recorded yet.</div>'}
     </div></div>
     <div class="card"><div class="hd"><h2>Stock & sales per item</h2></div><div class="bd tight rtable">

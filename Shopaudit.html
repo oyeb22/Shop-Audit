@@ -1848,7 +1848,10 @@ async function checkout(){
     const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
     if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
     const ts=(tsData&&tsData[0])||{total_sold:0,cash_balance:0,transfer_balance:0};
-    const soldLine=`total sold ${money(ts.total_sold)}→${money(Number(ts.total_sold)+total)}`;
+    // till_summary is queried after the sales insert above, so its numbers already
+    // reflect this sale — they're the "after" state, not "before"; subtract this
+    // sale's own amount to get "before" instead of double-adding it
+    const soldLine=`total sold ${money(Number(ts.total_sold)-total)}→${money(ts.total_sold)}`;
     let auditErr;
     if(onCredit){
       const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
@@ -1857,8 +1860,8 @@ async function checkout(){
       ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received — ${stockMoves} — ${soldLine} — total credit ${money(creditBefore)}→${money(creditBefore+total)}`}));
     }else{
       const methodLabel={cash:'Cash',transfer:'Transfer'}[S.payMode]||S.payMode;
-      const balBefore=S.payMode==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
-      const tillLine=`${methodLabel} in till ${money(balBefore)}→${money(balBefore+total)}`;
+      const balAfter=S.payMode==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
+      const tillLine=`${methodLabel} in till ${money(balAfter-total)}→${money(balAfter)}`;
       ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName} — ${stockMoves} — ${soldLine} — ${tillLine}`}));
     }
     if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Sale saved, but audit log entry failed: '+auditErr.message,true); }
@@ -2042,9 +2045,12 @@ async function custTx(id,type){
     const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
     if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
     const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
-    const balBefore=method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
+    // till_summary is queried after the customer_transactions insert above, so it
+    // already reflects this payment — that's the "after" state, subtract this
+    // payment's own amount to get "before" instead of double-adding it
+    const balAfter=method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
     const methodLabel=method==='transfer'?'Transfer':'Cash';
-    detail=`${money(amount)} received (${methodLabel}) from ${cname}, credit balance reduced ${money(creditBefore)}→${money(Math.max(0,creditBefore-amount))} — ${methodLabel} in till ${money(balBefore)}→${money(balBefore+amount)}`;
+    detail=`${money(amount)} received (${methodLabel}) from ${cname}, credit balance reduced ${money(creditBefore)}→${money(Math.max(0,creditBefore-amount))} — ${methodLabel} in till ${money(balAfter-amount)}→${money(balAfter)}`;
   }else{
     detail=`${money(amount)} added to ${cname}'s credit balance, not yet received — total credit ${money(creditBefore)}→${money(creditBefore+amount)}`;
   }

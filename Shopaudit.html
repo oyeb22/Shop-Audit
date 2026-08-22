@@ -705,45 +705,15 @@ async function renderNoBiz(){
       <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
       <button class="btn primary" onclick="joinBiz()">Request to join</button>
     </div></div>
-  </div>
-  <div class="card"><div class="hd"><h2>Debug (temporary)</h2></div><div class="bd"><div id="debugWhoami" class="hint">Checking…</div></div></div>`;
-  debugWhoami();
-}
-// TEMPORARY — remove once the businesses/platform_admin auth mismatch is
-// resolved. Shows what the client thinks its own user id is side by side
-// with what the server actually sees via auth.uid(), in both a plain and a
-// security-definer context, so there's nothing left to guess about.
-async function debugWhoami(){
-  const box=$('#debugWhoami'); if(!box) return;
-  const [inv,def]=await Promise.all([
-    sb.rpc('debug_whoami'),
-    sb.rpc('debug_whoami_definer')
-  ]);
-  box.innerHTML=`
-    <div>Client S.user.id: <b>${esc(S.user?.id||'(none)')}</b></div>
-    <div>Server auth.uid() (invoker): <b>${esc(inv.data||'(null)')}</b>${inv.error?' — error: '+esc(inv.error.message):''}</div>
-    <div>Server auth.uid() (definer): <b>${esc(def.data||'(null)')}</b>${def.error?' — error: '+esc(def.error.message):''}</div>`;
+  </div>`;
 }
 async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
-  // re-verify the current user fresh rather than trust the cached S.user —
-  // confirmed via Supabase logs that a real request was authenticated as
-  // the correct user but the owner_id it sent didn't match that user,
-  // meaning S.user had gone stale by the time this ran; getUser() re-checks
-  // the live session instead of relying on a value cached earlier
-  const {data:userData,error:userErr}=await sb.auth.getUser();
-  if(userErr||!userData?.user) return toast('Your session looks stale — please sign out and back in',true);
-  S.user=userData.user;
-  // plain insert first, no .select()/.single() chained on — isolating
-  // whether the "Prefer: return=representation" header those add is
-  // somehow part of the RLS failure, since a raw SQL simulation of this
-  // exact insert (same owner_id, same auth.uid()) succeeded fine
-  const {error}=await sb.from('businesses').insert({name,owner_id:S.user.id});
+  const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
   if(error) return err(error);
   const refCode=localStorage.getItem('themonishop_ref');
-  const {data:fetched}=await sb.from('businesses').select('id').eq('owner_id',S.user.id).eq('name',name).order('created_at',{ascending:false}).limit(1).maybeSingle();
-  if(refCode && fetched){
-    await sb.rpc('record_referral',{p_code:refCode,p_business_id:fetched.id});
+  if(refCode){
+    await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
     localStorage.removeItem('themonishop_ref');
   }
   toast('Business created'); await loadBusinesses();
@@ -1341,7 +1311,7 @@ async function runReport(){
   if(salesRes.error) return err(salesRes.error);
   const data=salesRes.data;
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const totU=data.reduce((a,s)=>a+(s.base_units||s.quantity),0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
+  const totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
   const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0), netProfit=totP-totExp;
   const totSpent=(purRes.data||[]).reduce((a,p)=>a+Number(p.unit_cost||0)*Number(p.base_units||p.quantity||0),0);
   const byMethod={cash:0,transfer:0,credit:0,card:0};
@@ -1351,11 +1321,11 @@ async function runReport(){
   const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
   S._report={from,to,rows,nm,byMethod,totExp,netProfit};
   const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
-  const stockAtPack=S.items.reduce((a,i)=>a+onHand(i.id)*fullPackPrice(i),0);
-  const stockAtLeast=S.items.reduce((a,i)=>a+onHand(i.id)*leastModeUnitPrice(i),0);
+  const stockLow=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).low,0);
+  const stockHigh=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).high,0);
   $('#repOut').innerHTML=`
     <div class="stats">
-      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · gross profit ${money(totP)}</div></div>
+      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">gross profit ${money(totP)}</div></div>
       <div class="stat bad"><div class="label">Spent on stock</div><div class="value num">${money(totSpent)}</div><div class="sub">restocking, this range</div></div>
       <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
       <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses</div></div>
@@ -1372,17 +1342,19 @@ async function runReport(){
     <div class="card"><div class="hd"><h2>Stock on hand</h2><span class="desc">right now, not tied to the date range above</span></div><div class="bd">
       <div class="stats" style="margin-bottom:0">
         <div class="stat"><div class="label">At cost</div><div class="value num">${money(stockCost)}</div><div class="sub">what you paid for what's on the shelves</div></div>
-        <div class="stat good"><div class="label">If sold at pack price</div><div class="value num">${money(stockAtPack)}</div><div class="sub">best case</div></div>
-        <div class="stat warn"><div class="label">If sold at least mode price</div><div class="value num">${money(stockAtLeast)}</div><div class="sub">worst case</div></div>
+        <div class="stat"><div class="label">Lower estimate</div><div class="value num">${money(stockLow)}</div><div class="sub">if everything sold at its cheapest price</div></div>
+        <div class="stat good"><div class="label">Higher estimate</div><div class="value num">${money(stockHigh)}</div><div class="sub">if everything sold at its priciest price</div></div>
       </div>
     </div></div>`;
 }
-// the cheapest per-pack-equivalent price among an item's modes (a mode can
-// legitimately be priced below pack, e.g. wholesale) — falls back to pack
-// price for items with no modes, since there's no other option to compare
-function leastModeUnitPrice(i){
-  const modes=itemModes(i);
-  return modes.length ? Math.min(...modes.map(m=>m.price*m.per_pack)) : fullPackPrice(i);
+// the low/high per-pack-equivalent price for an item across the pack price
+// AND every mode — deliberately doesn't assume pack is always cheaper (a
+// wholesale mode can undercut it) or always pricier (a retail-split mode
+// with no bulk discount can cost more per pack-equivalent than the pack
+// itself) — whichever is actually true for THIS item's own prices wins
+function modeUnitPriceRange(i){
+  const prices=[fullPackPrice(i), ...itemModes(i).map(m=>m.price*m.per_pack)];
+  return {low:Math.min(...prices), high:Math.max(...prices)};
 }
 // one shared "how did today go" computation used by both the Dashboard
 // card and the WhatsApp summary, so the two never say different things.

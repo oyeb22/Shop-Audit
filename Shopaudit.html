@@ -485,6 +485,33 @@ async function switchBiz(id){
   S.tab = (S.role==='admin'||S.role==='manager')?'dashboard':'sell';
   buildNav(); await loadData(); render();
   subscribeRealtime();
+  registerPush();
+}
+
+/* ---------- push notifications (native only, no-op on the plain website) ----------
+   Only fires inside the Capacitor app (window.Capacitor exists there, not on
+   the live website) — registers this device's token against whichever
+   business is currently active so an Edge Function can later notify its
+   admin(s) about pending approvals. */
+let pushInitDone=false, pushToken=null;
+async function savePushToken(){
+  if(!pushToken||!S.biz||!S.user) return;
+  const {error}=await sb.from('push_tokens').upsert(
+    {business_id:S.biz.id,user_id:S.user.id,token:pushToken,platform:'android'},
+    {onConflict:'user_id,token'});
+  if(error) console.error('push token save failed:',error);
+}
+function registerPush(){
+  if(!window.Capacitor?.isNativePlatform?.() || !S.biz) return;
+  if(pushInitDone){ savePushToken(); return; } // re-associate the same token if the business was switched
+  const Push=window.Capacitor.Plugins?.PushNotifications; if(!Push) return;
+  pushInitDone=true;
+  Push.addListener('registration', token=>{ pushToken=token.value; savePushToken(); });
+  Push.addListener('registrationError', e=>console.error('push registration error:',e));
+  Push.checkPermissions().then(res=>{
+    if(res.receive==='granted') return Push.register();
+    return Push.requestPermissions().then(r=>{ if(r.receive==='granted') return Push.register(); });
+  }).catch(e=>console.error('push permission error:',e));
 }
 
 /* ---------- realtime: items + stock stay live across sessions without a refresh ---------- */
@@ -529,15 +556,18 @@ async function doRealtimeRefresh(){
 }
 async function loadData(){
   if(!S.biz) return;
-  const [it,stk,cu,cb]=await Promise.all([
+  const [it,stk,cu,cb,aps]=await Promise.all([
     sb.from('items').select('*').eq('business_id',S.biz.id).order('name'),
     sb.from('item_stock').select('item_id,on_hand').eq('business_id',S.biz.id),
     sb.from('customers').select('*').eq('business_id',S.biz.id).order('name'),
-    sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id)
+    sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id),
+    sb.from('approval_settings').select('*').eq('business_id',S.biz.id).maybeSingle()
   ]);
   if(it.error) return err(it.error);
   S.items=it.data||[];
   S.customers=cu.data||[]; S.balances={}; (cb.data||[]).forEach(r=>S.balances[r.customer_id]=Number(r.balance||0));
+  // no row yet = every action requires approval (matches the DB default in needs_approval())
+  S.approvalSettings=aps.data||{items:true,restock:true,reconcile:true,till:true};
   S.stock={};
   if(stk.error){
     // the stock view couldn't be read — compute it directly so stock isn't wrongly 0
@@ -563,6 +593,11 @@ async function computeStockFallback(){
 const onHand = id => S.stock[id]??0;
 const balanceOf = id => S.balances[id]??0;
 const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
+// admin actions are always immediate regardless of settings — this only ever
+// gates managers. The RLS policies in migration-approval-settings.sql are the
+// actual enforcement; this just decides which UI path (immediate vs. queued)
+// to take so a manager isn't surprised by a silent RLS rejection.
+function needsApproval(kind){ if(S.role!=='manager') return false; return (S.approvalSettings?.[kind]) ?? true; }
 // pack-based selling modes: every item has an implicit Pack (pack_price/cost_price);
 // modes are extra ways to sell a fraction of a pack, e.g. Half bag, Mudu.
 const itemModes = i => Array.isArray(i.modes) ? i.modes : [];
@@ -870,7 +905,7 @@ async function addItem(){
     pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold,
     barcode:$('#iBarcode').value.trim()||null, unit_name:$('#iUnit').value.trim()||'Pack'};
 
-  if(S.role==='manager'){
+  if(needsApproval('items')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
       action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks}});
     if(error) return err(error);
@@ -967,7 +1002,7 @@ async function saveItem(id){
     low_stock_threshold:+$('#eThr').value||0, modes,
     barcode:$('#eBarcode').value.trim()||null, unit_name:$('#eUnit').value.trim()||'Pack'};
 
-  if(S.role==='manager'){
+  if(needsApproval('items')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
       action_type:'edit_item', item_id:id, payload:rec});
     if(error) return err(error);
@@ -984,7 +1019,7 @@ async function delItem(id){
   if(!confirm('Delete this item and all its history?')) return;
   const i=S.items.find(x=>x.id===id);
 
-  if(S.role==='manager'){
+  if(needsApproval('items')){
     const snapshot={name:i.name,category:i.category,pack_price:fullPackPrice(i),cost_price:fullPackCost(i),modes:itemModes(i)};
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
       action_type:'delete_item', item_id:id, payload:snapshot});
@@ -1045,6 +1080,20 @@ function rPackInfo(){
     ? `${qty||0} × ${esc(mode.name)} = <b>${fmtPacks(baseUnits)}</b> ${esc(unit)} added to stock.`
     : `Adds <b>${fmtPacks(qty||0)}</b> ${esc(unit)} to stock.`;
 }
+// shared by the immediate path (addPurchase) and the approval path
+// (approveChange) so the audit-narrative logic only lives in one place
+async function applyRestock(item_id,qty,base,unit_cost,entry_date,actorId){
+  const it=S.items.find(i=>i.id===item_id); if(!it) return {error:{message:'Item no longer exists'}};
+  const before=onHand(item_id);
+  const stockValueBefore=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
+  const rec={business_id:S.biz.id,item_id,quantity:qty,base_units:base,unit_cost:unit_cost||0,entry_date:entry_date||today(),created_by:actorId};
+  const {error}=await sb.from('purchases').insert(rec);
+  if(error) return {error};
+  const stockValueAfter=stockValueBefore+base*Number(it.cost_price);
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'restock_added',detail:`${it.name}: ${breakdownQty(it,base)} restocked (cost ${money((unit_cost||0)*base)}), now ${breakdownQty(it,before+base)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
+  if(auditErr) console.error('audit_log insert failed:',auditErr);
+  return {error:null,auditErr,addedLabel:breakdownQty(it,base)};
+}
 async function addPurchase(){
   const item_id=$('#rItem').value, qty=+$('#rQty').value;
   if(!item_id||!qty||qty<=0) return toast('Enter a valid quantity',true);
@@ -1052,15 +1101,17 @@ async function addPurchase(){
   const modeName=$('#rMode').value, mode=itemModes(it).find(m=>m.name===modeName);
   const base = mode ? qty/mode.per_pack : qty;
   const unit_cost = mode ? modeCost(it,mode.per_pack) : fullPackCost(it);
-  const before=onHand(item_id);
-  const stockValueBefore=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
-  const rec={business_id:S.biz.id,item_id,quantity:qty,base_units:base,unit_cost:unit_cost||0,entry_date:$('#rDate').value||today(),created_by:S.user.id};
-  const {error}=await sb.from('purchases').insert(rec);
+  const entry_date=$('#rDate').value||today();
+  if(needsApproval('restock')){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'restock',item_id,payload:{item_id,qty,base,unit_cost,entry_date}});
+    if(error) return err(error);
+    toast('Sent for approval'); render();
+    return;
+  }
+  const {error,auditErr,addedLabel}=await applyRestock(item_id,qty,base,unit_cost,entry_date,S.user.id);
   if(error) return err(error);
-  const stockValueAfter=stockValueBefore+base*Number(it.cost_price);
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${it.name}: ${breakdownQty(it,base)} restocked (cost ${money((unit_cost||0)*base)}), now ${breakdownQty(it,before+base)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
-  const addedLabel=breakdownQty(it,base);
-  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Restocked, but audit log entry failed: '+auditErr.message,true); }
+  if(auditErr) toast('Restocked, but audit log entry failed: '+auditErr.message,true);
   else toast(`Added ${addedLabel} to stock`);
   await loadData(); render();
 }
@@ -1087,23 +1138,38 @@ function vReconcile(v){
 function cExpected(){ const id=$('#cItem').value; $('#cExp').value=Number(onHand(id)).toFixed(3); cVar(); }
 function cVar(){ const exp=+$('#cExp').value||0, cnt=+$('#cCount').value||0, vf=$('#cVarF'); const dv=cnt-exp;
   vf.value=(dv>0?'+':'')+fmtPacks(dv); vf.style.color=dv<0?'var(--red)':dv>0?'var(--green)':'var(--muted)'; }
-async function saveRecon(){
-  const item_id=$('#cItem').value, exp=+$('#cExp').value, cnt=$('#cCount').value;
-  if(cnt===''||isNaN(+cnt)) return toast('Enter the counted amount',true);
-  const counted=+cnt, variance=counted-exp;
+// shared by the immediate path (saveRecon) and the approval path (approveChange)
+async function applyRecon(item_id,exp,counted,variance,note,applyCorrection,actorId){
   const it=S.items.find(i=>i.id===item_id);
   const stockValueBefore=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
-  const {error}=await sb.from('reconciliations').insert({business_id:S.biz.id,item_id,expected_qty:exp,counted_qty:counted,variance,note:$('#cNote').value.trim(),created_by:S.user.id});
-  if(error) return err(error);
-  const applied=$('#cApply').checked && variance!==0;
+  const {error}=await sb.from('reconciliations').insert({business_id:S.biz.id,item_id,expected_qty:exp,counted_qty:counted,variance,note:note||null,created_by:actorId});
+  if(error) return {error};
+  const applied=applyCorrection && variance!==0;
   if(applied){
-    await sb.from('adjustments').insert({business_id:S.biz.id,item_id,quantity_delta:variance,reason:'reconciliation correction',created_by:S.user.id});
+    const {error:ae}=await sb.from('adjustments').insert({business_id:S.biz.id,item_id,quantity_delta:variance,reason:'reconciliation correction',created_by:actorId});
+    if(ae) return {error:ae};
   }
   const nm=(it||{}).name||'';
   const varLabel=it?`${variance>0?'+':''}${breakdownQty(it,Math.abs(variance))}${variance<0?' short':variance>0?' extra':''}`:`${variance>0?'+':''}${fmtPacks(variance)}`;
   const valueLine=applied?`, store value ${money(stockValueBefore)}→${money(stockValueBefore+variance*Number((it||{}).cost_price||0))}${variance<0?' (decreased)':' (increased)'}`:'';
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: expected ${it?breakdownQty(it,exp):fmtPacks(exp)}, counted ${it?breakdownQty(it,counted):fmtPacks(counted)} (${varLabel} variance)${applied?', stock corrected to '+(it?breakdownQty(it,counted):fmtPacks(counted)):''}${valueLine}`});
-  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Recorded, but audit log entry failed: '+auditErr.message,true); }
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'reconciliation_recorded',detail:`${nm}: expected ${it?breakdownQty(it,exp):fmtPacks(exp)}, counted ${it?breakdownQty(it,counted):fmtPacks(counted)} (${varLabel} variance)${applied?', stock corrected to '+(it?breakdownQty(it,counted):fmtPacks(counted)):''}${valueLine}`});
+  if(auditErr) console.error('audit_log insert failed:',auditErr);
+  return {error:null,auditErr};
+}
+async function saveRecon(){
+  const item_id=$('#cItem').value, exp=+$('#cExp').value, cnt=$('#cCount').value;
+  if(cnt===''||isNaN(+cnt)) return toast('Enter the counted amount',true);
+  const counted=+cnt, variance=counted-exp, note=$('#cNote').value.trim(), apply=$('#cApply').checked;
+  if(needsApproval('reconcile')){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'reconcile',item_id,payload:{item_id,exp,counted,variance,note,apply}});
+    if(error) return err(error);
+    toast('Sent for approval'); render();
+    return;
+  }
+  const {error,auditErr}=await applyRecon(item_id,exp,counted,variance,note,apply,S.user.id);
+  if(error) return err(error);
+  if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
   else toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded');
   await loadData(); render();
 }
@@ -1143,18 +1209,32 @@ async function loadTillSummary(){
     <div class="stat"><div class="label">Cash in till</div><div class="value num">${money(s.cash_balance)}</div></div>
     <div class="stat"><div class="label">Transfer in till</div><div class="value num">${money(s.transfer_balance)}</div></div>`;
 }
+// shared by the immediate path (clearTill) and the approval path (approveChange)
+async function applyTillClear(method,amount,note,before,actorId){
+  const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:note||null,created_by:actorId});
+  if(error) return {error};
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${note?' — '+note:''}`});
+  if(auditErr) console.error('audit_log insert failed:',auditErr);
+  return {error:null,auditErr};
+}
 async function clearTill(){
-  const method=$('#tMethod').value, amount=+$('#tAmt').value;
+  const method=$('#tMethod').value, amount=+$('#tAmt').value, note=$('#tNote').value.trim();
   if(!amount||amount<=0) return toast('Enter an amount',true);
   const {data,error:se}=await sb.rpc('till_summary',{b:S.biz.id});
   if(se) return err(se);
   const s=data[0]||{cash_balance:0,transfer_balance:0};
   const before=method==='cash'?Number(s.cash_balance):Number(s.transfer_balance);
   if(amount>before+1e-6) return toast(`Only ${money(before)} ${method} is in the till`,true);
-  const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:$('#tNote').value.trim()||null,created_by:S.user.id});
+  if(needsApproval('till')){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'till_clear',item_id:null,payload:{method,amount,note,before}});
+    if(error) return err(error);
+    toast('Sent for approval'); vTill($('#view'));
+    return;
+  }
+  const {error,auditErr}=await applyTillClear(method,amount,note,before,S.user.id);
   if(error) return err(error);
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${$('#tNote').value.trim()?' — '+$('#tNote').value.trim():''}`});
-  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Clearing recorded, but audit log entry failed: '+auditErr.message,true); }
+  if(auditErr) toast('Clearing recorded, but audit log entry failed: '+auditErr.message,true);
   else toast('Clearing recorded');
   vTill($('#view'));
 }
@@ -1453,7 +1533,7 @@ async function vApprovals(v){
 }
 function renderApprovalCard(c){
   const item = c.item_id ? S.items.find(i=>i.id===c.item_id) : null;
-  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item'}[c.action_type]||c.action_type;
+  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing'}[c.action_type]||c.action_type;
   const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   let body='';
   if(c.action_type==='add_item'){
@@ -1470,6 +1550,18 @@ function renderApprovalCard(c){
     body=`<p><b>${esc(c.payload.name)}</b> · ${esc(c.payload.category||'')}</p>
       <p class="hint">Pack: ${money(c.payload.pack_price)} sell / ${money(c.payload.cost_price)} cost</p>
       <p class="hint" style="color:var(--red)">This item and its sales/purchase history will be permanently deleted.</p>`;
+  }else if(c.action_type==='restock'){
+    const nm=item?item.name:'(item)';
+    body=`<p><b>${esc(nm)}</b></p>
+      <p class="hint">${item?breakdownQty(item,c.payload.base):fmtPacks(c.payload.base)} · cost ${money((c.payload.unit_cost||0)*c.payload.base)} · ${esc(c.payload.entry_date||'')}</p>`;
+  }else if(c.action_type==='reconcile'){
+    const nm=item?item.name:'(item)';
+    body=`<p><b>${esc(nm)}</b></p>
+      <p class="hint">Expected ${item?breakdownQty(item,c.payload.exp):fmtPacks(c.payload.exp)}, counted ${item?breakdownQty(item,c.payload.counted):fmtPacks(c.payload.counted)}${c.payload.apply?' · will correct system stock':' · will not correct system stock'}</p>
+      ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
+  }else if(c.action_type==='till_clear'){
+    body=`<p><b>${money(c.payload.amount)} ${esc(c.payload.method)}</b></p>
+      ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
   }
   return `<div class="card"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
     ${body}
@@ -1496,6 +1588,26 @@ async function approveChange(id){
       if(error) throw error;
     }else if(c.action_type==='delete_item'){
       const {error}=await sb.from('items').delete().eq('id',c.item_id);
+      if(error) throw error;
+    }else if(c.action_type==='restock'){
+      const p=c.payload;
+      const {error}=await applyRestock(p.item_id,p.qty,p.base,p.unit_cost,p.entry_date,c.requested_by);
+      if(error) throw error;
+    }else if(c.action_type==='reconcile'){
+      const p=c.payload;
+      const {error}=await applyRecon(p.item_id,p.exp,p.counted,p.variance,p.note,p.apply,c.requested_by);
+      if(error) throw error;
+    }else if(c.action_type==='till_clear'){
+      const p=c.payload;
+      // re-check the balance at approval time rather than trust the
+      // possibly-stale snapshot from when it was originally requested —
+      // more sales/clearings may have happened since
+      const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
+      if(tsErr) throw tsErr;
+      const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
+      const nowBefore=p.method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
+      if(p.amount>nowBefore+1e-6) throw new Error(`Only ${money(nowBefore)} ${p.method} is in the till now`);
+      const {error}=await applyTillClear(p.method,p.amount,p.note,nowBefore,c.requested_by);
       if(error) throw error;
     }
     const {error:e1}=await sb.from('pending_changes').update({status:'approved',reviewed_by:S.user.id,reviewed_at:new Date().toISOString()}).eq('id',id);
@@ -2200,6 +2312,18 @@ function vSettings(v){
   <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
     <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span> — share it from the <b>Team</b> tab to add receptionists.</p>
   </div></div>
+  <div class="card"><div class="hd"><h2>Manager approvals</h2><span class="desc">what a manager can do immediately vs. needs your approval first</span></div><div class="bd">
+    <p class="hint" style="margin-bottom:14px">All on by default — everything a manager does waits for you. Turn any of these off to let managers do that one thing immediately instead. This never affects admins, and receptionists don't have approvals at all.</p>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
+      <input id="apItems" type="checkbox" ${S.approvalSettings?.items!==false?'checked':''} style="width:auto"> Item changes need approval</label>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
+      <input id="apRestock" type="checkbox" ${S.approvalSettings?.restock!==false?'checked':''} style="width:auto"> Restock needs approval</label>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
+      <input id="apReconcile" type="checkbox" ${S.approvalSettings?.reconcile!==false?'checked':''} style="width:auto"> Reconciliation needs approval</label>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
+      <input id="apTill" type="checkbox" ${S.approvalSettings?.till!==false?'checked':''} style="width:auto"> Till clearing needs approval</label>
+    <button class="btn primary" onclick="saveApprovalSettings()">Save</button>
+  </div></div>
   <div class="card"><div class="hd"><h2 style="color:var(--red)">Reset test data</h2><span class="desc">clear everything you entered while testing</span></div><div class="bd">
     <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b> — giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
     <div class="row">
@@ -2233,6 +2357,14 @@ async function saveSettings(){
   S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number; S.biz.thankyou_message=thankyou_message; S.biz.reminder_message=reminder_message;
   const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;bz.thankyou_message=thankyou_message;bz.reminder_message=reminder_message;}
   toast('Settings saved');
+}
+async function saveApprovalSettings(){
+  const settings={business_id:S.biz.id,items:$('#apItems').checked,restock:$('#apRestock').checked,
+    reconcile:$('#apReconcile').checked,till:$('#apTill').checked};
+  const {error}=await sb.from('approval_settings').upsert(settings);
+  if(error) return err(error);
+  S.approvalSettings=settings;
+  toast('Approval settings saved');
 }
 async function sendWhatsAppSummary(){
   const t=today();

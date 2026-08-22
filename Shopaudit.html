@@ -391,6 +391,11 @@ function boot(){
     $('#setupNotice').classList.remove('hidden'); return;
   }
   sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // capture a referral code (?ref=CODE) if present — covers anyone landing
+  // directly on the app, not just via the homepage; only used later, once,
+  // when this user actually creates a business (see createBiz())
+  const refParam=new URLSearchParams(window.location.search).get('ref');
+  if(refParam) localStorage.setItem('themonishop_ref',refParam);
   // a "reset password" email link lands back here with type=recovery in the URL —
   // supabase-js turns that into a session automatically, so intercept it via this
   // event instead of letting the normal getSession() below log straight into the app
@@ -571,11 +576,19 @@ function fmtPacks(n){
   if(Number.isInteger(n)) return String(n);
   return n.toFixed(3).replace(/0+$/,'').replace(/\.$/,'');
 }
-// spell out a decimal pack quantity as whole packs + mode units, e.g. "9 packs + 1 Mudu"
-// (greedy: biggest portion first, so it reads the way a shop owner would count it) —
-// used for both current stock (onHand) and lifetime totals (sold), so "37.5" always
-// reads as "37 packs + 1 Half" using the item's own mode names, never a bare decimal
+// naive English pluralization — covers the common shop unit words (Bag,
+// Crate, Carton, Pack, Box, Bottle, Sack, Tin, Roll...) without a library
+function pluralize(word,n){
+  if(n===1) return word;
+  return /[sxz]$|[cs]h$/i.test(word) ? word+'es' : word+'s';
+}
+// spell out a decimal pack quantity as whole units + mode units, e.g.
+// "9 Bags + 1 Mudu" (greedy: biggest portion first, so it reads the way a
+// shop owner would count it) — used for both current stock (onHand) and
+// lifetime totals (sold), so "37.5" always reads as "37 Bags + 1 Half"
+// using the item's own unit word and mode names, never a bare decimal
 function breakdownQty(i,total){
+  const unit=i.unit_name||'Pack';
   const modes=itemModes(i).slice().sort((a,b)=>a.per_pack-b.per_pack);
   let whole=Math.floor(total+1e-6);
   let rem=total-whole;
@@ -586,8 +599,8 @@ function breakdownQty(i,total){
     const count=Math.floor(rem/portion+1e-6);
     if(count>0){ parts.push(`${count} ${m.name}`); rem-=count*portion; }
   });
-  if(rem>1e-6) parts.push(`${fmtPacks(rem)} pack`);
-  if(whole>0||!parts.length) parts.unshift(`${whole} pack${whole===1?'':'s'}`);
+  if(rem>1e-6) parts.push(`${fmtPacks(rem)} ${unit}`);
+  if(whole>0||!parts.length) parts.unshift(`${whole} ${pluralize(unit,whole)}`);
   return parts.join(' + ');
 }
 function packBreakdown(i){ return breakdownQty(i,onHand(i.id)); }
@@ -654,8 +667,13 @@ async function renderNoBiz(){
 }
 async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
-  const {error}=await sb.from('businesses').insert({name,owner_id:S.user.id});
+  const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
   if(error) return err(error);
+  const refCode=localStorage.getItem('themonishop_ref');
+  if(refCode){
+    await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
+    localStorage.removeItem('themonishop_ref');
+  }
   toast('Business created'); await loadBusinesses();
 }
 async function joinBiz(){
@@ -707,7 +725,7 @@ async function vDashboard(v){
 
   v.innerHTML=`
     <div class="stats">
-      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${fmtPacks(sum(dayS,s=>(s.base_units||s.quantity)))} pack(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
+      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
       <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
       <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
       <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
@@ -770,9 +788,14 @@ function vItems(v){
         <button class="btn ghost sm" type="button" onclick="scanInto('iBarcode')">${icon('barcode')} Scan</button>
       </div>
     </div>
+    <div class="field">
+      <label>Unit name</label>
+      <input id="iUnit" list="unitSuggestions" value="Pack" placeholder="e.g. Bag, Crate, Carton">
+      <datalist id="unitSuggestions"><option value="Pack"><option value="Bag"><option value="Crate"><option value="Carton"><option value="Bottle"><option value="Sack"><option value="Box"><option value="Tin"><option value="Roll"></datalist>
+    </div>
     <div class="frow">
-      <div class="field"><label>Opening stock (packs)</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5"></div>
-      <div class="field"><label>Low-stock alert (packs)</label><input id="iThr" type="number" min="0" step="any" value="2"></div>
+      <div class="field"><label>Opening stock</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5"></div>
+      <div class="field"><label>Low-stock alert</label><input id="iThr" type="number" min="0" step="any" value="2"></div>
     </div>
     <div class="field">
       <label>Other ways to sell this (optional)</label>
@@ -845,7 +868,7 @@ async function addItem(){
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
     pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold,
-    barcode:$('#iBarcode').value.trim()||null};
+    barcode:$('#iBarcode').value.trim()||null, unit_name:$('#iUnit').value.trim()||'Pack'};
 
   if(S.role==='manager'){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
@@ -881,13 +904,20 @@ function editItem(id){
     <div class="frow">
       <div class="field"><label>Pack price — sell (₦)</label><input id="ePack" type="number" value="${fullPackPrice(i)}"></div>
       <div class="field"><label>Pack price — cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>
-      <div class="field"><label>Low-stock alert (packs)</label><input id="eThr" type="number" step="any" value="${i.low_stock_threshold}"></div>
+      <div class="field"><label>Low-stock alert</label><input id="eThr" type="number" step="any" value="${i.low_stock_threshold}"></div>
     </div>
-    <div class="field">
-      <label>Barcode (optional)</label>
-      <div style="display:flex;gap:8px">
-        <input id="eBarcode" value="${esc(i.barcode||'')}" placeholder="Scan or type" style="flex:1">
-        <button class="btn ghost sm" type="button" onclick="scanInto('eBarcode')">${icon('barcode')} Scan</button>
+    <div class="frow">
+      <div class="field">
+        <label>Unit name</label>
+        <input id="eUnit" list="unitSuggestions" value="${esc(i.unit_name||'Pack')}" placeholder="e.g. Bag, Crate, Carton">
+        <datalist id="unitSuggestions"><option value="Pack"><option value="Bag"><option value="Crate"><option value="Carton"><option value="Bottle"><option value="Sack"><option value="Box"><option value="Tin"><option value="Roll"></datalist>
+      </div>
+      <div class="field">
+        <label>Barcode (optional)</label>
+        <div style="display:flex;gap:8px">
+          <input id="eBarcode" value="${esc(i.barcode||'')}" placeholder="Scan or type" style="flex:1">
+          <button class="btn ghost sm" type="button" onclick="scanInto('eBarcode')">${icon('barcode')} Scan</button>
+        </div>
       </div>
     </div>
     ${suggestedUnit?`<p class="hint" style="margin:-2px 0 10px;color:var(--amber)">This item used to sell by single unit (${money(i.sell_price)} · ${i.units_per_pack}/pack) — added back below as a <b>Unit</b> mode. Review and hit Save to restore it, or remove it if you don't want it.</p>`:''}
@@ -935,7 +965,7 @@ async function saveItem(id){
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
     pack_price:+$('#ePack').value||0, cost_price:+$('#eCost').value||0,
     low_stock_threshold:+$('#eThr').value||0, modes,
-    barcode:$('#eBarcode').value.trim()||null};
+    barcode:$('#eBarcode').value.trim()||null, unit_name:$('#eUnit').value.trim()||'Pack'};
 
   if(S.role==='manager'){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
@@ -1001,7 +1031,7 @@ function scanForRestock(){
 }
 function rModeOptions(){
   const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
-  const opts=[`<option value="pack">Packs</option>`].concat(itemModes(i).map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`));
+  const opts=[`<option value="pack">${esc(pluralize(i.unit_name||'Pack',2))}</option>`].concat(itemModes(i).map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`));
   $('#rMode').innerHTML=opts.join('');
   rPackInfo();
 }
@@ -1010,9 +1040,10 @@ function rPackInfo(){
   const modeName=$('#rMode').value, qty=+$('#rQty').value||0;
   const mode=itemModes(i).find(m=>m.name===modeName);
   const baseUnits = mode ? qty/mode.per_pack : qty;
+  const unit=pluralize(i.unit_name||'Pack',baseUnits);
   $('#rInfo').innerHTML = mode
-    ? `${qty||0} × ${esc(mode.name)} = <b>${fmtPacks(baseUnits)}</b> pack(s) added to stock.`
-    : `Adds <b>${fmtPacks(qty||0)}</b> pack(s) to stock.`;
+    ? `${qty||0} × ${esc(mode.name)} = <b>${fmtPacks(baseUnits)}</b> ${esc(unit)} added to stock.`
+    : `Adds <b>${fmtPacks(qty||0)}</b> ${esc(unit)} to stock.`;
 }
 async function addPurchase(){
   const item_id=$('#rItem').value, qty=+$('#rQty').value;
@@ -1027,9 +1058,10 @@ async function addPurchase(){
   const {error}=await sb.from('purchases').insert(rec);
   if(error) return err(error);
   const stockValueAfter=stockValueBefore+base*Number(it.cost_price);
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${it.name} ${fmtPacks(before)}→${fmtPacks(before+base)} pack(s) (+${fmtPacks(base)} restocked, cost ${money((unit_cost||0)*base)}), store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'restock_added',detail:`${it.name}: ${breakdownQty(it,base)} restocked (cost ${money((unit_cost||0)*base)}), now ${breakdownQty(it,before+base)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
+  const addedLabel=breakdownQty(it,base);
   if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Restocked, but audit log entry failed: '+auditErr.message,true); }
-  else toast(`Added ${fmtPacks(base)} pack(s) to stock`);
+  else toast(`Added ${addedLabel} to stock`);
   await loadData(); render();
 }
 
@@ -1068,8 +1100,9 @@ async function saveRecon(){
     await sb.from('adjustments').insert({business_id:S.biz.id,item_id,quantity_delta:variance,reason:'reconciliation correction',created_by:S.user.id});
   }
   const nm=(it||{}).name||'';
+  const varLabel=it?`${variance>0?'+':''}${breakdownQty(it,Math.abs(variance))}${variance<0?' short':variance>0?' extra':''}`:`${variance>0?'+':''}${fmtPacks(variance)}`;
   const valueLine=applied?`, store value ${money(stockValueBefore)}→${money(stockValueBefore+variance*Number((it||{}).cost_price||0))}${variance<0?' (decreased)':' (increased)'}`:'';
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: expected ${fmtPacks(exp)}, counted ${fmtPacks(counted)} (${variance>0?'+':''}${fmtPacks(variance)} pack(s) variance)${applied?', stock corrected to '+fmtPacks(counted):''}${valueLine}`});
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'reconciliation_recorded',detail:`${nm}: expected ${it?breakdownQty(it,exp):fmtPacks(exp)}, counted ${it?breakdownQty(it,counted):fmtPacks(counted)} (${varLabel} variance)${applied?', stock corrected to '+(it?breakdownQty(it,counted):fmtPacks(counted)):''}${valueLine}`});
   if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Recorded, but audit log entry failed: '+auditErr.message,true); }
   else toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded');
   await loadData(); render();
@@ -1590,11 +1623,11 @@ function termAdd(itemId,modeIdx){
   const baseUnits = isPack ? 1 : (1/per_pack);
   const price = isPack ? fullPackPrice(i) : (mode?mode.price:0);
   const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
-  const label = isPack ? 'pack' : (mode?mode.name:'');
+  const label = isPack ? (i.unit_name||'Pack') : (mode?mode.name:'');
   const inCart=termCart.filter(l=>l.itemId===itemId).reduce((a,l)=>a+l.baseUnits*l.qty,0);
   if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
   const ex=termCart.find(l=>l.itemId===itemId&&l.mode===label);
-  if(ex) ex.qty++; else termCart.push({itemId,mode:label,baseUnits,price,cost,name:i.name,qty:1});
+  if(ex) ex.qty++; else termCart.push({itemId,mode:label,isPack,baseUnits,price,cost,name:i.name,qty:1});
   refreshTermCart();
 }
 function termCartRows(){
@@ -1747,7 +1780,7 @@ function productCards(){
       ${expanded?`
         <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
         <div class="opts" onclick="event.stopPropagation()">
-          <button class="opt" onclick='addToCart("${i.id}",-1)'>Pack<small>${money(fullPackPrice(i))}</small></button>
+          <button class="opt" onclick='addToCart("${i.id}",-1)'>${esc(i.unit_name||'Pack')}<small>${money(fullPackPrice(i))}</small></button>
           ${modes.map((m,mi)=>`<button class="opt" onclick='addToCart("${i.id}",${mi})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
         </div>`:''}
     </div>`;
@@ -1775,12 +1808,12 @@ function addToCart(itemId,modeIdx){
   const baseUnits = isPack ? 1 : (1/per_pack);
   const price = isPack ? fullPackPrice(i) : (mode?mode.price:0);
   const cost  = isPack ? fullPackCost(i)  : modeCost(i,per_pack);
-  const label = isPack ? 'pack' : (mode?mode.name:'');
+  const label = isPack ? (i.unit_name||'Pack') : (mode?mode.name:'');
   // stock guard across everything already in the cart (small epsilon for float rounding)
   const inCart=cartUnits()[itemId]||0;
   if(inCart+baseUnits>onHand(i.id)+1e-9) return toast(`Only ${packBreakdown(i)} of ${i.name} in stock`,true);
   const ex=S.cart.find(l=>l.itemId===itemId&&l.mode===label);
-  if(ex) ex.qty++; else S.cart.push({itemId,mode:label,baseUnits,price,cost,name:i.name,qty:1});
+  if(ex) ex.qty++; else S.cart.push({itemId,mode:label,isPack,baseUnits,price,cost,name:i.name,qty:1});
   refreshCart();
 }
 function cartRows(){
@@ -1837,13 +1870,15 @@ async function checkout(){
       base_units:l.baseUnits*l.qty,unit_price:l.price,unit_cost:l.cost,customer_id:custId,payment_method:method,created_by:S.user.id}));
     const {error}=await sb.from('sales').insert(rows);
     if(error) throw error;
-    // stock moves are computed from local state before loadData() refreshes it, so this
-    // reads as "before → after" for the audit trail rather than a bare quantity delta
+    // stock moves are computed from local state before loadData() refreshes it, and
+    // spelled out via breakdownQty() (e.g. "3 Bags + 1 Mudu") rather than a bare
+    // decimal, both for how much moved and what's left, in the item's own unit word
     const deductByItem={}; S.cart.forEach(l=>{deductByItem[l.itemId]=(deductByItem[l.itemId]||0)+l.baseUnits*l.qty;});
     const stockMoves=Object.keys(deductByItem).map(id=>{
-      const nm=(S.items.find(i=>i.id===id)||{}).name||'item', before=onHand(id), after=before-deductByItem[id];
-      return `${nm} ${fmtPacks(before)}→${fmtPacks(after)} pack(s)`;
-    }).join(', ');
+      const item=S.items.find(i=>i.id===id); if(!item) return 'item sold';
+      const after=onHand(id)-deductByItem[id];
+      return `${item.name}: ${breakdownQty(item,deductByItem[id])} sold, ${breakdownQty(item,after)} remaining`;
+    }).join('; ');
     const staffName=S.user.user_metadata?.full_name||S.user.email;
     const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
     if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
@@ -1865,7 +1900,7 @@ async function checkout(){
       ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName} — ${stockMoves} — ${soldLine} — ${tillLine}`}));
     }
     if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Sale saved, but audit log entry failed: '+auditErr.message,true); }
-    const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,qty:l.qty,price:l.price})),
+    const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,isPack:l.isPack,qty:l.qty,price:l.price})),
       total,custName:shownName,method:onCredit?'credit':S.payMode};
     S.cart=[]; S.saleCustId=null;
     if(!auditErr) toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
@@ -1882,7 +1917,7 @@ function showReceipt(snap){
         <div class="meta">${snap.date.toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})}</div>
         <div class="meta">${esc(snap.custName)} · ${methodLabel}</div>
       </div>
-      ${snap.lines.map(l=>`<div class="rline"><span>${esc(l.name)}${l.mode&&l.mode!=='pack'?` (${esc(l.mode)})`:''} × ${l.qty}</span><span class="num">${money(l.price*l.qty)}</span></div>`).join('')}
+      ${snap.lines.map(l=>`<div class="rline"><span>${esc(l.name)}${l.mode&&!l.isPack?` (${esc(l.mode)})`:''} × ${l.qty}</span><span class="num">${money(l.price*l.qty)}</span></div>`).join('')}
       <div class="rline tot"><span>Total</span><span class="num">${money(snap.total)}</span></div>
     </div>
     <div class="frow noprint" style="margin-top:14px">

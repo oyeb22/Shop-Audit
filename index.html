@@ -365,6 +365,9 @@ footer .copy{color:var(--muted);font-size:12.5px}
 <script>
 document.getElementById('yr').textContent = new Date().getFullYear();
 
+const refParam = new URLSearchParams(window.location.search).get('ref');
+if (refParam) localStorage.setItem('themonishop_ref', refParam);
+
 const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
 

@@ -390,7 +390,14 @@ function boot(){
   if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_ANON_KEY.startsWith('PASTE_')){
     $('#setupNotice').classList.remove('hidden'); return;
   }
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  // inside the native app, don't persist the session to disk — it stays
+  // valid while the app process is alive (so bouncing out to WhatsApp and
+  // back doesn't log anyone out), but a fresh app launch always starts at
+  // the sign-in screen instead of silently resuming a previous login. The
+  // plain website keeps normal persistent sessions — this only affects the
+  // Capacitor app, where window.Capacitor exists.
+  const isNativeApp = !!window.Capacitor?.isNativePlatform?.();
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, isNativeApp?{auth:{persistSession:false}}:{});
   // capture a referral code (?ref=CODE) if present — covers anyone landing
   // directly on the app, not just via the homepage; only used later, once,
   // when this user actually creates a business (see createBiz())
@@ -758,7 +765,11 @@ async function vDashboard(v){
   const todayCusts=todayCustIds.map(id=>S.customers.find(c=>c.id===id)).filter(Boolean);
   S._todayCusts=todayCusts;
 
+  const story=todayStory(sales);
   v.innerHTML=`
+    <div class="card"><div class="hd"><h2>Today's story</h2><span class="desc">how the shop did today, in plain terms</span></div><div class="bd">
+      ${todayStoryLines(story).map(l=>`<p style="margin-bottom:4px">${esc(l)}</p>`).join('')}
+    </div></div>
     <div class="stats">
       <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
       <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
@@ -837,7 +848,7 @@ function vItems(v){
       <div id="draftModesBox"></div>
       <button class="btn ghost sm" type="button" onclick="addDraftMode()">+ Add a mode (e.g. Half bag, Mudu)</button>
     </div>
-    <button class="btn primary" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
+    <button class="btn primary" id="addItemBtn" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?' — changes go to the admin for approval':''}</span></div><div class="bd tight rtable">
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
@@ -892,6 +903,7 @@ function modePreview(idx){ const el=$('#dmPrev'+idx); if(el) el.textContent=draf
 function addDraftMode(){ draftModes.push({name:'',price:0,per_pack:2}); renderDraftModes(); }
 function removeDraftMode(idx){ draftModes.splice(idx,1); renderDraftModes(); }
 async function addItem(){
+  const btn=$('#addItemBtn'); if(btn?.disabled) return; // guards against a slow double-tap firing twice
   if(S.role!=='manager' && !S.biz.is_paid && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached — upgrade to add more items',true);
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
@@ -905,22 +917,30 @@ async function addItem(){
     pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold,
     barcode:$('#iBarcode').value.trim()||null, unit_name:$('#iUnit').value.trim()||'Pack'};
 
-  if(needsApproval('items')){
-    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks}});
-    if(error) return err(error);
-    toast('Sent for approval'); draftModes=[]; render();
-    return;
-  }
+  if(btn){ btn.disabled=true; btn.textContent=S.role==='manager'?'Sending…':'Adding…'; }
+  try{
+    if(needsApproval('items')){
+      const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+        action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks}});
+      if(error) return err(error);
+      toast('Sent for approval'); draftModes=[]; render();
+      return;
+    }
 
-  const {data,error}=await sb.from('items').insert(rec).select().single();
-  if(error) return err(error);
-  if(openPacks>0){
-    const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:data.id,quantity:openPacks,base_units:openPacks,unit_cost:packCost,entry_date:today(),created_by:S.user.id});
-    if(r.error) return err(r.error);
+    const stockValueBefore=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
+    const {data,error}=await sb.from('items').insert(rec).select().single();
+    if(error) return err(error);
+    if(openPacks>0){
+      const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:data.id,quantity:openPacks,base_units:openPacks,unit_cost:packCost,entry_date:today(),created_by:S.user.id});
+      if(r.error) return err(r.error);
+    }
+    const stockValueAfter=stockValueBefore+openPacks*packCost;
+    const openingLine=openPacks>0?`, opening stock ${breakdownQty(data,openPacks)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}`:'';
+    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_added',detail:`${name}: pack price ${money(packSell)}${openingLine}`});
+    toast('Item added'); draftModes=[]; await loadData(); render();
+  }finally{
+    if(btn && document.body.contains(btn)){ btn.disabled=false; btn.textContent=S.role==='manager'?'Send for approval':'Add item'; }
   }
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_added',detail:name});
-  toast('Item added'); draftModes=[]; await loadData(); render();
 }
 function editItem(id){
   const i=S.items.find(x=>x.id===id);
@@ -1261,6 +1281,9 @@ function vReports(v){
       <button class="btn ghost sm" onclick="repRange('today')">Today</button>
       <button class="btn ghost sm" onclick="repRange('week')">Last 7 days</button>
       <button class="btn ghost sm" onclick="repRange('month')">This month</button>
+      <button class="btn ghost sm" onclick="repRange('lastmonth')">Last month</button>
+      <button class="btn ghost sm" onclick="repRange('year')">This year</button>
+      <button class="btn ghost sm" onclick="repRange('all')">All time</button>
     </div>
   </div></div>
   <div id="repOut"></div>`;
@@ -1271,28 +1294,39 @@ function repRange(which){
   if(which==='today'){ $('#repFrom').value=today(); $('#repTo').value=today(); }
   else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#repFrom').value=iso(f); $('#repTo').value=today(); }
   else if(which==='month'){ $('#repFrom').value=monthStart(); $('#repTo').value=today(); }
+  else if(which==='lastmonth'){
+    const f=new Date(d.getFullYear(),d.getMonth()-1,1), l=new Date(d.getFullYear(),d.getMonth(),0);
+    $('#repFrom').value=iso(f); $('#repTo').value=iso(l);
+  }else if(which==='year'){ $('#repFrom').value=`${d.getFullYear()}-01-01`; $('#repTo').value=today(); }
+  else if(which==='all'){ $('#repFrom').value='2000-01-01'; $('#repTo').value=today(); }
   runReport();
 }
 async function runReport(){
   const from=$('#repFrom').value, to=$('#repTo').value;
-  const [salesRes,expRes]=await Promise.all([
+  const [salesRes,expRes,purRes]=await Promise.all([
     sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-    sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to)
+    sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
+    sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to)
   ]);
   if(salesRes.error) return err(salesRes.error);
   const data=salesRes.data;
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
   const totU=data.reduce((a,s)=>a+(s.base_units||s.quantity),0), totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
   const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0), netProfit=totP-totExp;
+  const totSpent=(purRes.data||[]).reduce((a,p)=>a+Number(p.unit_cost||0)*Number(p.base_units||p.quantity||0),0);
   const byMethod={cash:0,transfer:0,credit:0,card:0};
   data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
   const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
   const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
   const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
   S._report={from,to,rows,nm,byMethod,totExp,netProfit};
+  const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
+  const stockAtPack=S.items.reduce((a,i)=>a+onHand(i.id)*fullPackPrice(i),0);
+  const stockAtLeast=S.items.reduce((a,i)=>a+onHand(i.id)*leastModeUnitPrice(i),0);
   $('#repOut').innerHTML=`
     <div class="stats">
       <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">${totU} units · gross profit ${money(totP)}</div></div>
+      <div class="stat bad"><div class="label">Spent on stock</div><div class="value num">${money(totSpent)}</div><div class="sub">restocking, this range</div></div>
       <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
       <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses</div></div>
       <div class="stat"><div class="label">${icon('cash')} Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
@@ -1304,7 +1338,52 @@ async function runReport(){
       ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
       <tbody>${rows.map(([id,o])=>`<tr><td class="itemname">${esc(nm(id))}</td><td class="r num">${o.u}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales in this range.</div>'}
+    </div></div>
+    <div class="card"><div class="hd"><h2>Stock on hand</h2><span class="desc">right now, not tied to the date range above</span></div><div class="bd">
+      <div class="stats" style="margin-bottom:0">
+        <div class="stat"><div class="label">At cost</div><div class="value num">${money(stockCost)}</div><div class="sub">what you paid for what's on the shelves</div></div>
+        <div class="stat good"><div class="label">If sold at pack price</div><div class="value num">${money(stockAtPack)}</div><div class="sub">best case</div></div>
+        <div class="stat warn"><div class="label">If sold at least mode price</div><div class="value num">${money(stockAtLeast)}</div><div class="sub">worst case</div></div>
+      </div>
     </div></div>`;
+}
+// the cheapest per-pack-equivalent price among an item's modes (a mode can
+// legitimately be priced below pack, e.g. wholesale) — falls back to pack
+// price for items with no modes, since there's no other option to compare
+function leastModeUnitPrice(i){
+  const modes=itemModes(i);
+  return modes.length ? Math.min(...modes.map(m=>m.price*m.per_pack)) : fullPackPrice(i);
+}
+// one shared "how did today go" computation used by both the Dashboard
+// card and the WhatsApp summary, so the two never say different things.
+// `sales` just needs to cover today + the trailing 7 days at minimum.
+function todayStory(sales){
+  const t=today();
+  const dNow=new Date(t+'T00:00:00');
+  const days7=[]; for(let i=1;i<=7;i++){ const x=new Date(dNow); x.setDate(dNow.getDate()-i); days7.push(x.toISOString().slice(0,10)); }
+  const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
+  const dayS=sales.filter(s=>s.entry_date===t);
+  const trailing=sales.filter(s=>days7.includes(s.entry_date));
+  const todayRev=dayS.reduce((a,s)=>a+rev(s),0);
+  const todayProf=dayS.reduce((a,s)=>a+prof(s),0);
+  const trailingByDay={}; trailing.forEach(s=>{ trailingByDay[s.entry_date]=(trailingByDay[s.entry_date]||0)+rev(s); });
+  const activeDays=Object.keys(trailingByDay).length;
+  const avgRev=activeDays?Object.values(trailingByDay).reduce((a,b)=>a+b,0)/activeDays:null;
+  const vsAvgPct=avgRev?Math.round(((todayRev-avgRev)/avgRev)*100):null;
+  const byItem={}; dayS.forEach(s=>{ byItem[s.item_id]=(byItem[s.item_id]||0)+rev(s); });
+  const topId=Object.entries(byItem).sort((a,b)=>b[1]-a[1])[0]?.[0];
+  const topName=topId?(S.items.find(i=>i.id===topId)||{}).name||null:null;
+  const creditToday=dayS.filter(s=>s.payment_method==='credit').reduce((a,s)=>a+rev(s),0);
+  const lowCount=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).length;
+  return {todayRev,todayProf,itemCount:dayS.length,topName,avgRev,vsAvgPct,creditToday,lowCount};
+}
+function todayStoryLines(s){
+  const lines=[`${money(s.todayRev)} today from ${s.itemCount} item(s) sold, profit ${money(s.todayProf)}`];
+  if(s.vsAvgPct!==null) lines.push(s.vsAvgPct>=0?`${s.vsAvgPct}% above your usual day`:`${Math.abs(s.vsAvgPct)}% below your usual day`);
+  if(s.topName) lines.push(`Best seller: ${s.topName}`);
+  if(s.creditToday>0) lines.push(`${money(s.creditToday)} given on credit today`);
+  lines.push(s.lowCount>0?`${s.lowCount} item(s) need restocking`:'Nothing low on stock');
+  return lines;
 }
 function exportCSV(){
   const r=S._report; if(!r) return;
@@ -2367,21 +2446,16 @@ async function saveApprovalSettings(){
   toast('Approval settings saved');
 }
 async function sendWhatsAppSummary(){
-  const t=today();
-  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).eq('entry_date',t);
+  const t=today(); const d8=new Date(t+'T00:00:00'); d8.setDate(d8.getDate()-7);
+  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',d8.toISOString().slice(0,10)).lte('entry_date',t);
   if(error) return err(error);
-  const rev=sales.reduce((a,s)=>a+s.quantity*Number(s.unit_price),0);
-  const prof=sales.reduce((a,s)=>a+s.quantity*(Number(s.unit_price)-Number(s.unit_cost)),0);
-  const units=sales.reduce((a,s)=>a+s.quantity,0);
-  const low=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).length;
+  const story=todayStory(sales||[]);
   const lines=[
     `*${S.biz.name}* — daily summary`,
     new Date().toLocaleDateString('en-NG',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}),
     ``,
-    `Sales today: ${money(rev)} (${units} items)`,
-    `Profit today: ${money(prof)}`,
-    `Outstanding credit: ${money(totalOwed())}`,
-    `Low/out of stock: ${low} item(s)`
+    ...todayStoryLines(story),
+    `Outstanding credit (total): ${money(totalOwed())}`
   ];
   const num=(S.biz.wa_number||'').replace(/[^0-9]/g,'');
   const url=`https://wa.me/${num}?text=${encodeURIComponent(lines.join('\n'))}`;

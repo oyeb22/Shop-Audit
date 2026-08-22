@@ -709,6 +709,14 @@ async function renderNoBiz(){
 }
 async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
+  // re-verify the current user fresh rather than trust the cached S.user —
+  // confirmed via Supabase logs that a real request was authenticated as
+  // the correct user but the owner_id it sent didn't match that user,
+  // meaning S.user had gone stale by the time this ran; getUser() re-checks
+  // the live session instead of relying on a value cached earlier
+  const {data:userData,error:userErr}=await sb.auth.getUser();
+  if(userErr||!userData?.user) return toast('Your session looks stale — please sign out and back in',true);
+  S.user=userData.user;
   const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
   if(error) return err(error);
   const refCode=localStorage.getItem('themonishop_ref');
@@ -836,8 +844,8 @@ function vItems(v){
     </div>
     <div class="field">
       <label>Unit name</label>
-      <input id="iUnit" list="unitSuggestions" value="Pack" placeholder="e.g. Bag, Crate, Carton">
-      <datalist id="unitSuggestions"><option value="Pack"><option value="Bag"><option value="Crate"><option value="Carton"><option value="Bottle"><option value="Sack"><option value="Box"><option value="Tin"><option value="Roll"></datalist>
+      <input id="iUnit" list="unitSuggestionsAdd" value="Pack" placeholder="e.g. Bag, Crate, Carton">
+      <datalist id="unitSuggestionsAdd"><option value="Pack"><option value="Bag"><option value="Crate"><option value="Carton"><option value="Bottle"><option value="Sack"><option value="Box"><option value="Tin"><option value="Roll"></datalist>
     </div>
     <div class="frow">
       <div class="field"><label>Opening stock</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5"></div>
@@ -964,8 +972,8 @@ function editItem(id){
     <div class="frow">
       <div class="field">
         <label>Unit name</label>
-        <input id="eUnit" list="unitSuggestions" value="${esc(i.unit_name||'Pack')}" placeholder="e.g. Bag, Crate, Carton">
-        <datalist id="unitSuggestions"><option value="Pack"><option value="Bag"><option value="Crate"><option value="Carton"><option value="Bottle"><option value="Sack"><option value="Box"><option value="Tin"><option value="Roll"></datalist>
+        <input id="eUnit" list="unitSuggestionsEdit" value="${esc(i.unit_name||'Pack')}" placeholder="e.g. Bag, Crate, Carton">
+        <datalist id="unitSuggestionsEdit"><option value="Pack"><option value="Bag"><option value="Crate"><option value="Carton"><option value="Bottle"><option value="Sack"><option value="Box"><option value="Tin"><option value="Roll"></datalist>
       </div>
       <div class="field">
         <label>Barcode (optional)</label>
@@ -1334,9 +1342,9 @@ async function runReport(){
       <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
       ${byMethod.card?`<div class="stat"><div class="label">${icon('card')} Card (terminal)</div><div class="value num">${money(byMethod.card)}</div></div>`:''}
     </div>
-    <div class="card"><div class="hd"><h2>By item</h2><span class="desc">${from} → ${to}</span><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight">
-      ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Units</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
-      <tbody>${rows.map(([id,o])=>`<tr><td class="itemname">${esc(nm(id))}</td><td class="r num">${o.u}</td><td class="r num">${money(o.r)}</td><td class="r num" style="color:var(--green)">${money(o.p)}</td></tr>`).join('')}</tbody></table>`
+    <div class="card"><div class="hd"><h2>By item</h2><span class="desc">${from} → ${to}</span><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight rtable">
+      ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Sold</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
+      <tbody>${rows.map(([id,o])=>{const it=S.items.find(x=>x.id===id);return `<tr><td class="itemname">${esc(nm(id))}</td><td class="r" data-label="Sold">${it?breakdownQty(it,o.u):fmtPacks(o.u)}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" style="color:var(--green)" data-label="Profit">${money(o.p)}</td></tr>`;}).join('')}</tbody></table>`
       :'<div class="empty">No sales in this range.</div>'}
     </div></div>
     <div class="card"><div class="hd"><h2>Stock on hand</h2><span class="desc">right now, not tied to the date range above</span></div><div class="bd">
@@ -1385,12 +1393,27 @@ function todayStoryLines(s){
   lines.push(s.lowCount>0?`${s.lowCount} item(s) need restocking`:'Nothing low on stock');
   return lines;
 }
-function exportCSV(){
+async function exportCSV(){
   const r=S._report; if(!r) return;
   let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
   r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
-  const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`; a.click();
+  const filename=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`;
+  // a plain <a download> click is silently a no-op inside the native app's
+  // WebView (no download manager wired up there) — only works in a real
+  // browser, so the native app needs Filesystem+Share instead
+  if(window.Capacitor?.isNativePlatform?.()){
+    const {Filesystem}=window.Capacitor.Plugins;
+    const {Share}=window.Capacitor.Plugins;
+    if(!Filesystem||!Share){ toast('Export isn\'t available in this app build yet',true); return; }
+    try{
+      const base64=btoa(unescape(encodeURIComponent(csv)));
+      const write=await Filesystem.writeFile({path:filename,data:base64,directory:'CACHE'});
+      await Share.share({title:filename,url:write.uri});
+    }catch(e){ err(e); }
+  }else{
+    const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+    a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  }
 }
 
 /* ============================================================

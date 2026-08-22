@@ -734,11 +734,16 @@ async function createBiz(){
   const {data:userData,error:userErr}=await sb.auth.getUser();
   if(userErr||!userData?.user) return toast('Your session looks stale — please sign out and back in',true);
   S.user=userData.user;
-  const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
+  // plain insert first, no .select()/.single() chained on — isolating
+  // whether the "Prefer: return=representation" header those add is
+  // somehow part of the RLS failure, since a raw SQL simulation of this
+  // exact insert (same owner_id, same auth.uid()) succeeded fine
+  const {error}=await sb.from('businesses').insert({name,owner_id:S.user.id});
   if(error) return err(error);
   const refCode=localStorage.getItem('themonishop_ref');
-  if(refCode){
-    await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
+  const {data:fetched}=await sb.from('businesses').select('id').eq('owner_id',S.user.id).eq('name',name).order('created_at',{ascending:false}).limit(1).maybeSingle();
+  if(refCode && fetched){
+    await sb.rpc('record_referral',{p_code:refCode,p_business_id:fetched.id});
     localStorage.removeItem('themonishop_ref');
   }
   toast('Business created'); await loadBusinesses();

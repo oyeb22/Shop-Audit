@@ -705,7 +705,24 @@ async function renderNoBiz(){
       <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
       <button class="btn primary" onclick="joinBiz()">Request to join</button>
     </div></div>
-  </div>`;
+  </div>
+  <div class="card"><div class="hd"><h2>Debug (temporary)</h2></div><div class="bd"><div id="debugWhoami" class="hint">Checking…</div></div></div>`;
+  debugWhoami();
+}
+// TEMPORARY — remove once the businesses/platform_admin auth mismatch is
+// resolved. Shows what the client thinks its own user id is side by side
+// with what the server actually sees via auth.uid(), in both a plain and a
+// security-definer context, so there's nothing left to guess about.
+async function debugWhoami(){
+  const box=$('#debugWhoami'); if(!box) return;
+  const [inv,def]=await Promise.all([
+    sb.rpc('debug_whoami'),
+    sb.rpc('debug_whoami_definer')
+  ]);
+  box.innerHTML=`
+    <div>Client S.user.id: <b>${esc(S.user?.id||'(none)')}</b></div>
+    <div>Server auth.uid() (invoker): <b>${esc(inv.data||'(null)')}</b>${inv.error?' — error: '+esc(inv.error.message):''}</div>
+    <div>Server auth.uid() (definer): <b>${esc(def.data||'(null)')}</b>${def.error?' — error: '+esc(def.error.message):''}</div>`;
 }
 async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);

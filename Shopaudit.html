@@ -729,7 +729,16 @@ async function renderNoBiz(){
       <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
       <button class="btn primary" onclick="joinBiz()">Request to join</button>
     </div></div>
-  </div>`;
+  </div>
+  <div class="card"><div class="hd"><h2>Debug</h2></div><div class="bd">
+    <button class="btn ghost" onclick="testRlsInsert()">Test RLS insert (temporary)</button>
+  </div></div>`;
+}
+// TEMPORARY diagnostic — remove along with migration-rls-isolation-test.sql
+async function testRlsInsert(){
+  const {data,error}=await sb.rpc('test_rls_insert');
+  if(error) alert('test_rls_insert FAILED.\n'+error.code+' '+error.message);
+  else alert('test_rls_insert SUCCEEDED.\n'+JSON.stringify(data));
 }
 async function createBiz(){
   const btn=$('#nbCreateBtn'); if(btn?.disabled) return;

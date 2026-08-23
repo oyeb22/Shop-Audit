@@ -736,37 +736,18 @@ async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
   if(btn) btn.disabled=true;
   try{
-    // a brand-new sign-up's very first authenticated write has occasionally
-    // hit "new row violates row-level security policy for table businesses"
-    // even though owner_id and auth.uid() provably match server-side —
-    // everything about the policy/trigger checks out, so this looks like a
-    // transient auth-context race right at signup rather than a real bug.
-    // Forcing a session refresh right before the insert, and retrying once
-    // if it still happens, makes this self-healing either way.
-    const doInsert=async()=>sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
-    let {data,error}=await doInsert();
-    const firstErr=error;
-    let refreshErr=null, refreshedUid=null;
-    if(error && error.code==='42501'){
-      const uidBefore=S.user.id;
-      const {data:refreshed,error:rErr}=await sb.auth.refreshSession();
-      refreshErr=rErr;
-      if(refreshed?.user) S.user=refreshed.user;
-      refreshedUid=S.user.id;
-      ({data,error}=await doInsert());
-      if(error){
-        // TEMPORARY diagnostic — remove once this recurring bug is resolved
-        const {data:serverUid,error:whoErr}=await sb.rpc('debug_whoami');
-        alert('createBiz failed twice.\n\nATTEMPT 1: '+firstErr.code+' '+firstErr.message+
-          '\nuid used: '+uidBefore+
-          '\n\nrefreshSession error: '+(refreshErr?refreshErr.message:'(none)')+
-          '\nuid before refresh: '+uidBefore+'\nuid after refresh: '+refreshedUid+
-          '\n\nATTEMPT 2: '+error.code+' '+error.message+
-          '\nuid used: '+refreshedUid+
-          '\n\nserver auth.uid() right now: '+(serverUid||'(null)')+(whoErr?' (debug_whoami error: '+whoErr.message+')':''));
-      }
+    // uses the create_business RPC rather than a plain table insert — the
+    // plain insert was hitting "new row violates row-level security policy
+    // for table businesses" 100% of the time despite the policy, trigger,
+    // column types and auth context all being individually verified
+    // correct, which pointed at PostgREST's table-insert code path
+    // specifically rather than anything in the schema. See
+    // migration-create-business-rpc.sql.
+    const {data,error}=await sb.rpc('create_business',{p_name:name});
+    if(error){
+      alert('createBiz (RPC) failed.\n'+error.code+' '+error.message+(error.details?'\n'+error.details:'')+(error.hint?'\n'+error.hint:''));
+      return err(error);
     }
-    if(error) return err(error);
     const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');
     if(refCode){
       await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});

@@ -389,9 +389,14 @@ function scanInto(fieldId){ scanBarcode(code=>{ const el=$('#'+fieldId); if(el){
 // the native splash screen stays up (launchAutoHide:false in
 // capacitor.config.json) until this fires, so it never gets hidden by a
 // fixed timer before the app has actually loaded and rendered something —
-// a no-op on the plain website, where window.Capacitor doesn't exist
+// a no-op on the plain website, where window.Capacitor doesn't exist.
+// Also enforces a minimum visible time so a fast connection doesn't make it
+// flash past too quickly to register as a splash screen at all.
+const SPLASH_MIN_MS=700, bootStart=Date.now();
 function hideSplash(){
-  if(window.Capacitor?.isNativePlatform?.()) window.Capacitor.Plugins.SplashScreen?.hide();
+  if(!window.Capacitor?.isNativePlatform?.()) return;
+  const wait=Math.max(0,SPLASH_MIN_MS-(Date.now()-bootStart));
+  setTimeout(()=>window.Capacitor.Plugins.SplashScreen?.hide(),wait);
 }
 function boot(){
   if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_ANON_KEY.startsWith('PASTE_')){
@@ -574,18 +579,20 @@ async function doRealtimeRefresh(){
 }
 async function loadData(){
   if(!S.biz) return;
-  const [it,stk,cu,cb,aps]=await Promise.all([
+  const [it,stk,cu,cb,aps,rs]=await Promise.all([
     sb.from('items').select('*').eq('business_id',S.biz.id).order('name'),
     sb.from('item_stock').select('item_id,on_hand').eq('business_id',S.biz.id),
     sb.from('customers').select('*').eq('business_id',S.biz.id).order('name'),
     sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id),
-    sb.from('approval_settings').select('*').eq('business_id',S.biz.id).maybeSingle()
+    sb.from('approval_settings').select('*').eq('business_id',S.biz.id).maybeSingle(),
+    sb.from('referral_settings').select('*').eq('id',1).maybeSingle()
   ]);
   if(it.error) return err(it.error);
   S.items=it.data||[];
   S.customers=cu.data||[]; S.balances={}; (cb.data||[]).forEach(r=>S.balances[r.customer_id]=Number(r.balance||0));
   // no row yet = every action requires approval (matches the DB default in needs_approval())
   S.approvalSettings=aps.data||{items:true,restock:true,reconcile:true,till:true};
+  S.referralSettings=rs.data||{enabled:false,bonus_amount:0};
   S.stock={};
   if(stk.error){
     // the stock view couldn't be read — compute it directly so stock isn't wrongly 0
@@ -700,15 +707,21 @@ async function render(){
    ============================================================ */
 async function renderNoBiz(){
   $('#bizSelect').innerHTML='<option>No business yet</option>'; $('#rolePill').textContent='—'; $('#navGrid').innerHTML=''; $('#navCurrent').textContent='';
-  const {data:pending}=await sb.from('join_requests').select('*, business:businesses(name)').eq('user_id',S.user.id).eq('status','pending');
+  const [{data:pending},{data:rs}]=await Promise.all([
+    sb.from('join_requests').select('*, business:businesses(name)').eq('user_id',S.user.id).eq('status','pending'),
+    sb.from('referral_settings').select('*').eq('id',1).maybeSingle()
+  ]);
   const pendingHtml = (pending&&pending.length) ? `<div class="card"><div class="hd"><h2>Waiting for approval</h2></div><div class="bd">
     ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending — the admin needs to approve it before you get access.</p>`).join('')}
   </div></div>` : '';
+  const refCode=localStorage.getItem('themonishop_ref')||'';
+  const referralField = rs?.enabled ? `<div class="field"><label>Referral code (optional)</label><input id="nbRef" value="${esc(refCode)}" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>` : '';
   $('#view').innerHTML= pendingHtml + `
   <div class="split">
     <div class="card"><div class="hd"><h2>Create a business</h2></div><div class="bd">
       <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b> — set prices, stock and see all reports.</p>
       <div class="field"><label>Business name</label><input id="nbName" placeholder="e.g. Mama's Provision Store"></div>
+      ${referralField}
       <button class="btn primary" onclick="createBiz()">Create business</button>
     </div></div>
     <div class="card"><div class="hd"><h2>Join a business</h2></div><div class="bd">
@@ -722,7 +735,7 @@ async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
   const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
   if(error) return err(error);
-  const refCode=localStorage.getItem('themonishop_ref');
+  const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');
   if(refCode){
     await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
     localStorage.removeItem('themonishop_ref');
@@ -2457,6 +2470,11 @@ function vSettings(v){
       <input id="apTill" type="checkbox" ${S.approvalSettings?.till!==false?'checked':''} style="width:auto"> Till clearing needs approval</label>
     <button class="btn primary" onclick="saveApprovalSettings()">Save</button>
   </div></div>
+  ${(S.role==='admin'&&S.referralSettings?.enabled)?`<div class="card"><div class="hd"><h2>Refer & earn</h2><span class="desc">₦${Number(S.referralSettings.bonus_amount||0).toLocaleString('en-NG')} when they subscribe</span></div><div class="bd">
+    <p class="hint" style="margin-bottom:12px">Share your code with other shop owners. When someone signs up with it and subscribes to the paid plan, you earn a bonus — paid out directly, no in-app wallet.</p>
+    <div class="field"><label>Your referral code</label><input readonly value="${esc(S.biz.referral_code||'')}" onclick="this.select()"></div>
+    <button class="btn primary" onclick="shareReferralCode()">Share on WhatsApp</button>
+  </div></div>` : ''}
   <div class="card"><div class="hd"><h2 style="color:var(--red)">Reset test data</h2><span class="desc">clear everything you entered while testing</span></div><div class="bd">
     <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b> — giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
     <div class="row">
@@ -2490,6 +2508,11 @@ async function saveSettings(){
   S.biz.wa_enabled=wa_enabled; S.biz.wa_number=wa_number; S.biz.thankyou_message=thankyou_message; S.biz.reminder_message=reminder_message;
   const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz){bz.wa_enabled=wa_enabled;bz.wa_number=wa_number;bz.thankyou_message=thankyou_message;bz.reminder_message=reminder_message;}
   toast('Settings saved');
+}
+function shareReferralCode(){
+  const link=`https://themonishop.com.ng/?ref=${encodeURIComponent(S.biz.referral_code||'')}`;
+  const text=`I use TheMonishop to track stock, sales and staff at ${S.biz.name} — no more guessing where the money went. Try it with my link: ${link}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
 }
 async function saveApprovalSettings(){
   const settings={business_id:S.biz.id,items:$('#apItems').checked,restock:$('#apRestock').checked,

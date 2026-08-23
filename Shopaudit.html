@@ -745,10 +745,26 @@ async function createBiz(){
     // if it still happens, makes this self-healing either way.
     const doInsert=async()=>sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
     let {data,error}=await doInsert();
+    const firstErr=error;
+    let refreshErr=null, refreshedUid=null;
     if(error && error.code==='42501'){
-      const {data:refreshed}=await sb.auth.refreshSession();
+      const uidBefore=S.user.id;
+      const {data:refreshed,error:rErr}=await sb.auth.refreshSession();
+      refreshErr=rErr;
       if(refreshed?.user) S.user=refreshed.user;
+      refreshedUid=S.user.id;
       ({data,error}=await doInsert());
+      if(error){
+        // TEMPORARY diagnostic — remove once this recurring bug is resolved
+        const {data:serverUid,error:whoErr}=await sb.rpc('debug_whoami');
+        alert('createBiz failed twice.\n\nATTEMPT 1: '+firstErr.code+' '+firstErr.message+
+          '\nuid used: '+uidBefore+
+          '\n\nrefreshSession error: '+(refreshErr?refreshErr.message:'(none)')+
+          '\nuid before refresh: '+uidBefore+'\nuid after refresh: '+refreshedUid+
+          '\n\nATTEMPT 2: '+error.code+' '+error.message+
+          '\nuid used: '+refreshedUid+
+          '\n\nserver auth.uid() right now: '+(serverUid||'(null)')+(whoErr?' (debug_whoami error: '+whoErr.message+')':''));
+      }
     }
     if(error) return err(error);
     const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');

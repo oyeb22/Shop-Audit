@@ -734,7 +734,13 @@ async function renderNoBiz(){
 async function createBiz(){
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
   const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
-  if(error) return err(error);
+  if(error){
+    // TEMPORARY diagnostic for the recurring RLS-on-businesses bug — remove
+    // once resolved, along with migration-debug-auth-2.sql's debug_whoami()
+    const {data:serverUid,error:whoErr}=await sb.rpc('debug_whoami');
+    alert('createBiz failed.\nclient S.user.id = '+S.user.id+'\nserver auth.uid() = '+(serverUid||'(null)')+(whoErr?'\ndebug_whoami error: '+whoErr.message:''));
+    return err(error);
+  }
   const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');
   if(refCode){
     await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});

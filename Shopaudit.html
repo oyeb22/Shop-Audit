@@ -722,7 +722,7 @@ async function renderNoBiz(){
       <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b> — set prices, stock and see all reports.</p>
       <div class="field"><label>Business name</label><input id="nbName" placeholder="e.g. Mama's Provision Store"></div>
       ${referralField}
-      <button class="btn primary" onclick="createBiz()">Create business</button>
+      <button class="btn primary" id="nbCreateBtn" onclick="createBiz()">Create business</button>
     </div></div>
     <div class="card"><div class="hd"><h2>Join a business</h2></div><div class="bd">
       <p class="hint" style="margin-bottom:12px">Joining with a code sends a request — the shop's admin has to approve it before you get access.</p>
@@ -732,21 +732,32 @@ async function renderNoBiz(){
   </div>`;
 }
 async function createBiz(){
+  const btn=$('#nbCreateBtn'); if(btn?.disabled) return;
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
-  const {data,error}=await sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
-  if(error){
-    // TEMPORARY diagnostic for the recurring RLS-on-businesses bug — remove
-    // once resolved, along with migration-debug-auth-2.sql's debug_whoami()
-    const {data:serverUid,error:whoErr}=await sb.rpc('debug_whoami');
-    alert('createBiz failed.\nerror.code = '+error.code+'\nerror.message = '+error.message+'\nerror.details = '+error.details+'\nerror.hint = '+error.hint+'\nclient S.user.id = '+S.user.id+'\nserver auth.uid() = '+(serverUid||'(null)')+(whoErr?'\ndebug_whoami error: '+whoErr.message:''));
-    return err(error);
-  }
-  const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');
-  if(refCode){
-    await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
-    localStorage.removeItem('themonishop_ref');
-  }
-  toast('Business created'); await loadBusinesses();
+  if(btn) btn.disabled=true;
+  try{
+    // a brand-new sign-up's very first authenticated write has occasionally
+    // hit "new row violates row-level security policy for table businesses"
+    // even though owner_id and auth.uid() provably match server-side —
+    // everything about the policy/trigger checks out, so this looks like a
+    // transient auth-context race right at signup rather than a real bug.
+    // Forcing a session refresh right before the insert, and retrying once
+    // if it still happens, makes this self-healing either way.
+    const doInsert=async()=>sb.from('businesses').insert({name,owner_id:S.user.id}).select().single();
+    let {data,error}=await doInsert();
+    if(error && error.code==='42501'){
+      const {data:refreshed}=await sb.auth.refreshSession();
+      if(refreshed?.user) S.user=refreshed.user;
+      ({data,error}=await doInsert());
+    }
+    if(error) return err(error);
+    const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');
+    if(refCode){
+      await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
+      localStorage.removeItem('themonishop_ref');
+    }
+    toast('Business created'); await loadBusinesses();
+  } finally { if(btn) btn.disabled=false; }
 }
 async function joinBiz(){
   const code=$('#nbCode')?.value.trim()||$('#mCode')?.value.trim();

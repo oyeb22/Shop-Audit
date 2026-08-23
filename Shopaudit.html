@@ -386,9 +386,16 @@ function closeScan(){
 function scanInto(fieldId){ scanBarcode(code=>{ const el=$('#'+fieldId); if(el){ el.value=code; el.dispatchEvent(new Event('input')); } }); }
 
 /* ---------- boot ---------- */
+// the native splash screen stays up (launchAutoHide:false in
+// capacitor.config.json) until this fires, so it never gets hidden by a
+// fixed timer before the app has actually loaded and rendered something —
+// a no-op on the plain website, where window.Capacitor doesn't exist
+function hideSplash(){
+  if(window.Capacitor?.isNativePlatform?.()) window.Capacitor.Plugins.SplashScreen?.hide();
+}
 function boot(){
   if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_ANON_KEY.startsWith('PASTE_')){
-    $('#setupNotice').classList.remove('hidden'); return;
+    $('#setupNotice').classList.remove('hidden'); hideSplash(); return;
   }
   // inside the native app, don't persist the session to disk — it stays
   // valid while the app process is alive (so bouncing out to WhatsApp and
@@ -410,10 +417,14 @@ function boot(){
     if(event==='PASSWORD_RECOVERY'){
       $('#authScreen').classList.add('hidden'); $('#app').classList.add('hidden');
       $('#resetScreen').classList.remove('hidden');
+      hideSplash();
     }
   });
   if(window.location.hash.includes('type=recovery')) return;
-  sb.auth.getSession().then(({data})=>{ if(data.session){ S.user=data.session.user; afterLogin(); } else showAuth(); });
+  sb.auth.getSession().then(({data})=>{
+    if(data.session){ S.user=data.session.user; afterLogin().then(hideSplash); }
+    else { showAuth(); hideSplash(); }
+  });
 }
 boot();
 
@@ -733,9 +744,16 @@ async function joinBiz(){
    ============================================================ */
 async function vDashboard(v){
   v.innerHTML='<div class="empty">Loading…</div>';
+  // bounded to a rolling window rather than fetching a business's entire sales
+  // history on every Dashboard load — that re-downloads more and more data
+  // forever as a shop's history grows, which is real bandwidth cost, not just
+  // a performance nicety. 120 days comfortably covers everything this page
+  // actually shows (today, this month, last 30 *active* days, a 7-day trailing
+  // average) with margin to spare; true all-time figures live in Reports.
+  const windowStart=(()=>{const d=new Date();d.setDate(d.getDate()-120);return d.toISOString().slice(0,10);})();
   const [salesRes,expRes]=await Promise.all([
-    sb.from('sales').select('*').eq('business_id',S.biz.id),
-    sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved')
+    sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',windowStart),
+    sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',windowStart)
   ]);
   if(salesRes.error) return err(salesRes.error);
   const sales=salesRes.data, exps=expRes.data||[];
@@ -796,9 +814,9 @@ async function vDashboard(v){
       <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Items sold">${o.c}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales recorded yet.</div>'}
     </div></div>
-    <div class="card"><div class="hd"><h2>Stock & sales per item</h2></div><div class="bd tight rtable">
-      <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Total sold</th></tr></thead>
-      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r" data-label="Remaining"><span class="badge ${b}">${stockShort(i)}</span></td><td class="r num" data-label="Total sold">${breakdownQty(i,sold[i.id]||0)}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
+    <div class="card"><div class="hd"><h2>Stock & sales per item</h2><span class="desc">sold, last 120 days · see Reports for all-time</span></div><div class="bd tight rtable">
+      <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Sold (120d)</th></tr></thead>
+      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r" data-label="Remaining"><span class="badge ${b}">${stockShort(i)}</span></td><td class="r num" data-label="Sold (120d)">${breakdownQty(i,sold[i.id]||0)}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
     </div></div>`;
 }
 
@@ -807,10 +825,16 @@ async function vDashboard(v){
    ============================================================ */
 let draftModes=[];
 const FREE_ITEM_CAP=15;
+const GRACE_DAYS=14;
+function planActive(){
+  if(!S.biz.is_paid) return false;
+  if(!S.biz.paid_until) return true;
+  return new Date(S.biz.paid_until).getTime()+GRACE_DAYS*86400000>=Date.now();
+}
 function vItems(v){
   draftModes=[];
   const isManager=S.role==='manager';
-  const isPaid=!!S.biz.is_paid;
+  const isPaid=planActive();
   const atCap=!isPaid && S.items.length>=FREE_ITEM_CAP;
   v.innerHTML=`
   ${!isPaid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -904,7 +928,7 @@ function addDraftMode(){ draftModes.push({name:'',price:0,per_pack:2}); renderDr
 function removeDraftMode(idx){ draftModes.splice(idx,1); renderDraftModes(); }
 async function addItem(){
   const btn=$('#addItemBtn'); if(btn?.disabled) return; // guards against a slow double-tap firing twice
-  if(S.role!=='manager' && !S.biz.is_paid && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached — upgrade to add more items',true);
+  if(S.role!=='manager' && !planActive() && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached — upgrade to add more items',true);
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
   const openPacks=+$('#iOpen').value||0, threshold=+$('#iThr').value||0;
@@ -1521,7 +1545,7 @@ async function rejectExpenditure(id){
    ADMIN — MEMBERS / TEAM
    ============================================================ */
 async function vMembers(v){
-  const isPaid=!!S.biz.is_paid;
+  const isPaid=planActive();
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
     ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner — <a href="#" onclick="openUpgrade();return false">upgrade</a> to approve team members.</p>':''}
@@ -2381,13 +2405,26 @@ function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
    ADMIN — SETTINGS (WhatsApp daily summary toggle)
    ============================================================ */
 function vSettings(v){
-  v.innerHTML=`
-  ${S.biz.is_paid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div><b>Paid plan</b><div class="hint">Unlimited items and team members.</div></div>
-  </div></div>`:`<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">one-time payment, no subscription</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">You're on the free plan — ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits, permanently.</div>
+  const fmtD=t=>new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+  const planCard=(()=>{
+    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">₦20,000/year</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">You're on the free plan — ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits for a year.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
-  </div></div>`}
+  </div></div>`;
+    if(!S.biz.paid_until) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div><b>Paid plan</b><div class="hint">Unlimited items and team members.</div></div>
+  </div></div>`;
+    if(planActive()) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div><b>Paid plan</b><div class="hint">Unlimited items and team members. Paid until ${fmtD(S.biz.paid_until)}.</div></div>
+  </div></div>`;
+    const daysLeft=Math.max(0,Math.ceil(GRACE_DAYS-(Date.now()-new Date(S.biz.paid_until).getTime())/86400000));
+    return `<div class="card" style="border-color:var(--red)"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px"><b style="color:var(--red)">Plan expired</b><div class="hint">Your plan expired on ${fmtD(S.biz.paid_until)}. Renew within ${daysLeft} day${daysLeft===1?'':'s'} to keep unlimited items and team members — after that this business reverts to the free plan.</div></div>
+    <button class="btn primary" onclick="openUpgrade()">Renew</button>
+  </div></div>`;
+  })();
+  v.innerHTML=`
+  ${planCard}
   <div class="card"><div class="hd"><h2>WhatsApp</h2></div><div class="bd">
     <p class="hint" style="margin-bottom:16px">Thank-you and reminder messages to customers just open WhatsApp with the text ready — no number to connect for those. The settings below are only for the daily summary.</p>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">

@@ -738,7 +738,7 @@ async function createBiz(){
     // TEMPORARY diagnostic for the recurring RLS-on-businesses bug — remove
     // once resolved, along with migration-debug-auth-2.sql's debug_whoami()
     const {data:serverUid,error:whoErr}=await sb.rpc('debug_whoami');
-    alert('createBiz failed.\nclient S.user.id = '+S.user.id+'\nserver auth.uid() = '+(serverUid||'(null)')+(whoErr?'\ndebug_whoami error: '+whoErr.message:''));
+    alert('createBiz failed.\nerror.code = '+error.code+'\nerror.message = '+error.message+'\nerror.details = '+error.details+'\nerror.hint = '+error.hint+'\nclient S.user.id = '+S.user.id+'\nserver auth.uid() = '+(serverUid||'(null)')+(whoErr?'\ndebug_whoami error: '+whoErr.message:''));
     return err(error);
   }
   const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');

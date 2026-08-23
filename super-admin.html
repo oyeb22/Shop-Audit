@@ -67,7 +67,7 @@ tr:last-child td{border-bottom:none}
 </div>
 
 <div id="deniedScreen" class="authwrap hidden">
-  <div class="card"><p class="hint">Signed in, but this account isn't a platform admin.</p></div>
+  <div class="card"><p class="hint">Signed in, but this account isn't a platform admin.</p><p class="hint" id="deniedDetail" style="margin-top:8px;color:var(--red)"></p></div>
 </div>
 
 <div id="dash" class="wrap hidden">
@@ -126,8 +126,10 @@ async function doSignIn(){
 async function afterSignIn(){
   const {data:bizData,error:bizErr} = await sb.rpc('platform_overview');
   if(bizErr){
+    console.error('platform_overview error:', bizErr);
     $('#authScreen').classList.add('hidden');
     $('#deniedScreen').classList.remove('hidden');
+    $('#deniedDetail').textContent = bizErr.message || '';
     return;
   }
   $('#authScreen').classList.add('hidden');

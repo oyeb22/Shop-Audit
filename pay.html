@@ -70,9 +70,11 @@ const PAYSTACK_PUBLIC_KEY = "pk_test_0f15e18f3e6c491688f9d977ccf8c1a5d0572194";
 const SUPABASE_URL      = "https://ifdmtxdazqzufbemciui.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlmZG10eGRhenF6dWZiZW1jaXVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNDgzMzMsImV4cCI6MjA5NTgyNDMzM30.welfq6U39Kn9DXYbgrz4SR0-q9OyWSujwkI-8ZxTdFg";
 
+const GRACE_DAYS = 14;
 const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtD = t => new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
 let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',3200); }
 
@@ -105,24 +107,52 @@ async function afterSignIn(){
   CURRENT_PRICE = Math.round(BASE_PRICE * (1 - Number(pricing.discount_percent)/100));
   const discounted = pricing.discount_percent > 0;
 
-  const unpaid = (members||[]).map(m=>m.business).filter(b=>b && !b.is_paid);
-  const paid = (members||[]).map(m=>m.business).filter(b=>b && b.is_paid);
+  const businesses = (members||[]).map(m=>m.business).filter(Boolean);
+  const rows = businesses.map(b=>{
+    if(!b.is_paid) return {b, status:'never'};
+    if(!b.paid_until) return {b, status:'lifetime'};
+    const daysLeft = Math.ceil((new Date(b.paid_until).getTime()-Date.now())/86400000);
+    if(daysLeft < 0) return {b, status:'expired', daysLeft};
+    if(daysLeft <= GRACE_DAYS) return {b, status:'renew-soon', daysLeft};
+    return {b, status:'active', daysLeft};
+  });
 
-  if(!unpaid.length){
-    payCard.innerHTML = paid.length
-      ? `<div class="empty">You're all set — every business you own is already on the paid plan.</div>`
-      : `<div class="empty">You're not the owner (admin) of any business yet. Create one in the app first.</div>`;
+  const needsAction = rows.filter(r=>r.status==='never'||r.status==='expired'||r.status==='renew-soon');
+  const settled = rows.filter(r=>r.status==='lifetime'||r.status==='active');
+
+  if(!rows.length){
+    payCard.innerHTML = `<div class="empty">You're not the owner (admin) of any business yet. Create one in the app first.</div>`;
     return;
   }
 
-  payCard.innerHTML = unpaid.map(b=>`
+  const actionRow = r => {
+    const b=r.b;
+    const label = r.status==='never' ? `Pay ${money(CURRENT_PRICE)} — activate`
+      : r.status==='expired' ? `Pay ${money(CURRENT_PRICE)} — renew`
+      : `Pay ${money(CURRENT_PRICE)} — renew early`;
+    const note = r.status==='expired'
+      ? `<div class="discount" style="color:var(--red)">Expired ${fmtD(b.paid_until)} — renew to keep unlimited access</div>`
+      : r.status==='renew-soon'
+        ? `<div class="discount">Paid until ${fmtD(b.paid_until)} — ${r.daysLeft} day${r.daysLeft===1?'':'s'} left</div>`
+        : discounted ? `<div class="discount">${esc(pricing.discount_note||pricing.discount_percent+'% off')}</div>` : '';
+    return `
     <div class="bizrow">
       <div class="name">${esc(b.name)}</div>
-      ${discounted?`<div class="discount">${esc(pricing.discount_note||pricing.discount_percent+'% off')}</div>`:''}
+      ${note}
       <div class="price">${discounted?`<span class="was">${money(BASE_PRICE)}</span>`:''}${money(CURRENT_PRICE)}</div>
-      <button class="btn" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}")'>Pay ${money(CURRENT_PRICE)} — one time</button>
-    </div>
-  `).join('') + `<p class="hint">One-time payment. No subscription, nothing recurring. All payments are final. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
+      <button class="btn" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}")'>${label}</button>
+    </div>`;
+  };
+  const settledRow = r => `
+    <div class="bizrow">
+      <div class="name">${esc(r.b.name)}</div>
+      <div class="discount">${r.status==='lifetime'?'Paid — lifetime':`Paid until ${fmtD(r.b.paid_until)}`}</div>
+    </div>`;
+
+  payCard.innerHTML =
+    needsAction.map(actionRow).join('') +
+    settled.map(settledRow).join('') +
+    `<p class="hint">₦${CURRENT_PRICE.toLocaleString('en-NG')} per year, charged in full each year — no discounted renewals. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
 }
 
 function payFor(businessId, businessName){

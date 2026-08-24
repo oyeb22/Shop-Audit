@@ -729,34 +729,21 @@ async function renderNoBiz(){
       <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
       <button class="btn primary" onclick="joinBiz()">Request to join</button>
     </div></div>
-  </div>
-  <div class="card"><div class="hd"><h2>Debug</h2></div><div class="bd">
-    <button class="btn ghost" onclick="testRlsInsert()">Test RLS insert (temporary)</button>
-  </div></div>`;
-}
-// TEMPORARY diagnostic — remove along with migration-rls-isolation-test.sql
-async function testRlsInsert(){
-  const {data,error}=await sb.rpc('test_rls_insert');
-  if(error) alert('test_rls_insert FAILED.\n'+error.code+' '+error.message);
-  else alert('test_rls_insert SUCCEEDED.\n'+JSON.stringify(data));
+  </div>`;
 }
 async function createBiz(){
   const btn=$('#nbCreateBtn'); if(btn?.disabled) return;
   const name=$('#nbName').value.trim(); if(!name) return toast('Enter a business name',true);
   if(btn) btn.disabled=true;
   try{
-    // uses the create_business RPC rather than a plain table insert — the
-    // plain insert was hitting "new row violates row-level security policy
-    // for table businesses" 100% of the time despite the policy, trigger,
-    // column types and auth context all being individually verified
-    // correct, which pointed at PostgREST's table-insert code path
-    // specifically rather than anything in the schema. See
-    // migration-create-business-rpc.sql.
+    // uses the create_business RPC (security definer, see
+    // migration-create-business-workaround.sql) rather than a plain table
+    // insert — a confirmed platform-level anomaly rejects RLS WITH CHECK
+    // policies on INSERT in this project regardless of how correct the
+    // policy is, so this enforces ownership manually instead of relying on
+    // RLS for this one write.
     const {data,error}=await sb.rpc('create_business',{p_name:name});
-    if(error){
-      alert('createBiz (RPC) failed.\n'+error.code+' '+error.message+(error.details?'\n'+error.details:'')+(error.hint?'\n'+error.hint:''));
-      return err(error);
-    }
+    if(error) return err(error);
     const refCode=$('#nbRef')?.value.trim()||localStorage.getItem('themonishop_ref');
     if(refCode){
       await sb.rpc('record_referral',{p_code:refCode,p_business_id:data.id});
@@ -1615,9 +1602,11 @@ async function loadJoinRequests(){
   box.outerHTML = `<div id="joinReqList">${data.length?`<table><tbody>${data.map(r=>`<tr>
     <td class="itemname">${esc(r.full_name||r.email||'(no name)')}<div class="cat">${esc(r.email||'')}</div></td>
     <td><span class="rolepill">requested ${esc(r.requested_role)}</span></td>
-    <td class="r"><button class="btn ghost sm" onclick='approveJoinRequest("${r.id}","receptionist")'>Approve as Receptionist</button>
-    <button class="btn primary sm" onclick='approveJoinRequest("${r.id}","manager")'>Approve as Manager</button>
-    <button class="btn danger sm" onclick='rejectJoinRequest("${r.id}")'>Reject</button></td>
+    <td class="r"><div style="display:flex;flex-direction:column;gap:6px;align-items:stretch;width:fit-content;margin-left:auto">
+      <button class="btn ghost sm" onclick='approveJoinRequest("${r.id}","receptionist")'>Approve as Receptionist</button>
+      <button class="btn primary sm" onclick='approveJoinRequest("${r.id}","manager")'>Approve as Manager</button>
+      <button class="btn danger sm" onclick='rejectJoinRequest("${r.id}")'>Reject</button>
+    </div></td>
   </tr>`).join('')}</tbody></table>`:'<div class="empty">No pending requests.</div>'}</div>`;
 }
 async function approveJoinRequest(id,role){

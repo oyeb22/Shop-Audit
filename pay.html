@@ -127,13 +127,13 @@ async function afterSignIn(){
 
   const actionRow = r => {
     const b=r.b;
-    const label = r.status==='never' ? `Pay ${money(CURRENT_PRICE)} — activate`
-      : r.status==='expired' ? `Pay ${money(CURRENT_PRICE)} — renew`
-      : `Pay ${money(CURRENT_PRICE)} — renew early`;
+    const label = r.status==='never' ? `Activate for ${money(CURRENT_PRICE)}`
+      : r.status==='expired' ? `Renew for ${money(CURRENT_PRICE)}`
+      : `Renew early for ${money(CURRENT_PRICE)}`;
     const note = r.status==='expired'
-      ? `<div class="discount" style="color:var(--red)">Expired ${fmtD(b.paid_until)} — renew to keep unlimited access</div>`
+      ? `<div class="discount" style="color:var(--red)">Expired ${fmtD(b.paid_until)}. Renew to keep unlimited access</div>`
       : r.status==='renew-soon'
-        ? `<div class="discount">Paid until ${fmtD(b.paid_until)} — ${r.daysLeft} day${r.daysLeft===1?'':'s'} left</div>`
+        ? `<div class="discount">Paid until ${fmtD(b.paid_until)} (${r.daysLeft} day${r.daysLeft===1?'':'s'} left)</div>`
         : discounted ? `<div class="discount">${esc(pricing.discount_note||pricing.discount_percent+'% off')}</div>` : '';
     return `
     <div class="bizrow">
@@ -146,17 +146,17 @@ async function afterSignIn(){
   const settledRow = r => `
     <div class="bizrow">
       <div class="name">${esc(r.b.name)}</div>
-      <div class="discount">${r.status==='lifetime'?'Paid — lifetime':`Paid until ${fmtD(r.b.paid_until)}`}</div>
+      <div class="discount">${r.status==='lifetime'?'Paid (lifetime)':`Paid until ${fmtD(r.b.paid_until)}`}</div>
     </div>`;
 
   payCard.innerHTML =
     needsAction.map(actionRow).join('') +
     settled.map(settledRow).join('') +
-    `<p class="hint">₦${CURRENT_PRICE.toLocaleString('en-NG')} per year, charged in full each year — no discounted renewals. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
+    `<p class="hint">₦${CURRENT_PRICE.toLocaleString('en-NG')} per year, charged in full each year. No discounted renewals. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
 }
 
 function payFor(businessId, businessName){
-  if(PAYSTACK_PUBLIC_KEY.includes('xxxx')){ toast('Payment isn\'t set up yet — paste a real Paystack public key into pay.html',true); return; }
+  if(PAYSTACK_PUBLIC_KEY.includes('xxxx')){ toast('Payment isn\'t set up yet. Paste a real Paystack public key into pay.html',true); return; }
   sb.auth.getUser().then(({data})=>{
     const email = data.user.email;
     const handler = PaystackPop.setup({
@@ -178,8 +178,8 @@ async function confirmPayment(reference){
   toast('Confirming payment…');
   const {data,error} = await sb.rpc('verify_and_activate_payment',{p_reference:reference});
   if(error){ toast(error.message,true); return; }
-  if(data && data.already_processed){ toast('Already confirmed — you\'re on the paid plan.'); }
-  else{ toast('Payment confirmed — you\'re upgraded!'); }
+  if(data && data.already_processed){ toast('Already confirmed. You\'re on the paid plan.'); }
+  else{ toast('Payment confirmed. You\'re upgraded!'); }
   afterSignIn();
 }
 </script>

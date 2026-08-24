@@ -110,9 +110,11 @@ const fmtD = t => new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'s
 let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',3200); }
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-sb.auth.getSession().then(({data})=>{ if(data.session) afterSignIn(); });
+// this is a platform-wide admin tool, not the regular shop app — sessions
+// are deliberately never persisted, so a password is required every time
+// this page loads rather than silently staying signed in on a shared or
+// unattended device
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:false}});
 
 async function doSignIn(){
   const email=$('#email').value.trim(), pass=$('#pass').value;

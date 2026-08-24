@@ -48,7 +48,7 @@ input,select{font-family:inherit;font-size:15px}
 .ic.lg{width:20px;height:20px}
 .spacer{flex:1}
 .bizsel{display:flex;align-items:center;gap:8px}
-select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);font-weight:600;max-width:140px}
+select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--ink);font-weight:600;max-width:190px}
 .rolepill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px;background:#EFE8DA;color:var(--green-d)}
 .rolepill.recept{background:#EAEEF6;color:#2C4A78}
 .rolepill.mgr{background:#F3E8D2;color:#8A5A12}
@@ -281,7 +281,8 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 <div id="app" class="hidden">
   <div class="topbar">
     <div class="wrap barrow">
-      <button class="navToggle" onclick="toggleNavMenu()" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+      <button class="navToggle" id="navToggleBtn" onclick="toggleNavMenu()" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></button>
+      <button class="navToggle hidden" id="topSignoutBtn" onclick="signOut()" aria-label="Sign out"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       <div class="navCurrent" id="navCurrent">Dashboard</div>
       <div class="spacer"></div>
       <div class="bizsel">
@@ -337,7 +338,8 @@ const ICON_PATHS = {
   check:'<path d="M4 12l6 6L20 6"/>',
   barcode:'<rect x="3" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/><rect x="6.4" y="4" width="1" height="16" fill="currentColor" stroke="none"/><rect x="9" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/><rect x="12.2" y="4" width="1" height="16" fill="currentColor" stroke="none"/><rect x="14.7" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/><rect x="18" y="4" width="1" height="16" fill="currentColor" stroke="none"/><rect x="20.4" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/>',
   printer:'<path d="M6 9V3h12v6"/><rect x="3.5" y="9" width="17" height="8" rx="1.5"/><rect x="7" y="14" width="10" height="7"/>',
-  menu:'<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>'
+  menu:'<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
 };
 function icon(name,cls){ return `<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`; }
 // opens the payment page in the device's own browser, never embedded in-app —
@@ -449,7 +451,7 @@ async function forgotPassword(){
   if(!email) return toast('Enter your email above first, then tap Forgot password',true);
   const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href.split('#')[0]});
   if(error) return err(error);
-  toast('Reset link sent — check your email');
+  toast('Reset link sent. Check your email');
 }
 async function doPasswordReset(){
   const p1=$('#rpPass1').value, p2=$('#rpPass2').value;
@@ -677,6 +679,7 @@ function waNumber(phone){
 
 /* ---------- navigation ---------- */
 function buildNav(){
+  $('#navToggleBtn').classList.remove('hidden'); $('#topSignoutBtn').classList.add('hidden');
   let tabs;
   if(S.role==='admin'){
     tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
@@ -707,25 +710,26 @@ async function render(){
    ============================================================ */
 async function renderNoBiz(){
   $('#bizSelect').innerHTML='<option>No business yet</option>'; $('#rolePill').textContent='—'; $('#navGrid').innerHTML=''; $('#navCurrent').textContent='';
+  $('#navToggleBtn').classList.add('hidden'); $('#topSignoutBtn').classList.remove('hidden');
   const [{data:pending},{data:rs}]=await Promise.all([
     sb.from('join_requests').select('*, business:businesses(name)').eq('user_id',S.user.id).eq('status','pending'),
     sb.from('referral_settings').select('*').eq('id',1).maybeSingle()
   ]);
   const pendingHtml = (pending&&pending.length) ? `<div class="card"><div class="hd"><h2>Waiting for approval</h2></div><div class="bd">
-    ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending — the admin needs to approve it before you get access.</p>`).join('')}
+    ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending. The admin needs to approve it before you get access.</p>`).join('')}
   </div></div>` : '';
   const refCode=localStorage.getItem('themonishop_ref')||'';
   const referralField = rs?.enabled ? `<div class="field"><label>Referral code (optional)</label><input id="nbRef" value="${esc(refCode)}" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>` : '';
   $('#view').innerHTML= pendingHtml + `
   <div class="split">
     <div class="card"><div class="hd"><h2>Create a business</h2></div><div class="bd">
-      <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b> — set prices, stock and see all reports.</p>
+      <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b>. Set prices, stock and see all reports.</p>
       <div class="field"><label>Business name</label><input id="nbName" placeholder="e.g. Mama's Provision Store"></div>
       ${referralField}
       <button class="btn primary" id="nbCreateBtn" onclick="createBiz()">Create business</button>
     </div></div>
     <div class="card"><div class="hd"><h2>Join a business</h2></div><div class="bd">
-      <p class="hint" style="margin-bottom:12px">Joining with a code sends a request — the shop's admin has to approve it before you get access.</p>
+      <p class="hint" style="margin-bottom:12px">Joining with a code sends a request. The shop's admin has to approve it before you get access.</p>
       <div class="field"><label>Invite code</label><input id="nbCode" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>
       <button class="btn primary" onclick="joinBiz()">Request to join</button>
     </div></div>
@@ -759,7 +763,7 @@ async function joinBiz(){
   if(error) return err(error);
   await loadBusinesses();
   const joined = S.businesses.some(b=>b.id===data);
-  toast(joined?'Joined business':'Request sent — waiting for admin approval');
+  toast(joined?'Joined business':'Request sent, waiting for admin approval');
 }
 
 /* ============================================================
@@ -812,8 +816,8 @@ async function vDashboard(v){
       ${todayStoryLines(story).map(l=>`<p style="margin-bottom:4px">${esc(l)}</p>`).join('')}
     </div></div>
     <div class="stats">
-      <div class="stat good"><div class="label">Today — revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
-      <div class="stat"><div class="label">This month — revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
+      <div class="stat good"><div class="label">Today's revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
+      <div class="stat"><div class="label">This month's revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
       <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
       <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
       <div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>
@@ -861,18 +865,18 @@ function vItems(v){
   const atCap=!isPaid && S.items.length>=FREE_ITEM_CAP;
   v.innerHTML=`
   ${!isPaid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?' — limit reached':''}</div>
+    <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?', limit reached':''}</div>
     <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
   </div></div>`:''}
   <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">${isManager?'sent to the admin for approval':'every item has a pack price; add other ways to sell it below'}</span></div><div class="bd">
-    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached — <a href="#" onclick="openUpgrade();return false">upgrade</a> to add more items.</p>':''}
+    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached. <a href="#" onclick="openUpgrade();return false">Upgrade</a> to add more items.</p>':''}
     <div class="frow">
       <div class="field"><label>Item name</label><input id="iName" placeholder="e.g. Rice"></div>
       <div class="field"><label>Category</label><input id="iCat" placeholder="Drinks" value="General"></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Pack price — sell (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 45000"></div>
-      <div class="field"><label>Pack price — cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for" oninput="renderDraftModes()"></div>
+      <div class="field"><label>Pack price: sell (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 45000"></div>
+      <div class="field"><label>Pack price: cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for" oninput="renderDraftModes()"></div>
     </div>
     <div class="field">
       <label>Barcode (optional)</label>
@@ -897,7 +901,7 @@ function vItems(v){
     </div>
     <button class="btn primary" id="addItemBtn" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
   </div></div>
-  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?' — changes go to the admin for approval':''}</span></div><div class="bd tight rtable">
+  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?', changes go to the admin for approval':''}</span></div><div class="bd tight rtable">
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
     <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="5" class="empty">No items yet.</td></tr>'}</tbody></table>
   </div></div>
@@ -930,7 +934,7 @@ function rowItem(i){
 // ---- mode builder (Add item): mutate draftModes directly on input so typing never loses focus ----
 function renderDraftModes(){
   const box=$('#draftModesBox'); if(!box) return;
-  if(!draftModes.length){ box.innerHTML='<p class="hint">No extra modes yet — item sells only by the pack.</p>'; return; }
+  if(!draftModes.length){ box.innerHTML='<p class="hint">No extra modes yet, item sells only by the pack.</p>'; return; }
   box.innerHTML = draftModes.map((m,idx)=>`
     <div class="frow" style="align-items:flex-end;margin-bottom:6px">
       <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" placeholder="e.g. Half bag" oninput="draftModes[${idx}].name=this.value"></div>
@@ -942,7 +946,7 @@ function renderDraftModes(){
 }
 function draftModePreviewText(idx){
   const m=draftModes[idx]; if(!m||!m.per_pack) return '';
-  if(m.per_pack===1) return 'Same quantity as a full pack — just a different price (e.g. wholesale vs retail).';
+  if(m.per_pack===1) return 'Same quantity as a full pack, just a different price (e.g. wholesale vs retail).';
   const packCost=+($('#iPackCost')?.value||0);
   return `= ${pct(m.per_pack).toFixed(1)}% of a pack${packCost?` · cost ≈ ${money(packCost/m.per_pack)}`:''}`;
 }
@@ -951,13 +955,13 @@ function addDraftMode(){ draftModes.push({name:'',price:0,per_pack:2}); renderDr
 function removeDraftMode(idx){ draftModes.splice(idx,1); renderDraftModes(); }
 async function addItem(){
   const btn=$('#addItemBtn'); if(btn?.disabled) return; // guards against a slow double-tap firing twice
-  if(S.role!=='manager' && !planActive() && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached — upgrade to add more items',true);
+  if(S.role!=='manager' && !planActive() && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached, upgrade to add more items',true);
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
   const openPacks=+$('#iOpen').value||0, threshold=+$('#iThr').value||0;
   if(!packSell) return toast('Enter the pack sell price',true);
   const incomplete=draftModes.find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
-  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1 — or remove it`,true);
+  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1, or remove it`,true);
   const modes=draftModes.filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
@@ -1004,8 +1008,8 @@ function editItem(id){
       <div class="field"><label>Category</label><input id="eCat" value="${esc(i.category||'')}"></div>
     </div>
     <div class="frow">
-      <div class="field"><label>Pack price — sell (₦)</label><input id="ePack" type="number" value="${fullPackPrice(i)}"></div>
-      <div class="field"><label>Pack price — cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>
+      <div class="field"><label>Pack price: sell (₦)</label><input id="ePack" type="number" value="${fullPackPrice(i)}"></div>
+      <div class="field"><label>Pack price: cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>
       <div class="field"><label>Low-stock alert</label><input id="eThr" type="number" step="any" value="${i.low_stock_threshold}"></div>
     </div>
     <div class="frow">
@@ -1022,13 +1026,13 @@ function editItem(id){
         </div>
       </div>
     </div>
-    ${suggestedUnit?`<p class="hint" style="margin:-2px 0 10px;color:var(--amber)">This item used to sell by single unit (${money(i.sell_price)} · ${i.units_per_pack}/pack) — added back below as a <b>Unit</b> mode. Review and hit Save to restore it, or remove it if you don't want it.</p>`:''}
+    ${suggestedUnit?`<p class="hint" style="margin:-2px 0 10px;color:var(--amber)">This item used to sell by single unit (${money(i.sell_price)} · ${i.units_per_pack}/pack), added back below as a <b>Unit</b> mode. Review and hit Save to restore it, or remove it if you don't want it.</p>`:''}
     <div class="field">
       <label>Other ways to sell this</label>
       <div id="editModesBox"></div>
       <button class="btn ghost sm" type="button" onclick="addEditMode()">+ Add a mode</button>
     </div>
-    <p class="hint" style="margin:10px 0 12px">Adjust actual stock counts under <b>Restock</b> or <b>Reconcile</b> — not here.</p>
+    <p class="hint" style="margin:10px 0 12px">Adjust actual stock counts under <b>Restock</b> or <b>Reconcile</b>, not here.</p>
     <div class="frow"><button class="btn primary" onclick='saveItem("${id}")'>Save</button>
     <button class="btn ghost" onclick="document.getElementById('editCard').remove()">Cancel</button>
     <div class="spacer"></div><button class="btn danger" onclick='delItem("${id}")'>Delete</button></div>
@@ -1040,7 +1044,7 @@ function editItem(id){
 function renderEditModes(){
   const box=$('#editModesBox'); if(!box) return;
   const modes=window._editModes||[];
-  if(!modes.length){ box.innerHTML='<p class="hint">No extra modes — item sells only by the pack.</p>'; return; }
+  if(!modes.length){ box.innerHTML='<p class="hint">No extra modes, item sells only by the pack.</p>'; return; }
   box.innerHTML = modes.map((m,idx)=>`
     <div class="frow" style="align-items:flex-end;margin-bottom:6px">
       <div class="field" style="margin-bottom:0"><label>Mode name</label><input value="${esc(m.name)}" oninput="window._editModes[${idx}].name=this.value"></div>
@@ -1052,7 +1056,7 @@ function renderEditModes(){
 }
 function editModePreviewText(idx){
   const m=(window._editModes||[])[idx]; if(!m||!m.per_pack) return '';
-  if(m.per_pack===1) return 'Same quantity as a full pack — just a different price (e.g. wholesale vs retail).';
+  if(m.per_pack===1) return 'Same quantity as a full pack, just a different price (e.g. wholesale vs retail).';
   const packCost=+($('#eCost')?.value||0);
   return `= ${pct(m.per_pack).toFixed(1)}% of a pack${packCost?` · cost ≈ ${money(packCost/m.per_pack)}`:''}`;
 }
@@ -1061,7 +1065,7 @@ function addEditMode(){ window._editModes=window._editModes||[]; window._editMod
 function removeEditMode(idx){ window._editModes.splice(idx,1); renderEditModes(); }
 async function saveItem(id){
   const incomplete=(window._editModes||[]).find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
-  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1 — or remove it`,true);
+  if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1, or remove it`,true);
   const modes=(window._editModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
@@ -1109,7 +1113,7 @@ function vRestock(v){
   <div class="card"><div class="hd"><h2>Record stock bought in</h2><span class="desc">increases available stock</span></div><div class="bd">
     <div class="field"><label>Item</label>
       <div style="display:flex;gap:8px">
-        <select id="rItem" onchange="rModeOptions()" style="flex:1">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} — now ${stockShort(i)}</option>`).join('')}</select>
+        <select id="rItem" onchange="rModeOptions()" style="flex:1">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (now ${stockShort(i)})</option>`).join('')}</select>
         <button class="btn ghost sm" type="button" onclick="scanForRestock()">${icon('barcode')}</button>
       </div>
     </div>
@@ -1237,7 +1241,7 @@ async function saveRecon(){
   const {error,auditErr}=await applyRecon(item_id,exp,counted,variance,note,apply,S.user.id);
   if(error) return err(error);
   if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
-  else toast(variance<0?`Recorded — shrinkage of ${Math.abs(variance)}`:'Count recorded');
+  else toast(variance<0?`Recorded, shrinkage of ${Math.abs(variance)}`:'Count recorded');
   await loadData(); render();
 }
 async function loadRecon(){
@@ -1280,7 +1284,7 @@ async function loadTillSummary(){
 async function applyTillClear(method,amount,note,before,actorId){
   const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:note||null,created_by:actorId});
   if(error) return {error};
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${note?' — '+note:''}`});
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${note?'. '+note:''}`});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
   return {error:null,auditErr};
 }
@@ -1471,7 +1475,7 @@ async function vExpenses(v){
   S._expFrom=S._expFrom||monthStart(); S._expTo=S._expTo||today();
   const pending=S._exp.filter(e=>e.status==='pending');
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Record an expense</h2><span class="desc">${isManager?'sent to the admin for approval':'rent, transport, repairs — anything outside stock purchases'}</span></div><div class="bd">
+  <div class="card"><div class="hd"><h2>Record an expense</h2><span class="desc">${isManager?'sent to the admin for approval':'rent, transport, repairs, anything outside stock purchases'}</span></div><div class="bd">
     <div class="frow">
       <div class="field"><label>Amount (₦)</label><input id="exAmt" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
       <div class="field"><label>Category (optional)</label><input id="exCat" placeholder="e.g. Transport, Rent, Repairs"></div>
@@ -1548,7 +1552,7 @@ async function addExpenditure(){
   const {error}=await sb.from('expenditures').insert(rec);
   if(error) return err(error);
   if(status==='approved'){
-    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'expenditure_added',detail:`${money(amount)} — ${note}`});
+    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'expenditure_added',detail:`${money(amount)}: ${note}`});
   }
   toast(status==='pending'?'Sent for approval':'Expense recorded'); vExpenses($('#view'));
 }
@@ -1571,8 +1575,8 @@ async function vMembers(v){
   const isPaid=planActive();
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
-    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner — <a href="#" onclick="openUpgrade();return false">upgrade</a> to approve team members.</p>':''}
-    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it — you'll need to approve them below before they get access.</p>
+    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner. <a href="#" onclick="openUpgrade();return false">Upgrade</a> to approve team members.</p>':''}
+    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it. You'll need to approve them below before they get access.</p>
     <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
     <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
   </div></div>
@@ -1818,7 +1822,7 @@ async function logTerminalTxn(){
   const note=$('#ttNote').value.trim()||null;
   const {error}=await sb.from('terminal_transactions').insert({business_id:S.biz.id,amount,note,source:'manual',entry_date:today(),created_by:S.user.id});
   if(error) return err(error);
-  toast('Saved — add details when ready'); vTerminal($('#view'));
+  toast('Saved, add details when ready'); vTerminal($('#view'));
 }
 async function voidTerminalTxn(id){
   if(!confirm('Void this terminal transaction? It will not be turned into a sale.')) return;
@@ -1832,7 +1836,7 @@ let termCart=[];
 function openTermDetails(id){
   const t=S._termTxns.find(x=>x.id===id); if(!t) return;
   termCart=[]; S._activeTermId=id;
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="termCard"><div class="hd"><h2>Add details — ${money(t.amount)}</h2>
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="termCard"><div class="hd"><h2>Add details: ${money(t.amount)}</h2>
     <span class="desc">pick what was bought, then confirm</span><div class="spacer"></div>
     <button class="btn ghost sm" onclick="closeTermDetails()">Close</button></div>
   <div class="bd">
@@ -1914,7 +1918,7 @@ function refreshTermCart(){
   const diff=t?total-t.amount:0;
   if(Math.abs(diff)<0.5){ note.textContent=''; }
   else if(diff>0){ note.textContent=`Items total is ${money(diff)} more than the terminal amount.`; note.style.color='var(--red)'; }
-  else{ note.textContent=`Items total is ${money(-diff)} less than the terminal amount — you can still confirm.`; note.style.color='var(--muted)'; }
+  else{ note.textContent=`Items total is ${money(-diff)} less than the terminal amount. You can still confirm.`; note.style.color='var(--muted)'; }
   btn.disabled=false;
 }
 async function confirmTermDetails(id){
@@ -1980,7 +1984,7 @@ function vSell(v){
           <input id="custSearch" class="custInput" placeholder="Customer name (type to search)…" autocomplete="off" oninput="custSuggest(this.value)">
           <div id="custResults" class="custResults"></div>
           <input id="custPhone" class="custInput" placeholder="Phone (optional, for WhatsApp)" inputmode="tel" style="margin-top:6px">
-          <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale — a customer is required so the balance is tracked.</p>
+          <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale: a customer is required so the balance is tracked.</p>
         </div>
       </div>
       <div class="citems" id="cartItems">${cartRows()}</div>
@@ -2001,7 +2005,7 @@ function custSuggest(q){
   const hits=S.customers.filter(c=>c.name.toLowerCase().includes(s)||String(c.phone||'').includes(s)).slice(0,6);
   box.innerHTML = hits.length
     ? hits.map(c=>`<button class="custHit" onclick='chooseCust("${c.id}")'><b>${esc(c.name)}</b>${c.phone?` <span class="hint">${esc(c.phone)}</span>`:''}${balanceOf(c.id)>0?` <span class="badge neg" style="float:right">owes ${money(balanceOf(c.id))}</span>`:''}</button>`).join('')
-    : `<div class="hint" style="padding:8px 10px">No match — a new customer "<b>${esc(q.trim())}</b>" will be saved with this sale.</div>`;
+    : `<div class="hint" style="padding:8px 10px">No match. A new customer "<b>${esc(q.trim())}</b>" will be saved with this sale.</div>`;
 }
 function chooseCust(id){ S.saleCustId=id; renderChosen(); }
 function clearChosen(){ S.saleCustId=null; renderChosen(); }
@@ -2149,12 +2153,12 @@ async function checkout(){
       const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
       if(r.error) throw r.error;
       const creditBefore=totalOwed();
-      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received — ${stockMoves} — ${soldLine} — total credit ${money(creditBefore)}→${money(creditBefore+total)}`}));
+      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received. ${stockMoves}. ${soldLine}. Total credit ${money(creditBefore)}→${money(creditBefore+total)}`}));
     }else{
       const methodLabel={cash:'Cash',transfer:'Transfer'}[S.payMode]||S.payMode;
       const balAfter=S.payMode==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
       const tillLine=`${methodLabel} in till ${money(balAfter-total)}→${money(balAfter)}`;
-      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName} — ${stockMoves} — ${soldLine} — ${tillLine}`}));
+      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName}. ${stockMoves}. ${soldLine}. ${tillLine}`}));
     }
     if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Sale saved, but audit log entry failed: '+auditErr.message,true); }
     const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,isPack:l.isPack,qty:l.qty,price:l.price})),
@@ -2342,9 +2346,9 @@ async function custTx(id,type){
     // payment's own amount to get "before" instead of double-adding it
     const balAfter=method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
     const methodLabel=method==='transfer'?'Transfer':'Cash';
-    detail=`${money(amount)} received (${methodLabel}) from ${cname}, credit balance reduced ${money(creditBefore)}→${money(Math.max(0,creditBefore-amount))} — ${methodLabel} in till ${money(balAfter-amount)}→${money(balAfter)}`;
+    detail=`${money(amount)} received (${methodLabel}) from ${cname}, credit balance reduced ${money(creditBefore)}→${money(Math.max(0,creditBefore-amount))}. ${methodLabel} in till ${money(balAfter-amount)}→${money(balAfter)}`;
   }else{
-    detail=`${money(amount)} added to ${cname}'s credit balance, not yet received — total credit ${money(creditBefore)}→${money(creditBefore+amount)}`;
+    detail=`${money(amount)} added to ${cname}'s credit balance, not yet received. Total credit ${money(creditBefore)}→${money(creditBefore+amount)}`;
   }
   const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:type==='payment'?'credit_payment_recorded':'credit_added',detail});
   if(auditErr){ console.error('audit_log insert failed:',auditErr); toast((type==='payment'?'Payment recorded':'Credit added')+', but audit log entry failed: '+auditErr.message,true); }
@@ -2433,7 +2437,7 @@ function vSettings(v){
   const fmtD=t=>new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
   const planCard=(()=>{
     if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">₦20,000/year</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">You're on the free plan — ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits for a year.</div>
+    <div style="flex:1;min-width:200px">You're on the free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits for a year.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
   </div></div>`;
     if(!S.biz.paid_until) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
@@ -2444,14 +2448,14 @@ function vSettings(v){
   </div></div>`;
     const daysLeft=Math.max(0,Math.ceil(GRACE_DAYS-(Date.now()-new Date(S.biz.paid_until).getTime())/86400000));
     return `<div class="card" style="border-color:var(--red)"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px"><b style="color:var(--red)">Plan expired</b><div class="hint">Your plan expired on ${fmtD(S.biz.paid_until)}. Renew within ${daysLeft} day${daysLeft===1?'':'s'} to keep unlimited items and team members — after that this business reverts to the free plan.</div></div>
+    <div style="flex:1;min-width:200px"><b style="color:var(--red)">Plan expired</b><div class="hint">Your plan expired on ${fmtD(S.biz.paid_until)}. Renew within ${daysLeft} day${daysLeft===1?'':'s'} to keep unlimited items and team members. After that, this business reverts to the free plan.</div></div>
     <button class="btn primary" onclick="openUpgrade()">Renew</button>
   </div></div>`;
   })();
   v.innerHTML=`
   ${planCard}
   <div class="card"><div class="hd"><h2>WhatsApp</h2></div><div class="bd">
-    <p class="hint" style="margin-bottom:16px">Thank-you and reminder messages to customers just open WhatsApp with the text ready — no number to connect for those. The settings below are only for the daily summary.</p>
+    <p class="hint" style="margin-bottom:16px">Thank-you and reminder messages to customers just open WhatsApp with the text ready. No number to connect for those. The settings below are only for the daily summary.</p>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
       <input id="setWa" type="checkbox" ${S.biz.wa_enabled?'checked':''} style="width:auto"> Enable the daily summary button on the dashboard</label>
     <div class="field"><label>Send summary to this number (international format, e.g. 2348012345678)</label>
@@ -2468,10 +2472,10 @@ function vSettings(v){
     <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send summary now</button></div>
   </div></div>
   <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
-    <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span> — share it from the <b>Team</b> tab to add receptionists.</p>
+    <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span>. Share it from the <b>Team</b> tab to add receptionists.</p>
   </div></div>
   <div class="card"><div class="hd"><h2>Manager approvals</h2><span class="desc">what a manager can do immediately vs. needs your approval first</span></div><div class="bd">
-    <p class="hint" style="margin-bottom:14px">All on by default — everything a manager does waits for you. Turn any of these off to let managers do that one thing immediately instead. This never affects admins, and receptionists don't have approvals at all.</p>
+    <p class="hint" style="margin-bottom:14px">All on by default. Everything a manager does waits for you. Turn any of these off to let managers do that one thing immediately instead. This never affects admins, and receptionists don't have approvals at all.</p>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
       <input id="apItems" type="checkbox" ${S.approvalSettings?.items!==false?'checked':''} style="width:auto"> Item changes need approval</label>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
@@ -2483,12 +2487,12 @@ function vSettings(v){
     <button class="btn primary" onclick="saveApprovalSettings()">Save</button>
   </div></div>
   ${(S.role==='admin'&&S.referralSettings?.enabled)?`<div class="card"><div class="hd"><h2>Refer & earn</h2><span class="desc">₦${Number(S.referralSettings.bonus_amount||0).toLocaleString('en-NG')} when they subscribe</span></div><div class="bd">
-    <p class="hint" style="margin-bottom:12px">Share your code with other shop owners. When someone signs up with it and subscribes to the paid plan, you earn a bonus — paid out directly, no in-app wallet.</p>
+    <p class="hint" style="margin-bottom:12px">Share your code with other shop owners. When someone signs up with it and subscribes to the paid plan, you earn a bonus, paid out directly with no in-app wallet.</p>
     <div class="field"><label>Your referral code</label><input readonly value="${esc(S.biz.referral_code||'')}" onclick="this.select()"></div>
     <button class="btn primary" onclick="shareReferralCode()">Share on WhatsApp</button>
   </div></div>` : ''}
   <div class="card"><div class="hd"><h2 style="color:var(--red)">Reset test data</h2><span class="desc">clear everything you entered while testing</span></div><div class="bd">
-    <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b> — giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
+    <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b>, giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
     <div class="row">
       <button class="btn danger" onclick="resetData(false)">Clear sales & history (keep items)</button>
       <button class="btn danger" onclick="resetData(true)">Wipe everything incl. items</button>
@@ -2508,7 +2512,7 @@ async function resetData(includeItems){
     await sb.from('customers').delete().eq('business_id',bid);
     if(includeItems){ await sb.from('items').delete().eq('business_id',bid); }
     await sb.from('audit_log').delete().eq('business_id',bid);
-    S.cart=[]; toast('Data reset — clean slate'); await loadData(); render();
+    S.cart=[]; toast('Data reset, clean slate'); await loadData(); render();
   }catch(e){ err(e); }
 }
 async function saveSettings(){
@@ -2523,7 +2527,7 @@ async function saveSettings(){
 }
 function shareReferralCode(){
   const link=`https://themonishop.com.ng/?ref=${encodeURIComponent(S.biz.referral_code||'')}`;
-  const text=`I use TheMonishop to track stock, sales and staff at ${S.biz.name} — no more guessing where the money went. Try it with my link: ${link}`;
+  const text=`I use TheMonishop to track stock, sales and staff at ${S.biz.name}. No more guessing where the money went. Try it with my link: ${link}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
 }
 async function saveApprovalSettings(){
@@ -2540,7 +2544,7 @@ async function sendWhatsAppSummary(){
   if(error) return err(error);
   const story=todayStory(sales||[]);
   const lines=[
-    `*${S.biz.name}* — daily summary`,
+    `*${S.biz.name}*: daily summary`,
     new Date().toLocaleDateString('en-NG',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}),
     ``,
     ...todayStoryLines(story),

@@ -1123,6 +1123,10 @@ function vRestock(v){
       <div class="field"><label>Date</label><input id="rDate" type="date" value="${today()}"></div>
     </div>
     <p class="hint" id="rInfo" style="margin:-4px 0 12px"></p>
+    <div class="field"><label>Cost price this time (₦ per pack, optional)</label><input id="rNewCost" type="number" min="0" step="1" placeholder="leave blank to keep current cost"></div>
+    <p class="hint" style="margin:-4px 0 12px">If the price changed, this blends into the item's cost as a weighted average — it doesn't overwrite the cost of stock you already have.</p>
+    <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:10px"><input id="rUpdatePrice" type="checkbox" style="width:auto" onchange="toggleRestockPriceUpdate()"> Also update selling price</label>
+    <div id="rPriceFields" class="hidden"></div>
     <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
     ${S.items.length?'':'<p class="hint" style="margin-top:10px">Add items first under the Items tab.</p>'}
   </div></div>`;
@@ -1140,6 +1144,20 @@ function rModeOptions(){
   const opts=[`<option value="pack">${esc(pluralize(i.unit_name||'Pack',2))}</option>`].concat(itemModes(i).map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`));
   $('#rMode').innerHTML=opts.join('');
   rPackInfo();
+  if($('#rUpdatePrice')?.checked) renderRestockPriceFields();
+}
+function toggleRestockPriceUpdate(){
+  const show=$('#rUpdatePrice').checked;
+  $('#rPriceFields').classList.toggle('hidden',!show);
+  if(show) renderRestockPriceFields();
+}
+function renderRestockPriceFields(){
+  const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
+  const modes=itemModes(i);
+  $('#rPriceFields').innerHTML=`
+    <div class="field"><label>Pack sell price (₦)</label><input id="rNewPackPrice" type="number" min="0" step="1" value="${fullPackPrice(i)}"></div>
+    ${modes.map((m,idx)=>`<div class="field"><label>${esc(m.name)} price (₦)</label><input id="rModePrice${idx}" type="number" min="0" step="1" value="${m.price}"></div>`).join('')}
+    <p class="hint" style="margin-top:-4px;margin-bottom:14px">This changes the price for all stock, old and new — and every mode needs its own updated price.</p>`;
 }
 function rPackInfo(){
   const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
@@ -1153,17 +1171,46 @@ function rPackInfo(){
 }
 // shared by the immediate path (addPurchase) and the approval path
 // (approveChange) so the audit-narrative logic only lives in one place
-async function applyRestock(item_id,qty,base,unit_cost,entry_date,actorId){
+async function applyRestock(item_id,qty,base,unit_cost,entry_date,actorId,newCost,newPackPrice,newModePrices){
   const it=S.items.find(i=>i.id===item_id); if(!it) return {error:{message:'Item no longer exists'}};
   const before=onHand(item_id);
   const stockValueBefore=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
   const rec={business_id:S.biz.id,item_id,quantity:qty,base_units:base,unit_cost:unit_cost||0,entry_date:entry_date||today(),created_by:actorId};
   const {error}=await sb.from('purchases').insert(rec);
   if(error) return {error};
+
+  let priceNote='';
+  const itemUpdate={};
+  // cost blends into a weighted average rather than overwriting — old
+  // stock's cost basis isn't retroactively rewritten by this batch's price
+  if(newCost!=null && newCost>0){
+    const oldCost=Number(it.cost_price)||0;
+    const avgCost=(before+base)>0 ? ((before*oldCost)+(base*newCost))/(before+base) : newCost;
+    itemUpdate.cost_price=Math.round(avgCost*100)/100;
+    priceNote+=`, cost price ${money(oldCost)}→${money(itemUpdate.cost_price)} (weighted average)`;
+  }
+  // selling price, unlike cost, applies to the whole item immediately —
+  // old and new stock alike — and every mode's price moves with it
+  if(newPackPrice!=null){
+    const oldPackPrice=fullPackPrice(it);
+    itemUpdate.pack_price=newPackPrice;
+    itemUpdate.modes=(newModePrices&&newModePrices.length) ? itemModes(it).map(m=>{
+      const upd=newModePrices.find(x=>x.name===m.name);
+      return upd?{...m,price:upd.price}:m;
+    }) : it.modes;
+    priceNote+=`, sell price ${money(oldPackPrice)}→${money(newPackPrice)}`;
+  }
+  if(Object.keys(itemUpdate).length){
+    const {error:updErr}=await sb.from('items').update(itemUpdate).eq('id',item_id);
+    if(updErr) console.error('item price update failed:',updErr);
+    else Object.assign(it,itemUpdate);
+  }
+
   const stockValueAfter=stockValueBefore+base*Number(it.cost_price);
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'restock_added',detail:`${it.name}: ${breakdownQty(it,base)} restocked (cost ${money((unit_cost||0)*base)}), now ${breakdownQty(it,before+base)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}`});
+  const detail=`${it.name}: ${breakdownQty(it,base)} restocked (cost ${money((unit_cost||0)*base)}), now ${breakdownQty(it,before+base)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}${priceNote}`;
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'restock_added',detail});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
-  return {error:null,auditErr,addedLabel:breakdownQty(it,base)};
+  return {error:null,auditErr,addedLabel:breakdownQty(it,base),detail};
 }
 async function addPurchase(){
   const item_id=$('#rItem').value, qty=+$('#rQty').value;
@@ -1171,16 +1218,27 @@ async function addPurchase(){
   const it=S.items.find(i=>i.id===item_id);
   const modeName=$('#rMode').value, mode=itemModes(it).find(m=>m.name===modeName);
   const base = mode ? qty/mode.per_pack : qty;
-  const unit_cost = mode ? modeCost(it,mode.per_pack) : fullPackCost(it);
+  const newCostInput=$('#rNewCost').value;
+  const newCost = newCostInput!==''&&newCostInput!=null ? +newCostInput : null;
+  // this batch's actual per-unit cost, scaled the same way normal restock
+  // cost is (per mode ratio) — uses the new pack cost if entered, else the
+  // item's current cost, unchanged
+  const effectivePackCost = newCost!=null ? newCost : fullPackCost(it);
+  const unit_cost = mode ? effectivePackCost/mode.per_pack : effectivePackCost;
   const entry_date=$('#rDate').value||today();
+  let newPackPrice=null, newModePrices=null;
+  if($('#rUpdatePrice').checked){
+    newPackPrice=+$('#rNewPackPrice').value||0;
+    newModePrices=itemModes(it).map((m,idx)=>({name:m.name,price:+$('#rModePrice'+idx).value||0}));
+  }
   if(needsApproval('restock')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'restock',item_id,payload:{item_id,qty,base,unit_cost,entry_date}});
+      action_type:'restock',item_id,payload:{item_id,qty,base,unit_cost,entry_date,newCost,newPackPrice,newModePrices}});
     if(error) return err(error);
     toast('Sent for approval'); render();
     return;
   }
-  const {error,auditErr,addedLabel}=await applyRestock(item_id,qty,base,unit_cost,entry_date,S.user.id);
+  const {error,auditErr,addedLabel}=await applyRestock(item_id,qty,base,unit_cost,entry_date,S.user.id,newCost,newPackPrice,newModePrices);
   if(error) return err(error);
   if(auditErr) toast('Restocked, but audit log entry failed: '+auditErr.message,true);
   else toast(`Added ${addedLabel} to stock`);
@@ -1223,9 +1281,10 @@ async function applyRecon(item_id,exp,counted,variance,note,applyCorrection,acto
   const nm=(it||{}).name||'';
   const varLabel=it?`${variance>0?'+':''}${breakdownQty(it,Math.abs(variance))}${variance<0?' short':variance>0?' extra':''}`:`${variance>0?'+':''}${fmtPacks(variance)}`;
   const valueLine=applied?`, store value ${money(stockValueBefore)}→${money(stockValueBefore+variance*Number((it||{}).cost_price||0))}${variance<0?' (decreased)':' (increased)'}`:'';
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'reconciliation_recorded',detail:`${nm}: expected ${it?breakdownQty(it,exp):fmtPacks(exp)}, counted ${it?breakdownQty(it,counted):fmtPacks(counted)} (${varLabel} variance)${applied?', stock corrected to '+(it?breakdownQty(it,counted):fmtPacks(counted)):''}${valueLine}`});
+  const detail=`${nm}: expected ${it?breakdownQty(it,exp):fmtPacks(exp)}, counted ${it?breakdownQty(it,counted):fmtPacks(counted)} (${varLabel} variance)${applied?', stock corrected to '+(it?breakdownQty(it,counted):fmtPacks(counted)):''}${valueLine}`;
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'reconciliation_recorded',detail});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
-  return {error:null,auditErr};
+  return {error:null,auditErr,detail};
 }
 async function saveRecon(){
   const item_id=$('#cItem').value, exp=+$('#cExp').value, cnt=$('#cCount').value;
@@ -1284,9 +1343,10 @@ async function loadTillSummary(){
 async function applyTillClear(method,amount,note,before,actorId){
   const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:note||null,created_by:actorId});
   if(error) return {error};
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'till_cleared',detail:`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${note?'. '+note:''}`});
+  const detail=`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${note?'. '+note:''}`;
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'till_cleared',detail});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
-  return {error:null,auditErr};
+  return {error:null,auditErr,detail};
 }
 async function clearTill(){
   const method=$('#tMethod').value, amount=+$('#tAmt').value, note=$('#tNote').value.trim();
@@ -1673,12 +1733,58 @@ async function vAudit(v){
 /* ============================================================
    ADMIN — APPROVALS (manager-submitted item changes)
    ============================================================ */
+// plain-text summary of a pending change, shared by the audit log detail
+// and the approval-history list so neither ever falls back to a bare
+// "restock approved" with no substance
+function pendingChangeText(c){
+  const item=c.item_id?S.items.find(i=>i.id===c.item_id):null;
+  const p=c.payload||{};
+  if(c.action_type==='add_item'){
+    const modes=(p.modes||[]).length?`, modes: ${p.modes.map(m=>`${m.name} (${money(m.price)})`).join(', ')}`:'';
+    const opening=p._opening_packs?`, opening stock ${fmtPacks(p._opening_packs)} pack(s)`:'';
+    return `${p.name} (${p.category||'General'}): pack ${money(p.pack_price)} sell / ${money(p.cost_price)} cost${modes}${opening}`;
+  }
+  if(c.action_type==='edit_item'){
+    const was=item?`, was pack ${money(fullPackPrice(item))} sell / ${money(fullPackCost(item))} cost`:'';
+    return `${item?item.name:'(item)'}: now ${p.name}, pack ${money(p.pack_price)} sell / ${money(p.cost_price)} cost${was}`;
+  }
+  if(c.action_type==='delete_item') return `${p.name} (${p.category||'General'}) deleted`;
+  if(c.action_type==='restock'){
+    const nm=item?item.name:'(item)';
+    const extra=[p.newCost?`cost price → ${money(p.newCost)} (weighted average)`:'',p.newPackPrice!=null?`sell price → ${money(p.newPackPrice)} for all stock`:''].filter(Boolean).join(', ');
+    return `${nm}: ${item?breakdownQty(item,p.base):fmtPacks(p.base)} restocked (cost ${money((p.unit_cost||0)*p.base)})${extra?`, ${extra}`:''}`;
+  }
+  if(c.action_type==='reconcile'){
+    const nm=item?item.name:'(item)';
+    return `${nm}: expected ${item?breakdownQty(item,p.exp):fmtPacks(p.exp)}, counted ${item?breakdownQty(item,p.counted):fmtPacks(p.counted)}${p.apply?' (corrected system stock)':' (system stock not corrected)'}${p.note?` — ${p.note}`:''}`;
+  }
+  if(c.action_type==='till_clear') return `${money(p.amount)} ${p.method} cleared${p.note?` — ${p.note}`:''}`;
+  return c.action_type;
+}
 async function vApprovals(v){
   v.innerHTML='<div class="empty">Loading…</div>';
-  const {data,error}=await sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('status','pending').order('created_at',{ascending:true});
+  const [{data,error},{data:history,error:histErr},{data:members}]=await Promise.all([
+    sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('status','pending').order('created_at',{ascending:true}),
+    sb.from('pending_changes').select('*').eq('business_id',S.biz.id).in('status',['approved','rejected']).order('reviewed_at',{ascending:false}).limit(50),
+    sb.rpc('list_members',{b:S.biz.id})
+  ]);
   if(error) return err(error);
-  if(!data.length){ v.innerHTML='<div class="card"><div class="bd"><div class="empty">No pending approvals.</div></div></div>'; return; }
-  v.innerHTML=data.map(renderApprovalCard).join('');
+  const nameOf=uid=>(members||[]).find(m=>m.user_id===uid)?.full_name||'(unknown)';
+  const pendingHtml=data.length?data.map(renderApprovalCard).join(''):'<div class="card"><div class="bd"><div class="empty">No pending approvals.</div></div></div>';
+  const historyHtml=(!histErr&&history?.length)?`<div class="card"><div class="hd"><h2>History</h2><span class="desc">recently approved and rejected</span></div><div class="bd tight">
+    <table><tbody>${history.map(c=>renderApprovalHistoryRow(c,nameOf)).join('')}</tbody></table>
+  </div></div>`:'';
+  v.innerHTML=pendingHtml+historyHtml;
+}
+function renderApprovalHistoryRow(c,nameOf){
+  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing'}[c.action_type]||c.action_type;
+  const fmt=t=>t?new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
+  const approved=c.status==='approved';
+  return `<tr>
+    <td class="itemname">${label}<div class="cat">${esc(pendingChangeText(c))}</div>
+      <div class="cat">requested by ${esc(nameOf(c.requested_by))} · ${approved?'approved':'rejected'} by ${esc(nameOf(c.reviewed_by))}, ${fmt(c.reviewed_at)}${c.review_note?` — ${esc(c.review_note)}`:''}</div></td>
+    <td class="r"><span class="badge ${approved?'ok':'neg'}">${c.status}</span></td>
+  </tr>`;
 }
 function renderApprovalCard(c){
   const item = c.item_id ? S.items.find(i=>i.id===c.item_id) : null;
@@ -1701,8 +1807,13 @@ function renderApprovalCard(c){
       <p class="hint" style="color:var(--red)">This item and its sales/purchase history will be permanently deleted.</p>`;
   }else if(c.action_type==='restock'){
     const nm=item?item.name:'(item)';
+    const priceChanges=[
+      c.payload.newCost?`cost price will move to ${money(c.payload.newCost)} (weighted average with existing stock)`:'',
+      c.payload.newPackPrice!=null?`sell price will change to ${money(c.payload.newPackPrice)} for all stock`:''
+    ].filter(Boolean);
     body=`<p><b>${esc(nm)}</b></p>
-      <p class="hint">${item?breakdownQty(item,c.payload.base):fmtPacks(c.payload.base)} · cost ${money((c.payload.unit_cost||0)*c.payload.base)} · ${esc(c.payload.entry_date||'')}</p>`;
+      <p class="hint">${item?breakdownQty(item,c.payload.base):fmtPacks(c.payload.base)} · cost ${money((c.payload.unit_cost||0)*c.payload.base)} · ${esc(c.payload.entry_date||'')}</p>
+      ${priceChanges.length?`<p class="hint" style="color:var(--amber)">${priceChanges.join(' · ')}</p>`:''}`;
   }else if(c.action_type==='reconcile'){
     const nm=item?item.name:'(item)';
     body=`<p><b>${esc(nm)}</b></p>
@@ -1724,6 +1835,11 @@ async function approveChange(id){
   const {data:c,error:e0}=await sb.from('pending_changes').select('*').eq('id',id).single();
   if(e0) return err(e0);
   try{
+    // for restock/reconcile/till_clear, applyDetail carries the exact same
+    // before→after stock/store-value/price narrative the direct-action
+    // path already logs — reused here so "change approved" is never a
+    // thinner summary than what actually happened
+    let applyDetail=null;
     if(c.action_type==='add_item'){
       const {_opening_packs,...rec}=c.payload;
       const {data:item,error}=await sb.from('items').insert(rec).select().single();
@@ -1740,12 +1856,14 @@ async function approveChange(id){
       if(error) throw error;
     }else if(c.action_type==='restock'){
       const p=c.payload;
-      const {error}=await applyRestock(p.item_id,p.qty,p.base,p.unit_cost,p.entry_date,c.requested_by);
+      const {error,detail}=await applyRestock(p.item_id,p.qty,p.base,p.unit_cost,p.entry_date,c.requested_by,p.newCost,p.newPackPrice,p.newModePrices);
       if(error) throw error;
+      applyDetail=detail;
     }else if(c.action_type==='reconcile'){
       const p=c.payload;
-      const {error}=await applyRecon(p.item_id,p.exp,p.counted,p.variance,p.note,p.apply,c.requested_by);
+      const {error,detail}=await applyRecon(p.item_id,p.exp,p.counted,p.variance,p.note,p.apply,c.requested_by);
       if(error) throw error;
+      applyDetail=detail;
     }else if(c.action_type==='till_clear'){
       const p=c.payload;
       // re-check the balance at approval time rather than trust the
@@ -1756,12 +1874,13 @@ async function approveChange(id){
       const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
       const nowBefore=p.method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
       if(p.amount>nowBefore+1e-6) throw new Error(`Only ${money(nowBefore)} ${p.method} is in the till now`);
-      const {error}=await applyTillClear(p.method,p.amount,p.note,nowBefore,c.requested_by);
+      const {error,detail}=await applyTillClear(p.method,p.amount,p.note,nowBefore,c.requested_by);
       if(error) throw error;
+      applyDetail=detail;
     }
     const {error:e1}=await sb.from('pending_changes').update({status:'approved',reviewed_by:S.user.id,reviewed_at:new Date().toISOString()}).eq('id',id);
     if(e1) throw e1;
-    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_approved',detail:`${c.action_type} approved`});
+    await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_approved',detail:applyDetail?`Approved — ${applyDetail}`:pendingChangeText(c)});
     toast('Approved'); await loadData(); vApprovals($('#view'));
   }catch(e){ err(e); }
 }
@@ -1769,7 +1888,7 @@ async function rejectChange(id){
   const note=prompt('Reason for rejecting (optional):')||null;
   const {data:c,error}=await sb.from('pending_changes').update({status:'rejected',reviewed_by:S.user.id,reviewed_at:new Date().toISOString(),review_note:note}).eq('id',id).select().single();
   if(error) return err(error);
-  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_rejected',detail:note||(c?.action_type+' rejected')});
+  await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_rejected',detail:c?pendingChangeText(c)+(note?` — Reason: ${note}`:''):'change rejected'});
   toast('Rejected'); vApprovals($('#view'));
 }
 
@@ -2486,6 +2605,19 @@ function vSettings(v){
       <input id="apTill" type="checkbox" ${S.approvalSettings?.till!==false?'checked':''} style="width:auto"> Till clearing needs approval</label>
     <button class="btn primary" onclick="saveApprovalSettings()">Save</button>
   </div></div>
+  <div class="card"><div class="hd"><h2>Approval reminders</h2><span class="desc">nudge you again if something's still waiting</span></div><div class="bd">
+    <p class="hint" style="margin-bottom:14px">If a manager's request sits unapproved, repeat the push notification at this interval until you respond to it.</p>
+    <div class="field"><label>Remind me every</label>
+      <select id="setReminderHrs">
+        <option value="" ${!S.biz.approval_reminder_hours?'selected':''}>Never (just the one notification)</option>
+        <option value="1" ${S.biz.approval_reminder_hours==1?'selected':''}>1 hour</option>
+        <option value="4" ${S.biz.approval_reminder_hours==4?'selected':''}>4 hours</option>
+        <option value="12" ${S.biz.approval_reminder_hours==12?'selected':''}>12 hours</option>
+        <option value="24" ${S.biz.approval_reminder_hours==24?'selected':''}>24 hours</option>
+      </select>
+    </div>
+    <button class="btn primary" onclick="saveReminderSettings()">Save</button>
+  </div></div>
   ${(S.role==='admin'&&S.referralSettings?.enabled)?`<div class="card"><div class="hd"><h2>Refer & earn</h2><span class="desc">₦${Number(S.referralSettings.bonus_amount||0).toLocaleString('en-NG')} when they subscribe</span></div><div class="bd">
     <p class="hint" style="margin-bottom:12px">Share your code with other shop owners. When someone signs up with it and subscribes to the paid plan, you earn a bonus, paid out directly with no in-app wallet.</p>
     <div class="field"><label>Your referral code</label><input readonly value="${esc(S.biz.referral_code||'')}" onclick="this.select()"></div>
@@ -2537,6 +2669,15 @@ async function saveApprovalSettings(){
   if(error) return err(error);
   S.approvalSettings=settings;
   toast('Approval settings saved');
+}
+async function saveReminderSettings(){
+  const hrsVal=$('#setReminderHrs').value;
+  const hours=hrsVal?+hrsVal:null;
+  const {error}=await sb.from('businesses').update({approval_reminder_hours:hours}).eq('id',S.biz.id);
+  if(error) return err(error);
+  S.biz.approval_reminder_hours=hours;
+  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz) bz.approval_reminder_hours=hours;
+  toast('Reminder setting saved');
 }
 async function sendWhatsAppSummary(){
   const t=today(); const d8=new Date(t+'T00:00:00'); d8.setDate(d8.getDate()-7);

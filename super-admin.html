@@ -180,10 +180,11 @@ async function loadReferrals(){
     <div><div class="n">${money(unpaidTotal)}</div><div class="l">Total owed</div></div>`;
 
   $('#unpaidTable').innerHTML = unpaid.length ? `<table><thead><tr>
-    <th>Referrer</th><th>Referred</th><th>Amount</th><th>Since</th><th></th>
+    <th>Referrer</th><th>Referred</th><th>Amount</th><th>Pay to</th><th>Since</th><th></th>
   </tr></thead><tbody>${unpaid.map(r=>`<tr>
     <td>${esc(r.referrer_name)}</td><td>${esc(r.referred_name)}</td>
     <td><span class="badge gold">${money(r.bonus_amount)}</span></td>
+    <td>${r.payout_account_number?`${esc(r.payout_bank_name||'')}<div class="hint">${esc(r.payout_account_number)} · ${esc(r.payout_account_name||'')}</div>`:'<span class="hint">not provided yet</span>'}</td>
     <td>${fmtD(r.created_at)}</td>
     <td><button class="btn ghost" onclick="markPaid('${r.id}')">Mark paid</button></td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing owed right now.</div>';

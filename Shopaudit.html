@@ -682,9 +682,9 @@ function buildNav(){
   $('#navToggleBtn').classList.remove('hidden'); $('#topSignoutBtn').classList.add('hidden');
   let tabs;
   if(S.role==='admin'){
-    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
+    tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
   }else if(S.role==='manager'){
-    tabs=[['dashboard','Dashboard'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses']];
+    tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses']];
   }else{
     tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
   }
@@ -2621,7 +2621,14 @@ function vSettings(v){
   ${(S.role==='admin'&&S.referralSettings?.enabled)?`<div class="card"><div class="hd"><h2>Refer & earn</h2><span class="desc">₦${Number(S.referralSettings.bonus_amount||0).toLocaleString('en-NG')} when they subscribe</span></div><div class="bd">
     <p class="hint" style="margin-bottom:12px">Share your code with other shop owners. When someone signs up with it and subscribes to the paid plan, you earn a bonus, paid out directly with no in-app wallet.</p>
     <div class="field"><label>Your referral code</label><input readonly value="${esc(S.biz.referral_code||'')}" onclick="this.select()"></div>
-    <button class="btn primary" onclick="shareReferralCode()">Share on WhatsApp</button>
+    <button class="btn primary" onclick="shareReferralCode()" style="margin-bottom:16px">Share on WhatsApp</button>
+    <p class="hint" style="margin-bottom:12px">Where should your bonus be paid to?</p>
+    <div class="frow">
+      <div class="field"><label>Bank name</label><input id="setPayoutBank" value="${esc(S.biz.payout_bank_name||'')}" placeholder="e.g. GTBank"></div>
+      <div class="field"><label>Account number</label><input id="setPayoutAcctNo" value="${esc(S.biz.payout_account_number||'')}" placeholder="0123456789"></div>
+    </div>
+    <div class="field"><label>Account name</label><input id="setPayoutAcctName" value="${esc(S.biz.payout_account_name||'')}" placeholder="Name on the account"></div>
+    <button class="btn ghost" onclick="savePayoutDetails()">Save payout details</button>
   </div></div>` : ''}
   <div class="card"><div class="hd"><h2 style="color:var(--red)">Reset test data</h2><span class="desc">clear everything you entered while testing</span></div><div class="bd">
     <p class="hint" style="margin-bottom:14px">Deletes all <b>sales, restocks, stock counts, adjustments, customers and their credit</b> for <b>${esc(S.biz.name)}</b>, giving you a clean slate to start real records. Your items, prices and team are <b>kept</b>. This cannot be undone.</p>
@@ -2661,6 +2668,16 @@ function shareReferralCode(){
   const link=`https://themonishop.com.ng/?ref=${encodeURIComponent(S.biz.referral_code||'')}`;
   const text=`I use TheMonishop to track stock, sales and staff at ${S.biz.name}. No more guessing where the money went. Try it with my link: ${link}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
+}
+async function savePayoutDetails(){
+  const payout_bank_name=$('#setPayoutBank').value.trim()||null;
+  const payout_account_number=$('#setPayoutAcctNo').value.trim()||null;
+  const payout_account_name=$('#setPayoutAcctName').value.trim()||null;
+  const {error}=await sb.from('businesses').update({payout_bank_name,payout_account_number,payout_account_name}).eq('id',S.biz.id);
+  if(error) return err(error);
+  Object.assign(S.biz,{payout_bank_name,payout_account_number,payout_account_name});
+  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz) Object.assign(bz,{payout_bank_name,payout_account_number,payout_account_name});
+  toast('Payout details saved');
 }
 async function saveApprovalSettings(){
   const settings={business_id:S.biz.id,items:$('#apItems').checked,restock:$('#apRestock').checked,

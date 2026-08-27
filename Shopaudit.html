@@ -1151,15 +1151,22 @@ function toggleRestockPriceUpdate(){
   $('#rPriceFields').classList.toggle('hidden',!show);
   if(show) renderRestockPriceFields();
 }
+// uses the just-typed "cost price this time" if present, since that's the
+// cost this restock's prices should be measured against — falls back to
+// the item's current cost when that field is left blank
+function effectiveRestockCost(i){
+  const nc=+$('#rNewCost')?.value||0;
+  return nc>0 ? nc : (Number(i.cost_price)||0);
+}
 function renderRestockPriceFields(){
   const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
   const modes=itemModes(i);
-  const cost=Number(i.cost_price)||0;
+  const cost=effectiveRestockCost(i);
   $('#rPriceFields').innerHTML=`
     <div class="field"><label>Pack sell price (₦)</label><input id="rNewPackPrice" type="number" min="0" step="1" value="${fullPackPrice(i)}">
-      ${cost?`<p class="hint" style="margin-top:4px">cost ${money(cost)}</p>`:''}</div>
+      <p class="hint" id="rPackCostHint" style="margin-top:4px">${cost?`cost ${money(cost)}`:''}</p></div>
     ${modes.map((m,idx)=>`<div class="field"><label>${esc(m.name)} price (₦)</label><input id="rModePrice${idx}" type="number" min="0" step="1" value="${m.price}">
-      ${cost&&m.per_pack?`<p class="hint" style="margin-top:4px">cost ≈ ${money(cost/m.per_pack)}</p>`:''}</div>`).join('')}
+      <p class="hint" id="rModeCostHint${idx}" style="margin-top:4px">${cost&&m.per_pack?`cost ≈ ${money(cost/m.per_pack)}`:''}</p></div>`).join('')}
     <p class="hint" style="margin-top:-4px;margin-bottom:14px">This changes the price for all stock, old and new — and every mode needs its own updated price.</p>`;
 }
 function rPackInfo(){
@@ -1180,6 +1187,13 @@ function rPackInfo(){
     costText+=` After this restock: ${money(Math.round(avgCost*100)/100)} (weighted average).`;
   }
   $('#rCostInfo').textContent=costText;
+  if($('#rUpdatePrice')?.checked){
+    const eff=effectiveRestockCost(i);
+    const packHint=$('#rPackCostHint'); if(packHint) packHint.textContent=eff?`cost ${money(eff)}`:'';
+    itemModes(i).forEach((m,idx)=>{
+      const h=$('#rModeCostHint'+idx); if(h) h.textContent=(eff&&m.per_pack)?`cost ≈ ${money(eff/m.per_pack)}`:'';
+    });
+  }
 }
 // shared by the immediate path (addPurchase) and the approval path
 // (approveChange) so the audit-narrative logic only lives in one place
@@ -1835,13 +1849,21 @@ function renderApprovalCard(c){
     body=`<p><b>${money(c.payload.amount)} ${esc(c.payload.method)}</b></p>
       ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
   }
-  return `<div class="card"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
+  return `<div class="card" id="pc-${c.id}"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
     ${body}
     <div class="frow" style="margin-top:10px">
       <button class="btn primary" onclick='approveChange("${c.id}")'>Approve</button>
       <button class="btn danger" onclick='rejectChange("${c.id}")'>Reject</button>
     </div>
   </div></div>`;
+}
+// removes just the one card that was just actioned, instead of the whole
+// approvals view flashing to a loading spinner and rebuilding — lets an
+// admin approve several requests in a row without waiting on each one
+function removeApprovalCard(id){
+  document.getElementById('pc-'+id)?.remove();
+  const list=$('#view');
+  if(list && !list.querySelector('[id^="pc-"]')) vApprovals(list);
 }
 async function approveChange(id){
   const {data:c,error:e0}=await sb.from('pending_changes').select('*').eq('id',id).single();
@@ -1893,7 +1915,7 @@ async function approveChange(id){
     const {error:e1}=await sb.from('pending_changes').update({status:'approved',reviewed_by:S.user.id,reviewed_at:new Date().toISOString()}).eq('id',id);
     if(e1) throw e1;
     await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_approved',detail:applyDetail?`Approved — ${applyDetail}`:pendingChangeText(c)});
-    toast('Approved'); await loadData(); vApprovals($('#view'));
+    toast('Approved'); removeApprovalCard(id); loadData();
   }catch(e){ err(e); }
 }
 async function rejectChange(id){
@@ -1901,7 +1923,7 @@ async function rejectChange(id){
   const {data:c,error}=await sb.from('pending_changes').update({status:'rejected',reviewed_by:S.user.id,reviewed_at:new Date().toISOString(),review_note:note}).eq('id',id).select().single();
   if(error) return err(error);
   await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'change_rejected',detail:c?pendingChangeText(c)+(note?` — Reason: ${note}`:''):'change rejected'});
-  toast('Rejected'); vApprovals($('#view'));
+  toast('Rejected'); removeApprovalCard(id);
 }
 
 /* ============================================================

@@ -1123,8 +1123,8 @@ function vRestock(v){
       <div class="field"><label>Date</label><input id="rDate" type="date" value="${today()}"></div>
     </div>
     <p class="hint" id="rInfo" style="margin:-4px 0 12px"></p>
-    <div class="field"><label>Cost price this time (₦ per pack, optional)</label><input id="rNewCost" type="number" min="0" step="1" placeholder="leave blank to keep current cost"></div>
-    <p class="hint" style="margin:-4px 0 12px">If the price changed, this blends into the item's cost as a weighted average — it doesn't overwrite the cost of stock you already have.</p>
+    <div class="field"><label>Cost price this time (₦ per pack, optional)</label><input id="rNewCost" type="number" min="0" step="1" placeholder="leave blank to keep current cost" oninput="rPackInfo()"></div>
+    <p class="hint" id="rCostInfo" style="margin:-4px 0 12px"></p>
     <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:10px"><input id="rUpdatePrice" type="checkbox" style="width:auto" onchange="toggleRestockPriceUpdate()"> Also update selling price</label>
     <div id="rPriceFields" class="hidden"></div>
     <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
@@ -1154,9 +1154,12 @@ function toggleRestockPriceUpdate(){
 function renderRestockPriceFields(){
   const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
   const modes=itemModes(i);
+  const cost=Number(i.cost_price)||0;
   $('#rPriceFields').innerHTML=`
-    <div class="field"><label>Pack sell price (₦)</label><input id="rNewPackPrice" type="number" min="0" step="1" value="${fullPackPrice(i)}"></div>
-    ${modes.map((m,idx)=>`<div class="field"><label>${esc(m.name)} price (₦)</label><input id="rModePrice${idx}" type="number" min="0" step="1" value="${m.price}"></div>`).join('')}
+    <div class="field"><label>Pack sell price (₦)</label><input id="rNewPackPrice" type="number" min="0" step="1" value="${fullPackPrice(i)}">
+      ${cost?`<p class="hint" style="margin-top:4px">cost ${money(cost)}</p>`:''}</div>
+    ${modes.map((m,idx)=>`<div class="field"><label>${esc(m.name)} price (₦)</label><input id="rModePrice${idx}" type="number" min="0" step="1" value="${m.price}">
+      ${cost&&m.per_pack?`<p class="hint" style="margin-top:4px">cost ≈ ${money(cost/m.per_pack)}</p>`:''}</div>`).join('')}
     <p class="hint" style="margin-top:-4px;margin-bottom:14px">This changes the price for all stock, old and new — and every mode needs its own updated price.</p>`;
 }
 function rPackInfo(){
@@ -1168,6 +1171,15 @@ function rPackInfo(){
   $('#rInfo').innerHTML = mode
     ? `${qty||0} × ${esc(mode.name)} = <b>${fmtPacks(baseUnits)}</b> ${esc(unit)} added to stock.`
     : `Adds <b>${fmtPacks(qty||0)}</b> ${esc(unit)} to stock.`;
+  const currentCost=Number(i.cost_price)||0;
+  const newCost=+$('#rNewCost')?.value||0;
+  const before=onHand(i.id);
+  let costText=`Current cost: ${money(currentCost)} per ${esc(i.unit_name||'Pack')}.`;
+  if(newCost>0 && baseUnits>0){
+    const avgCost=(before+baseUnits)>0 ? ((before*currentCost)+(baseUnits*newCost))/(before+baseUnits) : newCost;
+    costText+=` After this restock: ${money(Math.round(avgCost*100)/100)} (weighted average).`;
+  }
+  $('#rCostInfo').textContent=costText;
 }
 // shared by the immediate path (addPurchase) and the approval path
 // (approveChange) so the audit-narrative logic only lives in one place

@@ -95,6 +95,34 @@ tr:last-child td{border-bottom:none}
     <h2>Paid bonuses</h2>
     <div id="paidTable"><div class="empty">Loading…</div></div>
   </div>
+
+  <div class="card wide">
+    <h2>Marketer applications</h2>
+    <div id="marketerAppsTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Marketer settings</h2>
+    <div class="toggle"><input id="mkApplicationsOpen" type="checkbox" style="width:auto"> <label for="mkApplicationsOpen" style="font-weight:600">Applications open</label></div>
+    <div class="field"><label>Bonus per paid referral (₦)</label><input id="mkBonus" type="number" min="0" step="500"></div>
+    <button class="btn" onclick="saveMarketerSettings()">Save</button>
+  </div>
+
+  <div class="card wide">
+    <h2>Approved marketers</h2>
+    <div id="marketersTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card wide">
+    <h2>Marketer bonuses — unpaid</h2>
+    <div id="mkUnpaidSummary" class="summary"></div>
+    <div id="mkUnpaidTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card wide">
+    <h2>Marketer bonuses — paid</h2>
+    <div id="mkPaidTable"><div class="empty">Loading…</div></div>
+  </div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -139,6 +167,9 @@ async function afterSignIn(){
   renderBusinesses(bizData||[]);
   loadSettings();
   loadReferrals();
+  loadMarketers();
+  loadMarketerSettings();
+  loadMarketerReferrals();
 }
 
 function renderBusinesses(rows){
@@ -202,6 +233,95 @@ async function markPaid(id){
   if(error) return toast(error.message,true);
   toast('Marked paid');
   loadReferrals();
+}
+
+async function loadMarketers(){
+  const {data,error}=await sb.rpc('platform_marketers');
+  if(error){ toast(error.message,true); return; }
+  const rows=data||[];
+  const pending=rows.filter(m=>m.status==='pending');
+  const approved=rows.filter(m=>m.status==='approved');
+
+  $('#marketerAppsTable').innerHTML = pending.length ? `<table><thead><tr>
+    <th>Name</th><th>Phone</th><th>WhatsApp</th><th>Email</th><th>Applied</th><th></th>
+  </tr></thead><tbody>${pending.map(m=>`<tr>
+    <td>${esc(m.full_name)}</td><td>${esc(m.phone)}</td><td>${esc(m.whatsapp||'')}</td>
+    <td>${esc(m.email)}</td><td>${fmtD(m.created_at)}</td>
+    <td style="display:flex;gap:6px">
+      <button class="btn" onclick="approveMarketer('${m.user_id}')">Approve</button>
+      <button class="btn ghost" onclick="rejectMarketer('${m.user_id}')">Reject</button>
+    </td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No pending applications.</div>';
+
+  $('#marketersTable').innerHTML = approved.length ? `<table><thead><tr>
+    <th>Name</th><th>Code</th><th>Registered</th><th>Paid</th><th>Pay to</th>
+  </tr></thead><tbody>${approved.map(m=>`<tr>
+    <td>${esc(m.full_name)}</td><td>${esc(m.marketer_code)}</td>
+    <td>${m.registered_count}</td><td>${m.paid_count}</td>
+    <td>${m.payout_account_number?`${esc(m.payout_bank_name||'')}<div class="hint">${esc(m.payout_account_number)} · ${esc(m.payout_account_name||'')}</div>`:'<span class="hint">not provided yet</span>'}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No approved marketers yet.</div>';
+}
+
+async function approveMarketer(id){
+  const {error}=await sb.rpc('approve_marketer',{p_user_id:id});
+  if(error) return toast(error.message,true);
+  toast('Marketer approved');
+  loadMarketers();
+}
+async function rejectMarketer(id){
+  const {error}=await sb.rpc('reject_marketer',{p_user_id:id});
+  if(error) return toast(error.message,true);
+  toast('Application rejected');
+  loadMarketers();
+}
+
+async function loadMarketerSettings(){
+  const {data,error}=await sb.from('marketer_settings').select('*').eq('id',1).single();
+  if(error) return;
+  $('#mkApplicationsOpen').checked=!!data.applications_open;
+  $('#mkBonus').value=data.bonus_amount;
+}
+async function saveMarketerSettings(){
+  const {error}=await sb.rpc('set_marketer_settings',{p_bonus:+$('#mkBonus').value||0,p_applications_open:$('#mkApplicationsOpen').checked});
+  if(error) return toast(error.message,true);
+  toast('Saved');
+}
+
+async function loadMarketerReferrals(){
+  const {data,error}=await sb.rpc('platform_marketer_referrals');
+  if(error){ toast(error.message,true); return; }
+  const rows=data||[];
+  const unpaid=rows.filter(r=>r.status==='bonus_eligible');
+  const paid=rows.filter(r=>r.status==='bonus_paid');
+
+  const unpaidTotal=unpaid.reduce((a,r)=>a+Number(r.bonus_amount||0),0);
+  $('#mkUnpaidSummary').innerHTML=`
+    <div><div class="n">${unpaid.length}</div><div class="l">Unpaid referrals</div></div>
+    <div><div class="n">${money(unpaidTotal)}</div><div class="l">Total owed</div></div>`;
+
+  $('#mkUnpaidTable').innerHTML = unpaid.length ? `<table><thead><tr>
+    <th>Marketer</th><th>Shop</th><th>Amount</th><th>Pay to</th><th>Since</th><th></th>
+  </tr></thead><tbody>${unpaid.map(r=>`<tr>
+    <td>${esc(r.marketer_name)}</td><td>${esc(r.business_name)}</td>
+    <td><span class="badge gold">${money(r.bonus_amount)}</span></td>
+    <td>${r.payout_account_number?`${esc(r.payout_bank_name||'')}<div class="hint">${esc(r.payout_account_number)} · ${esc(r.payout_account_name||'')}</div>`:'<span class="hint">not provided yet</span>'}</td>
+    <td>${fmtD(r.created_at)}</td>
+    <td><button class="btn ghost" onclick="markMarketerPaid('${r.id}')">Mark paid</button></td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing owed right now.</div>';
+
+  $('#mkPaidTable').innerHTML = paid.length ? `<table><thead><tr>
+    <th>Marketer</th><th>Shop</th><th>Amount</th><th>Paid on</th>
+  </tr></thead><tbody>${paid.map(r=>`<tr>
+    <td>${esc(r.marketer_name)}</td><td>${esc(r.business_name)}</td>
+    <td>${money(r.bonus_amount)}</td><td>${fmtD(r.bonus_marked_at||r.created_at)}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No payouts recorded yet.</div>';
+}
+
+async function markMarketerPaid(id){
+  const {error}=await sb.rpc('mark_marketer_bonus_paid',{p_id:id});
+  if(error) return toast(error.message,true);
+  toast('Marked paid');
+  loadMarketerReferrals();
 }
 </script>
 </body>

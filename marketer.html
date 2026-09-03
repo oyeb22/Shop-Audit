@@ -157,7 +157,11 @@ const fmtD = t => new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'s
 let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',3200); }
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// isolated storage key: without this, this page shares the same localStorage
+// session as Shopaudit.html/pay.html (same origin, same Supabase project), so
+// anyone already signed in anywhere else on the site would land straight in
+// this dashboard without ever signing in here
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{storageKey:'themonishop-marketer-auth'}});
 let marketerId=null, realtimeChannel=null;
 
 function setMode(m){

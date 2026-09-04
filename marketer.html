@@ -87,13 +87,14 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <div id="paneApply" class="hidden">
-      <p class="hint" style="margin-bottom:14px">Refer shop owners to TheMonishop and earn a bonus for every one who upgrades to paid. Apply below — you'll get access once approved.</p>
+      <p class="hint" style="margin-bottom:14px">We're hiring marketers to bring shop owners onto TheMonishop, on salary, plus a bonus when you hit your monthly referral target. Apply below — you'll get access once approved, and salary details are agreed with you directly.</p>
       <div class="field"><label>Full name</label><input id="apName" placeholder="Your full name"></div>
       <div class="field"><label>Phone number</label><input id="apPhone" placeholder="0803 000 0000"></div>
       <div class="field"><label>WhatsApp number (optional, if different)</label><input id="apWhatsapp" placeholder="0803 000 0000"></div>
       <div class="field"><label>Email</label><input id="apEmail" type="email" placeholder="you@email.com"></div>
       <div class="field"><label>Password</label><input id="apPass" type="password" placeholder="Choose a password"></div>
       <button class="btn" id="apBtn" onclick="doApply()" style="width:100%">Submit application</button>
+      <p class="hint" style="margin-top:10px;text-align:center">By applying you agree to the <a href="terms.html" target="_blank">Terms</a> (see "Marketer program") and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>
     </div>
   </div>
 </div>
@@ -109,7 +110,7 @@ tr:last-child td{border-bottom:none}
   <div id="approvedArea" class="hidden">
     <div class="card wide">
       <h2>Your referral link</h2>
-      <p class="hint" style="margin-bottom:10px">Share this link. Anyone who signs up through it and later upgrades to paid earns you a bonus.</p>
+      <p class="hint" style="margin-bottom:10px">Share this link. Anyone who signs up through it and later upgrades to paid counts toward your monthly bonus target.</p>
       <div class="linkrow">
         <input id="refLink" readonly>
         <button class="btn ghost" onclick="copyLink()">Copy</button>
@@ -118,14 +119,19 @@ tr:last-child td{border-bottom:none}
 
     <div class="stats">
       <div class="stat"><div class="n" id="stRegistered">0</div><div class="l">Registered</div></div>
-      <div class="stat"><div class="n" id="stPaid">0</div><div class="l">Paid</div></div>
-      <div class="stat"><div class="n" id="stOwed">₦0</div><div class="l">Owed to you</div></div>
-      <div class="stat"><div class="n" id="stEarned">₦0</div><div class="l">Total paid out</div></div>
+      <div class="stat"><div class="n" id="stPaid">0</div><div class="l">Paid (all time)</div></div>
+      <div class="stat"><div class="n" id="stMonthProgress">0/0</div><div class="l">This month's target</div></div>
+      <div class="stat"><div class="n" id="stOwed">₦0</div><div class="l">Bonus owed</div></div>
     </div>
 
     <div class="card wide">
-      <h2>This month</h2>
-      <div id="monthTable"><div class="empty">Loading…</div></div>
+      <h2>Monthly bonus</h2>
+      <div id="monthProgressCard"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="card wide">
+      <h2>Bonus history</h2>
+      <div id="bonusTable"><div class="empty">Loading…</div></div>
     </div>
 
     <div class="card wide">
@@ -162,7 +168,8 @@ function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='
 // anyone already signed in anywhere else on the site would land straight in
 // this dashboard without ever signing in here
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{storageKey:'themonishop-marketer-auth'}});
-let marketerId=null, realtimeChannel=null;
+let marketerId=null, realtimeChannel=null, mkTarget=1;
+const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function setMode(m){
   $('#tabSignin').classList.toggle('on', m==='signin');
@@ -236,7 +243,10 @@ async function afterSignIn(){
     $('#poBank').value=status.payout_bank_name||'';
     $('#poAcctNo').value=status.payout_account_number||'';
     $('#poAcctName').value=status.payout_account_name||'';
+    const {data:settings}=await sb.from('marketer_settings').select('monthly_target').eq('id',1).single();
+    if(settings) mkTarget=settings.monthly_target;
     loadReferrals();
+    loadMonthlyBonuses();
     subscribeRealtime();
   }
 }
@@ -266,32 +276,45 @@ async function loadReferrals(){
   const rows=data||[];
 
   const registered=rows.length;
-  const paid=rows.filter(r=>r.status==='bonus_eligible'||r.status==='bonus_paid').length;
-  const owed=rows.filter(r=>r.status==='bonus_eligible').reduce((a,r)=>a+Number(r.bonus_amount||0),0);
-  const paidOut=rows.filter(r=>r.status==='bonus_paid').reduce((a,r)=>a+Number(r.bonus_amount||0),0);
+  const paid=rows.filter(r=>r.status==='paid').length;
   $('#stRegistered').textContent=registered;
   $('#stPaid').textContent=paid;
-  $('#stOwed').textContent=money(owed);
-  $('#stEarned').textContent=money(paidOut);
 
-  const now=new Date(); const thisMonthKey=`${now.getFullYear()}-${now.getMonth()}`;
-  const thisMonthRows=rows.filter(r=>{ const d=new Date(r.created_at); return `${d.getFullYear()}-${d.getMonth()}`===thisMonthKey; });
-  const monthPaid=thisMonthRows.filter(r=>r.status==='bonus_eligible'||r.status==='bonus_paid').length;
-  $('#monthTable').innerHTML = thisMonthRows.length ? `<table><tbody><tr>
-    <td>Registered this month</td><td><strong>${thisMonthRows.length}</strong></td></tr><tr>
-    <td>Paid this month</td><td><strong>${monthPaid}</strong></td></tr></tbody></table>`
-    : '<div class="empty">No referrals yet this month.</div>';
+  const now=new Date();
+  const monthPaid=rows.filter(r=>{
+    if(r.status!=='paid'||!r.paid_at) return false;
+    const d=new Date(r.paid_at);
+    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+  }).length;
+  $('#stMonthProgress').textContent=`${monthPaid}/${mkTarget}`;
+  $('#monthProgressCard').innerHTML = monthPaid>=mkTarget
+    ? `<p>Target hit for ${MONTH_NAMES[now.getMonth()]} — ${monthPaid} of ${mkTarget} paid referrals. This month's bonus is recorded below.</p>`
+    : `<p>${monthPaid} of ${mkTarget} paid referrals so far in ${MONTH_NAMES[now.getMonth()]} — ${mkTarget-monthPaid} more to earn this month's bonus.</p>`;
 
-  const label = s => s==='bonus_paid' ? '<span class="badge ok">Paid out</span>'
-    : s==='bonus_eligible' ? '<span class="badge gold">Owed to you</span>'
-    : '<span class="badge zero">Registered</span>';
+  const label = s => s==='paid' ? '<span class="badge ok">Paid</span>' : '<span class="badge zero">Registered</span>';
   $('#refTable').innerHTML = rows.length ? `<table><thead><tr>
-    <th>Shop</th><th>Status</th><th>Bonus</th><th>Since</th>
+    <th>Shop</th><th>Status</th><th>Signed up</th><th>Paid on</th>
   </tr></thead><tbody>${rows.map(r=>`<tr>
     <td>${esc(r.business_name)}</td><td>${label(r.status)}</td>
-    <td>${r.bonus_amount?money(r.bonus_amount):'<span class="hint">—</span>'}</td>
     <td>${fmtD(r.created_at)}</td>
+    <td>${r.paid_at?fmtD(r.paid_at):'<span class="hint">—</span>'}</td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">Nobody has signed up through your link yet.</div>';
+}
+
+async function loadMonthlyBonuses(){
+  const {data,error}=await sb.rpc('my_marketer_monthly_bonuses');
+  if(error){ toast(error.message,true); return; }
+  const rows=data||[];
+  const owed=rows.filter(r=>r.status==='eligible').reduce((a,r)=>a+Number(r.bonus_amount||0),0);
+  $('#stOwed').textContent=money(owed);
+
+  const label = s => s==='paid' ? '<span class="badge ok">Paid out</span>' : '<span class="badge gold">Owed to you</span>';
+  $('#bonusTable').innerHTML = rows.length ? `<table><thead><tr>
+    <th>Month</th><th>Paid referrals</th><th>Target</th><th>Bonus</th><th>Status</th>
+  </tr></thead><tbody>${rows.map(r=>`<tr>
+    <td>${MONTH_NAMES[r.month-1]} ${r.year}</td><td>${r.paid_referrals_count}</td><td>${r.target}</td>
+    <td>${money(r.bonus_amount)}</td><td>${label(r.status)}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No monthly bonus earned yet — keep sharing your link.</div>';
 }
 
 async function savePayout(){
@@ -306,6 +329,7 @@ function subscribeRealtime(){
   if(realtimeChannel) return;
   realtimeChannel = sb.channel('marketer-live')
     .on('postgres_changes', {event:'*', schema:'public', table:'marketer_referrals', filter:`marketer_id=eq.${marketerId}`}, loadReferrals)
+    .on('postgres_changes', {event:'*', schema:'public', table:'marketer_monthly_bonuses', filter:`marketer_id=eq.${marketerId}`}, loadMonthlyBonuses)
     .on('postgres_changes', {event:'*', schema:'public', table:'marketers', filter:`user_id=eq.${marketerId}`}, async ()=>{
       const {data:status}=await sb.rpc('my_marketer_status');
       if(status) renderStatus(status);

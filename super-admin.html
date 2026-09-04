@@ -103,8 +103,10 @@ tr:last-child td{border-bottom:none}
 
   <div class="card">
     <h2>Marketer settings</h2>
+    <p class="hint" style="margin-bottom:12px">Salary is arranged directly with each marketer, outside this app. This bonus is on top of that, paid once a marketer hits the monthly target below.</p>
     <div class="toggle"><input id="mkApplicationsOpen" type="checkbox" style="width:auto"> <label for="mkApplicationsOpen" style="font-weight:600">Applications open</label></div>
-    <div class="field"><label>Bonus per paid referral (₦)</label><input id="mkBonus" type="number" min="0" step="500"></div>
+    <div class="field"><label>Monthly target (paid referrals)</label><input id="mkTarget" type="number" min="1" step="1"></div>
+    <div class="field"><label>Bonus when target is hit (₦ per month)</label><input id="mkBonus" type="number" min="0" step="500"></div>
     <button class="btn" onclick="saveMarketerSettings()">Save</button>
   </div>
 
@@ -114,13 +116,13 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div class="card wide">
-    <h2>Marketer bonuses — unpaid</h2>
+    <h2>Monthly bonuses — unpaid</h2>
     <div id="mkUnpaidSummary" class="summary"></div>
     <div id="mkUnpaidTable"><div class="empty">Loading…</div></div>
   </div>
 
   <div class="card wide">
-    <h2>Marketer bonuses — paid</h2>
+    <h2>Monthly bonuses — paid</h2>
     <div id="mkPaidTable"><div class="empty">Loading…</div></div>
   </div>
 </div>
@@ -169,21 +171,44 @@ async function afterSignIn(){
   loadReferrals();
   loadMarketers();
   loadMarketerSettings();
-  loadMarketerReferrals();
+  loadMarketerMonthlyBonuses();
+}
+
+const GRACE_DAYS = 14;
+const daysUntil = t => Math.ceil((new Date(t).getTime()-Date.now())/86400000);
+
+// mirrors the has_full_access()/is_paid() logic on the server, purely for
+// display — lets you eyeball that grace period + lock-after-expiry are
+// actually behaving as expected across real businesses, not just trust it
+function bizStatus(b){
+  if(b.is_paid){
+    if(!b.paid_until) return {label:'Paid (lifetime)', cls:'ok', detail:''};
+    const d=daysUntil(b.paid_until);
+    if(d>=0) return {label:'Active', cls:'ok', detail:`until ${fmtD(b.paid_until)}`};
+    if(d>=-GRACE_DAYS) return {label:'Grace period', cls:'gold', detail:`expired ${fmtD(b.paid_until)}, locks in ${d+GRACE_DAYS}d`};
+    return {label:'Locked', cls:'zero', detail:`expired ${fmtD(b.paid_until)}`};
+  }
+  if(b.trial_ends_at){
+    const d=daysUntil(b.trial_ends_at);
+    if(d>=0) return {label:'Trial', cls:'gold', detail:`${d}d left`};
+  }
+  return {label:'Free (capped)', cls:'zero', detail:'15 items, owner only'};
 }
 
 function renderBusinesses(rows){
   $('#bizTable').innerHTML = rows.length ? `<table><thead><tr>
-    <th>Name</th><th>Admin</th><th>Plan</th><th>Created</th><th>Referral code</th><th>Members</th><th>Items</th>
-  </tr></thead><tbody>${rows.map(b=>`<tr>
+    <th>Name</th><th>Admin</th><th>Status</th><th>Joined</th><th>Referral code</th><th>Members</th><th>Items</th>
+  </tr></thead><tbody>${rows.map(b=>{
+    const s=bizStatus(b);
+    return `<tr>
     <td>${esc(b.business_name)}</td>
     <td>${esc(b.admin_name||b.admin_email||'')}</td>
-    <td><span class="badge ${b.is_paid?'ok':'zero'}">${b.is_paid?'Paid':'Free'}</span></td>
+    <td><span class="badge ${s.cls}">${s.label}</span>${s.detail?`<div class="hint">${esc(s.detail)}</div>`:''}</td>
     <td>${fmtD(b.created_at)}</td>
     <td>${esc(b.referral_code||'')}</td>
     <td>${b.member_count}</td>
     <td>${b.item_count}</td>
-  </tr>`).join('')}</tbody></table>` : '<div class="empty">No businesses yet.</div>';
+  </tr>`;}).join('')}</tbody></table>` : '<div class="empty">No businesses yet.</div>';
 }
 
 async function loadSettings(){
@@ -275,53 +300,55 @@ async function rejectMarketer(id){
   loadMarketers();
 }
 
+const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
+
 async function loadMarketerSettings(){
   const {data,error}=await sb.from('marketer_settings').select('*').eq('id',1).single();
   if(error) return;
   $('#mkApplicationsOpen').checked=!!data.applications_open;
+  $('#mkTarget').value=data.monthly_target;
   $('#mkBonus').value=data.bonus_amount;
 }
 async function saveMarketerSettings(){
-  const {error}=await sb.rpc('set_marketer_settings',{p_bonus:+$('#mkBonus').value||0,p_applications_open:$('#mkApplicationsOpen').checked});
+  const {error}=await sb.rpc('set_marketer_settings',{p_bonus:+$('#mkBonus').value||0,p_target:+$('#mkTarget').value||1,p_applications_open:$('#mkApplicationsOpen').checked});
   if(error) return toast(error.message,true);
   toast('Saved');
 }
 
-async function loadMarketerReferrals(){
-  const {data,error}=await sb.rpc('platform_marketer_referrals');
+async function loadMarketerMonthlyBonuses(){
+  const {data,error}=await sb.rpc('platform_marketer_monthly_bonuses');
   if(error){ toast(error.message,true); return; }
   const rows=data||[];
-  const unpaid=rows.filter(r=>r.status==='bonus_eligible');
-  const paid=rows.filter(r=>r.status==='bonus_paid');
+  const unpaid=rows.filter(r=>r.status==='eligible');
+  const paid=rows.filter(r=>r.status==='paid');
 
   const unpaidTotal=unpaid.reduce((a,r)=>a+Number(r.bonus_amount||0),0);
   $('#mkUnpaidSummary').innerHTML=`
-    <div><div class="n">${unpaid.length}</div><div class="l">Unpaid referrals</div></div>
+    <div><div class="n">${unpaid.length}</div><div class="l">Unpaid months</div></div>
     <div><div class="n">${money(unpaidTotal)}</div><div class="l">Total owed</div></div>`;
 
   $('#mkUnpaidTable').innerHTML = unpaid.length ? `<table><thead><tr>
-    <th>Marketer</th><th>Shop</th><th>Amount</th><th>Pay to</th><th>Since</th><th></th>
+    <th>Marketer</th><th>Month</th><th>Paid referrals</th><th>Amount</th><th>Pay to</th><th></th>
   </tr></thead><tbody>${unpaid.map(r=>`<tr>
-    <td>${esc(r.marketer_name)}</td><td>${esc(r.business_name)}</td>
+    <td>${esc(r.marketer_name)}</td><td>${MONTH_NAMES[r.month-1]} ${r.year}</td><td>${r.paid_referrals_count} / ${r.target}</td>
     <td><span class="badge gold">${money(r.bonus_amount)}</span></td>
     <td>${r.payout_account_number?`${esc(r.payout_bank_name||'')}<div class="hint">${esc(r.payout_account_number)} · ${esc(r.payout_account_name||'')}</div>`:'<span class="hint">not provided yet</span>'}</td>
-    <td>${fmtD(r.created_at)}</td>
-    <td><button class="btn ghost" onclick="markMarketerPaid('${r.id}')">Mark paid</button></td>
+    <td><button class="btn ghost" onclick="markMarketerMonthlyBonusPaid('${r.id}')">Mark paid</button></td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing owed right now.</div>';
 
   $('#mkPaidTable').innerHTML = paid.length ? `<table><thead><tr>
-    <th>Marketer</th><th>Shop</th><th>Amount</th><th>Paid on</th>
+    <th>Marketer</th><th>Month</th><th>Amount</th><th>Paid on</th>
   </tr></thead><tbody>${paid.map(r=>`<tr>
-    <td>${esc(r.marketer_name)}</td><td>${esc(r.business_name)}</td>
-    <td>${money(r.bonus_amount)}</td><td>${fmtD(r.bonus_marked_at||r.created_at)}</td>
+    <td>${esc(r.marketer_name)}</td><td>${MONTH_NAMES[r.month-1]} ${r.year}</td>
+    <td>${money(r.bonus_amount)}</td><td>${fmtD(r.marked_paid_at||r.created_at)}</td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">No payouts recorded yet.</div>';
 }
 
-async function markMarketerPaid(id){
-  const {error}=await sb.rpc('mark_marketer_bonus_paid',{p_id:id});
+async function markMarketerMonthlyBonusPaid(id){
+  const {error}=await sb.rpc('mark_marketer_monthly_bonus_paid',{p_id:id});
   if(error) return toast(error.message,true);
   toast('Marked paid');
-  loadMarketerReferrals();
+  loadMarketerMonthlyBonuses();
 }
 </script>
 </body>

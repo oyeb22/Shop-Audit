@@ -853,18 +853,32 @@ async function vDashboard(v){
 let draftModes=[];
 const FREE_ITEM_CAP=15;
 const GRACE_DAYS=14;
-function planActive(){
+function paidActive(){
   if(!S.biz.is_paid) return false;
   if(!S.biz.paid_until) return true;
   return new Date(S.biz.paid_until).getTime()+GRACE_DAYS*86400000>=Date.now();
 }
+// mirrors has_full_access() server-side: paid-and-active OR still inside the
+// free trial window. planActive() is the single "do they have full access"
+// check the rest of the UI should gate on, same as before this existed.
+function trialDaysLeft(){
+  if(S.biz.is_paid || !S.biz.trial_ends_at) return 0;
+  return Math.ceil((new Date(S.biz.trial_ends_at).getTime()-Date.now())/86400000);
+}
+function trialActive(){ return trialDaysLeft()>0; }
+function planActive(){ return paidActive() || trialActive(); }
 function vItems(v){
   draftModes=[];
   const isManager=S.role==='manager';
   const isPaid=planActive();
+  const inTrial=trialActive();
   const atCap=!isPaid && S.items.length>=FREE_ITEM_CAP;
   v.innerHTML=`
-  ${!isPaid?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+  ${inTrial?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div class="hint">Free trial: <b>${trialDaysLeft()} day${trialDaysLeft()===1?'':'s'}</b> left, unlimited items and team included</div>
+    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
+  </div></div>`:''}
+  ${!isPaid&&!inTrial?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?', limit reached':''}</div>
     <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
   </div></div>`:''}
@@ -2589,8 +2603,12 @@ function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
 function vSettings(v){
   const fmtD=t=>new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
   const planCard=(()=>{
-    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">₦20,000/year</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">You're on the free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits for a year.</div>
+    if(trialActive()) return `<div class="card"><div class="hd"><h2>Free trial</h2><span class="desc">${trialDaysLeft()} day${trialDaysLeft()===1?'':'s'} left</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">You have full access during your trial: unlimited items and team members. Upgrade any time to keep it after the trial ends.</div>
+    <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
+  </div></div>`;
+    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">₦30,000/year</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">Your free trial has ended. Free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits for a year.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
   </div></div>`;
     if(!S.biz.paid_until) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">

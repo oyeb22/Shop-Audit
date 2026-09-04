@@ -236,10 +236,16 @@ async function afterSignIn(){
   let {data:status,error}=await sb.rpc('my_marketer_status');
   if(error) return toast(error.message,true);
 
+  // my_marketer_status() is declared `returns marketers` (a single row) —
+  // when the underlying query matches zero rows, Postgres returns one row
+  // with every field null rather than a true null, so status is a truthy
+  // object even when no application exists. Check a real column instead of
+  // the object itself.
+  //
   // signed in but never applied yet (e.g. confirmed email after signUp didn't
   // return a session) — the signup form's name/phone/whatsapp survive on the
   // user's own metadata, so re-submit the application from there automatically
-  if(!status){
+  if(!status || status.user_id==null){
     const meta=session.user.user_metadata||{};
     if(meta.full_name && meta.phone){
       const {error:appErr}=await sb.rpc('apply_as_marketer',{p_full_name:meta.full_name,p_phone:meta.phone,p_whatsapp:meta.whatsapp||''});

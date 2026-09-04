@@ -82,7 +82,12 @@ tr:last-child td{border-bottom:none}
 
     <div id="paneSignin">
       <div class="field"><label>Email</label><input id="siEmail" type="email" placeholder="you@email.com"></div>
-      <div class="field"><label>Password</label><input id="siPass" type="password" placeholder="Your password"></div>
+      <div class="field"><label>Password</label>
+        <div style="position:relative">
+          <input id="siPass" type="password" placeholder="Your password" style="padding-right:64px">
+          <button type="button" onclick="togglePass('siPass','siPwToggle')" id="siPwToggle" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--green);padding:6px 8px;border-radius:7px">Show</button>
+        </div>
+      </div>
       <button class="btn" id="siBtn" onclick="doSignIn()" style="width:100%">Sign in</button>
     </div>
 
@@ -92,7 +97,12 @@ tr:last-child td{border-bottom:none}
       <div class="field"><label>Phone number</label><input id="apPhone" placeholder="0803 000 0000"></div>
       <div class="field"><label>WhatsApp number (optional, if different)</label><input id="apWhatsapp" placeholder="0803 000 0000"></div>
       <div class="field"><label>Email</label><input id="apEmail" type="email" placeholder="you@email.com"></div>
-      <div class="field"><label>Password</label><input id="apPass" type="password" placeholder="Choose a password"></div>
+      <div class="field"><label>Password</label>
+        <div style="position:relative">
+          <input id="apPass" type="password" placeholder="Choose a password" style="padding-right:64px">
+          <button type="button" onclick="togglePass('apPass','apPwToggle')" id="apPwToggle" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;color:var(--green);padding:6px 8px;border-radius:7px">Show</button>
+        </div>
+      </div>
       <button class="btn" id="apBtn" onclick="doApply()" style="width:100%">Submit application</button>
       <p class="hint" style="margin-top:10px;text-align:center">By applying you agree to the <a href="terms.html" target="_blank">Terms</a> (see "Marketer program") and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>
     </div>
@@ -166,11 +176,17 @@ function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='
 // isolated storage key: without this, this page shares the same localStorage
 // session as Shopaudit.html/pay.html (same origin, same Supabase project), so
 // anyone already signed in anywhere else on the site would land straight in
-// this dashboard without ever signing in here
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{storageKey:'themonishop-marketer-auth'}});
+// this dashboard without ever signing in here. Session is also never
+// persisted — leaving and coming back always requires the password again,
+// same as Shopaudit.html.
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{storageKey:'themonishop-marketer-auth',persistSession:false}});
 let marketerId=null, realtimeChannel=null, mkTarget=1;
 const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
+function togglePass(inputId,btnId){
+  const i=$('#'+inputId),b=$('#'+btnId);
+  if(i.type==='password'){i.type='text';b.textContent='Hide';}else{i.type='password';b.textContent='Show';}
+}
 function setMode(m){
   $('#tabSignin').classList.toggle('on', m==='signin');
   $('#tabApply').classList.toggle('on', m==='apply');

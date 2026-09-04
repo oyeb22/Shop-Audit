@@ -404,14 +404,14 @@ function boot(){
   if(SUPABASE_URL.startsWith('PASTE_')||SUPABASE_ANON_KEY.startsWith('PASTE_')){
     $('#setupNotice').classList.remove('hidden'); hideSplash(); return;
   }
-  // inside the native app, don't persist the session to disk — it stays
-  // valid while the app process is alive (so bouncing out to WhatsApp and
-  // back doesn't log anyone out), but a fresh app launch always starts at
-  // the sign-in screen instead of silently resuming a previous login. The
-  // plain website keeps normal persistent sessions — this only affects the
-  // Capacitor app, where window.Capacitor exists.
-  const isNativeApp = !!window.Capacitor?.isNativePlatform?.();
-  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, isNativeApp?{auth:{persistSession:false}}:{});
+  // never persist the session to disk/localStorage — it stays valid while
+  // this tab/app process is alive (so bouncing out to WhatsApp and back, or
+  // a page refresh, doesn't log anyone out), but leaving and coming back
+  // always starts at the sign-in screen instead of silently resuming a
+  // previous login. Shop devices are frequently shared between the owner
+  // and staff, so a session that silently survives across visits is a real
+  // privacy risk, not just a convenience trade-off.
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:false}});
   // capture a referral code (?ref=CODE) if present — covers anyone landing
   // directly on the app, not just via the homepage; only used later, once,
   // when this user actually creates a business (see createBiz())
@@ -446,12 +446,21 @@ function setAuthMode(m){ authMode=m;
   $('#auBtn').textContent = m==='signin'?'Sign in':'Create account';
   $('#authMsg').textContent='';
 }
+let forgotPasswordBusy=false;
 async function forgotPassword(){
+  // no visible loading state on this link otherwise, which made a second
+  // tap on mobile (while the first request was still in flight) send a
+  // second, fully legitimate reset email — confirmed happening in
+  // production via Resend's send log showing exact duplicate sends
+  if(forgotPasswordBusy) return;
   const email=$('#auEmail').value.trim();
   if(!email) return toast('Enter your email above first, then tap Forgot password',true);
-  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href.split('#')[0]});
-  if(error) return err(error);
-  toast('Reset link sent. Check your email');
+  forgotPasswordBusy=true;
+  try{
+    const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:window.location.href.split('#')[0]});
+    if(error) return err(error);
+    toast('Reset link sent. Check your email');
+  } finally { forgotPasswordBusy=false; }
 }
 async function doPasswordReset(){
   const p1=$('#rpPass1').value, p2=$('#rpPass2').value;

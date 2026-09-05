@@ -590,14 +590,16 @@ async function doRealtimeRefresh(){
 }
 async function loadData(){
   if(!S.biz) return;
-  const [it,stk,cu,cb,aps,rs]=await Promise.all([
+  const [it,stk,cu,cb,aps,rs,exp]=await Promise.all([
     sb.from('items').select('*').eq('business_id',S.biz.id).order('name'),
     sb.from('item_stock').select('item_id,on_hand').eq('business_id',S.biz.id),
     sb.from('customers').select('*').eq('business_id',S.biz.id).order('name'),
     sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id),
     sb.from('approval_settings').select('*').eq('business_id',S.biz.id).maybeSingle(),
-    sb.from('referral_settings').select('*').eq('id',1).maybeSingle()
+    sb.from('referral_settings').select('*').eq('id',1).maybeSingle(),
+    sb.rpc('items_expiring_soon',{p_business_id:S.biz.id})
   ]);
+  S.expiringSoon = exp.error ? [] : (exp.data||[]);
   if(it.error) return err(it.error);
   S.items=it.data||[];
   S.customers=cu.data||[]; S.balances={}; (cb.data||[]).forEach(r=>S.balances[r.customer_id]=Number(r.balance||0));
@@ -845,6 +847,7 @@ async function vDashboard(v){
     ${lowItems.length?`<div class="card"><div class="hd"><h2>${icon('alert')} Needs restocking</h2></div><div class="bd tight">
       <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${fmtPacks(i.low_stock_threshold)} pack(s)</td></tr>`).join('')}</tbody></table>
     </div></div>`:''}
+    ${expiringSoonCard()}
     <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days · net of approved expenses</span></div><div class="bd tight rtable">
       ${days.length?`<table><thead><tr><th>Date</th><th class="r">Items sold</th><th class="r">Revenue</th><th class="r">Expenses</th><th class="r">Net profit</th></tr></thead>
       <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Items sold">${o.c}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
@@ -928,6 +931,7 @@ function vItems(v){
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
     <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="5" class="empty">No items yet.</td></tr>'}</tbody></table>
   </div></div>
+  ${expiringSoonCard()}
   ${isManager?'<div class="card"><div class="hd"><h2>My submitted changes</h2></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
   renderDraftModes();
   if(isManager) loadMyChanges();
@@ -1150,9 +1154,12 @@ function vRestock(v){
     <p class="hint" id="rCostInfo" style="margin:-4px 0 12px"></p>
     <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:10px"><input id="rUpdatePrice" type="checkbox" style="width:auto" onchange="toggleRestockPriceUpdate()"> Also update selling price</label>
     <div id="rPriceFields" class="hidden"></div>
+    <div class="field"><label>This batch's expiry date (optional)</label><input id="rExpiry" type="date"></div>
+    <p class="hint" style="margin:-4px 0 12px">Only for items that expire. Leave blank if not relevant.</p>
     <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
     ${S.items.length?'':'<p class="hint" style="margin-top:10px">Add items first under the Items tab.</p>'}
-  </div></div>`;
+  </div></div>
+  ${expiringSoonCard()}`;
   rModeOptions();
 }
 function scanForRestock(){
@@ -1280,15 +1287,17 @@ async function addPurchase(){
     newPackPrice=+$('#rNewPackPrice').value||0;
     newModePrices=itemModes(it).map((m,idx)=>({name:m.name,price:+$('#rModePrice'+idx).value||0}));
   }
+  const expiryDate=$('#rExpiry')?.value||null;
   if(needsApproval('restock')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'restock',item_id,payload:{item_id,qty,base,unit_cost,entry_date,newCost,newPackPrice,newModePrices}});
+      action_type:'restock',item_id,payload:{item_id,qty,base,unit_cost,entry_date,newCost,newPackPrice,newModePrices,expiryDate}});
     if(error) return err(error);
     toast('Sent for approval'); render();
     return;
   }
   const {error,auditErr,addedLabel}=await applyRestock(item_id,qty,base,unit_cost,entry_date,S.user.id,newCost,newPackPrice,newModePrices);
   if(error) return err(error);
+  if(expiryDate) await sb.rpc('add_expiry_batch',{p_item_id:item_id,p_expiry_date:expiryDate});
   if(auditErr) toast('Restocked, but audit log entry failed: '+auditErr.message,true);
   else toast(`Added ${addedLabel} to stock`);
   await loadData(); render();
@@ -1915,6 +1924,7 @@ async function approveChange(id){
       const p=c.payload;
       const {error,detail}=await applyRestock(p.item_id,p.qty,p.base,p.unit_cost,p.entry_date,c.requested_by,p.newCost,p.newPackPrice,p.newModePrices);
       if(error) throw error;
+      if(p.expiryDate) await sb.rpc('add_expiry_batch',{p_item_id:p.item_id,p_expiry_date:p.expiryDate});
       applyDetail=detail;
     }else if(c.action_type==='reconcile'){
       const p=c.payload;
@@ -2138,6 +2148,7 @@ function cartCount(){ return S.cart.reduce((a,l)=>a+l.qty,0); }
 
 function vSell(v){
   v.innerHTML=`
+  ${expiringSoonCard()}
   <div class="pos">
     <div>
       <div class="searchWrap" style="display:flex;gap:8px;align-items:center">
@@ -2392,7 +2403,8 @@ async function vMySales(v){
    RECEPTIONIST — ITEM LIST (read only)
    ============================================================ */
 function vStockList(v){
-  v.innerHTML=`<div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
+  v.innerHTML=`${expiringSoonCard()}
+  <div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
     ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Remaining</th></tr></thead>
     <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
       const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
@@ -2561,6 +2573,82 @@ function waCustomer(id,kind){
   // you're going through dozens of people back to back
   window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'waSend');
 }
+
+/* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
+const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+function expiringSoonCard(){
+  const rows=S.expiringSoon||[];
+  if(!rows.length) return '';
+  return `<div class="card" id="expiringSoonCard" style="border-color:var(--amber)"><div class="hd"><h2>${icon('alert')} Expiring soon</h2><span class="desc">within 6 months</span></div><div class="bd tight">
+    <table><tbody>${rows.map(r=>`<tr>
+      <td class="itemname">${esc(r.item_name)}<div class="cat">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` · ${r.batch_count} batches tracked`:''}</div></td>
+      <td class="r"><button class="btn ghost sm" onclick="viewExpiryBatches('${r.item_id}')">Manage</button></td>
+    </tr>`).join('')}</tbody></table>
+  </div></div>`;
+}
+async function viewExpiryBatches(itemId){
+  const it=S.items.find(i=>i.id===itemId); if(!it) return;
+  const {data,error}=await sb.from('item_expiry_batches').select('*').eq('item_id',itemId).eq('cleared',false).order('expiry_date');
+  if(error) return err(error);
+  document.getElementById('expiryBatchCard')?.remove();
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="expiryBatchCard"><div class="hd"><h2>${esc(it.name)} — batches</h2><div class="spacer"></div>
+    <button class="btn ghost sm" onclick="document.getElementById('expiryBatchCard').remove()">Close</button></div><div class="bd tight">
+    ${data.length?`<table><tbody>${data.map(b=>`<tr>
+      <td class="itemname">${fmtExpiry(b.expiry_date)}${b.note?`<div class="cat">${esc(b.note)}</div>`:''}</td>
+      <td class="r"><button class="btn ghost sm" onclick="clearExpiryBatch('${b.id}','${itemId}')">Mark sold out</button></td>
+    </tr>`).join('')}</tbody></table>`:'<div class="empty">No batches left to track.</div>'}
+    <div class="bd" style="padding-top:12px"><button class="btn primary sm" onclick='openExpiryRound("${itemId}","${esc(it.name).replace(/'/g,"\\'")}")'>${icon('chat')} Notify customers of a discount</button></div>
+  </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function clearExpiryBatch(batchId,itemId){
+  const {error}=await sb.rpc('clear_expiry_batch',{p_batch_id:batchId});
+  if(error) return err(error);
+  toast('Batch marked sold out');
+  await loadData();
+  viewExpiryBatches(itemId);
+}
+
+/* ---------- expiry discount round: same reusable pattern as the thank-you round ---------- */
+let expiryRoundQueue=[], expiryRoundIdx=0, expiryRoundItemName='';
+function expiryRoundSentKey(itemId){ return `expirySent_${S.biz.id}_${itemId}`; }
+function getExpiryRoundSent(itemId){ try{ return new Set(JSON.parse(localStorage.getItem(expiryRoundSentKey(itemId))||'[]')); }catch{ return new Set(); } }
+function markExpiryRoundSent(itemId,custId){ const s=getExpiryRoundSent(itemId); s.add(custId); localStorage.setItem(expiryRoundSentKey(itemId),JSON.stringify([...s])); }
+function openExpiryRound(itemId,itemName){
+  expiryRoundItemName=itemName;
+  expiryRoundQueue=S.customers.filter(c=>c.phone).map(c=>({...c,_itemId:itemId}));
+  const sent=getExpiryRoundSent(itemId);
+  const firstUnsent=expiryRoundQueue.findIndex(c=>!sent.has(c.id));
+  expiryRoundIdx=firstUnsent===-1?0:firstUnsent;
+  renderExpiryRound();
+}
+function renderExpiryRound(){
+  document.getElementById('expiryRoundCard')?.remove();
+  const itemId=expiryRoundQueue[0]?._itemId;
+  const sent=getExpiryRoundSent(itemId);
+  const total=expiryRoundQueue.length, sentCount=expiryRoundQueue.filter(c=>sent.has(c.id)).length;
+  const c=expiryRoundQueue[expiryRoundIdx];
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="expiryRoundCard"><div class="hd"><h2>Discount alert: ${esc(expiryRoundItemName)}</h2>
+    <span class="desc">${sentCount} of ${total} sent</span><div class="spacer"></div>
+    <button class="btn ghost sm" onclick="document.getElementById('expiryRoundCard').remove()">Close</button></div>
+  <div class="bd">
+    ${c?`<div class="stats" style="margin-bottom:14px"><div class="stat"><div class="label">Now sending to</div><div class="value" style="font-size:20px">${esc(c.name)}</div><div class="sub">${esc(c.phone)}${sent.has(c.id)?' · already sent':''}</div></div></div>
+    <div class="row">
+      <button class="btn primary" onclick='sendExpiryAndNext("${c.id}")' style="flex:1;font-size:16px;padding:14px">${icon('chat')} Send &amp; next</button>
+      <button class="btn ghost" onclick="skipExpiry()">Skip</button>
+    </div>`
+    :`<div class="empty">${icon('check','lg')} Everyone's been messaged.</div>`}
+  </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function sendExpiryAndNext(custId){
+  const c=expiryRoundQueue.find(x=>x.id===custId); if(!c) return;
+  const msg=`Hello ${c.name}, ${S.biz.name} has ${expiryRoundItemName} on a special discount right now while stock lasts. Come grab yours!`;
+  window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'waSend');
+  markExpiryRoundSent(c._itemId,custId);
+  expiryRoundIdx++; renderExpiryRound();
+}
+function skipExpiry(){ expiryRoundIdx++; renderExpiryRound(); }
 
 /* ---------- thank-you round: queue through today's customers with progress tracking ---------- */
 // "sent" state lives in localStorage keyed by business+date — resets naturally each day,

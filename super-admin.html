@@ -116,6 +116,18 @@ tr:last-child td{border-bottom:none}
   </div>
 
   <div class="card wide">
+    <h2>Cycles due for review</h2>
+    <p class="hint" style="margin-bottom:10px">Each marketer's 30-day cycle runs from their own signup date, not the calendar month — these have already ended.</p>
+    <div id="cyclesDueTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card wide">
+    <h2>Cycles ending soon</h2>
+    <p class="hint" style="margin-bottom:10px">Within the next 7 days.</p>
+    <div id="cyclesUpcomingTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card wide">
     <h2>Monthly bonuses — unpaid</h2>
     <div id="mkUnpaidSummary" class="summary"></div>
     <div id="mkUnpaidTable"><div class="empty">Loading…</div></div>
@@ -172,6 +184,7 @@ async function afterSignIn(){
   loadMarketers();
   loadMarketerSettings();
   loadMarketerMonthlyBonuses();
+  loadMarketerCycles();
 }
 
 const GRACE_DAYS = 14;
@@ -327,21 +340,48 @@ async function loadMarketerMonthlyBonuses(){
     <div><div class="n">${unpaid.length}</div><div class="l">Unpaid months</div></div>
     <div><div class="n">${money(unpaidTotal)}</div><div class="l">Total owed</div></div>`;
 
+  // old rows (pre-cycle-rework) have year/month; new rows have cycle_start/
+  // cycle_end instead — display whichever this row actually has
+  const periodLabel = r => r.year ? `${MONTH_NAMES[r.month-1]} ${r.year}` : (r.cycle_start ? `${fmtD(r.cycle_start)} – ${fmtD(r.cycle_end)}` : '—');
+
   $('#mkUnpaidTable').innerHTML = unpaid.length ? `<table><thead><tr>
-    <th>Marketer</th><th>Month</th><th>Paid referrals</th><th>Amount</th><th>Pay to</th><th></th>
+    <th>Marketer</th><th>Cycle</th><th>Paid referrals</th><th>Amount</th><th>Pay to</th><th></th>
   </tr></thead><tbody>${unpaid.map(r=>`<tr>
-    <td>${esc(r.marketer_name)}</td><td>${MONTH_NAMES[r.month-1]} ${r.year}</td><td>${r.paid_referrals_count} / ${r.target}</td>
+    <td>${esc(r.marketer_name)}</td><td>${periodLabel(r)}</td><td>${r.paid_referrals_count} / ${r.target}</td>
     <td><span class="badge gold">${money(r.bonus_amount)}</span></td>
     <td>${r.payout_account_number?`${esc(r.payout_bank_name||'')}<div class="hint">${esc(r.payout_account_number)} · ${esc(r.payout_account_name||'')}</div>`:'<span class="hint">not provided yet</span>'}</td>
     <td><button class="btn ghost" onclick="markMarketerMonthlyBonusPaid('${r.id}')">Mark paid</button></td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing owed right now.</div>';
 
   $('#mkPaidTable').innerHTML = paid.length ? `<table><thead><tr>
-    <th>Marketer</th><th>Month</th><th>Amount</th><th>Paid on</th>
+    <th>Marketer</th><th>Cycle</th><th>Amount</th><th>Paid on</th>
   </tr></thead><tbody>${paid.map(r=>`<tr>
-    <td>${esc(r.marketer_name)}</td><td>${MONTH_NAMES[r.month-1]} ${r.year}</td>
+    <td>${esc(r.marketer_name)}</td><td>${periodLabel(r)}</td>
     <td>${money(r.bonus_amount)}</td><td>${fmtD(r.marked_paid_at||r.created_at)}</td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">No payouts recorded yet.</div>';
+}
+
+async function loadMarketerCycles(){
+  const {data,error}=await sb.rpc('platform_marketer_cycles');
+  if(error){ toast(error.message,true); return; }
+  const rows=data||[];
+  const due=rows.filter(r=>r.days_remaining<=0);
+  const upcoming=rows.filter(r=>r.days_remaining>0 && r.days_remaining<=7);
+
+  $('#cyclesDueTable').innerHTML = due.length ? `<table><thead><tr>
+    <th>Marketer</th><th>Cycle</th><th>Paid referrals</th><th>Target hit</th>
+  </tr></thead><tbody>${due.map(r=>`<tr>
+    <td>${esc(r.full_name)}</td><td>${fmtD(r.cycle_start)} – ${fmtD(r.cycle_end)}</td>
+    <td>${r.paid_count} / ${r.target}</td>
+    <td>${r.hit_target?'<span class="badge ok">Yes</span>':'<span class="badge zero">No</span>'}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No cycles due right now.</div>';
+
+  $('#cyclesUpcomingTable').innerHTML = upcoming.length ? `<table><thead><tr>
+    <th>Marketer</th><th>Cycle ends</th><th>Days left</th><th>Progress so far</th>
+  </tr></thead><tbody>${upcoming.map(r=>`<tr>
+    <td>${esc(r.full_name)}</td><td>${fmtD(r.cycle_end)}</td><td>${r.days_remaining}</td>
+    <td>${r.paid_count} / ${r.target}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing ending in the next 7 days.</div>';
 }
 
 async function markMarketerMonthlyBonusPaid(id){

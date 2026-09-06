@@ -130,7 +130,8 @@ tr:last-child td{border-bottom:none}
     <div class="stats">
       <div class="stat"><div class="n" id="stRegistered">0</div><div class="l">Registered</div></div>
       <div class="stat"><div class="n" id="stPaid">0</div><div class="l">Paid (all time)</div></div>
-      <div class="stat"><div class="n" id="stMonthProgress">0/0</div><div class="l">This month's target</div></div>
+      <div class="stat"><div class="n" id="stMonthProgress">0/0</div><div class="l">This cycle's target</div></div>
+      <div class="stat"><div class="n" id="stCycleDays">—</div><div class="l">Days left in cycle</div></div>
       <div class="stat"><div class="n" id="stOwed">₦0</div><div class="l">Bonus owed</div></div>
     </div>
 
@@ -302,16 +303,22 @@ async function loadReferrals(){
   $('#stRegistered').textContent=registered;
   $('#stPaid').textContent=paid;
 
-  const now=new Date();
-  const monthPaid=rows.filter(r=>{
-    if(r.status!=='paid'||!r.paid_at) return false;
-    const d=new Date(r.paid_at);
-    return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
-  }).length;
-  $('#stMonthProgress').textContent=`${monthPaid}/${mkTarget}`;
-  $('#monthProgressCard').innerHTML = monthPaid>=mkTarget
-    ? `<p>Target hit for ${MONTH_NAMES[now.getMonth()]} — ${monthPaid} of ${mkTarget} paid referrals. This month's bonus is recorded below.</p>`
-    : `<p>${monthPaid} of ${mkTarget} paid referrals so far in ${MONTH_NAMES[now.getMonth()]} — ${mkTarget-monthPaid} more to earn this month's bonus.</p>`;
+  // "months" are a rolling 30-day cycle from this marketer's own signup
+  // date, not the calendar month — computed live server-side so it can
+  // never drift from what super-admin sees for the same marketer
+  const {data:cycle,error:cycleErr}=await sb.rpc('my_marketer_cycle');
+  if(cycleErr||!cycle||!cycle.length){
+    $('#stMonthProgress').textContent='—'; $('#stCycleDays').textContent='—';
+    $('#monthProgressCard').innerHTML='<div class="empty">Could not load cycle status.</div>';
+  }else{
+    const c=cycle[0];
+    $('#stMonthProgress').textContent=`${c.paid_count}/${c.target}`;
+    $('#stCycleDays').textContent=c.days_remaining>0?c.days_remaining:'due';
+    const cycleLabel=`${fmtD(c.cycle_start)} – ${fmtD(c.cycle_end)}`;
+    $('#monthProgressCard').innerHTML = c.paid_count>=c.target
+      ? `<p>Target hit for your current cycle (${cycleLabel}) — ${c.paid_count} of ${c.target} paid referrals. This cycle's bonus is recorded below.</p>`
+      : `<p>${c.paid_count} of ${c.target} paid referrals so far this cycle (${cycleLabel}) — ${c.target-c.paid_count} more to earn this cycle's bonus. ${c.days_remaining>0?`${c.days_remaining} day${c.days_remaining===1?'':'s'} left.`:'This cycle has ended.'}</p>`;
+  }
 
   const label = s => s==='paid' ? '<span class="badge ok">Paid</span>' : '<span class="badge zero">Registered</span>';
   $('#refTable').innerHTML = rows.length ? `<table><thead><tr>

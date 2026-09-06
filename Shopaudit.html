@@ -597,8 +597,14 @@ async function loadData(){
     sb.from('customer_balances').select('customer_id,balance').eq('business_id',S.biz.id),
     sb.from('approval_settings').select('*').eq('business_id',S.biz.id).maybeSingle(),
     sb.from('referral_settings').select('*').eq('id',1).maybeSingle(),
-    sb.rpc('items_expiring_soon',{p_business_id:S.biz.id})
+    // large window so this holds every item with ANY tracked batch, not
+    // just ones inside the "urgent" alert threshold — expiringSoonCard()
+    // filters to 180 days itself; expiryBadge() below needs the full list
+    // so an item's expiry is always visible somewhere regardless of how
+    // far off it is, not just when it's imminent
+    sb.rpc('items_expiring_soon',{p_business_id:S.biz.id,p_within_days:3650})
   ]);
+  if(exp.error) console.error('items_expiring_soon failed:',exp.error);
   S.expiringSoon = exp.error ? [] : (exp.data||[]);
   if(it.error) return err(it.error);
   S.items=it.data||[];
@@ -951,7 +957,7 @@ function rowItem(i){
   const modes=itemModes(i), oh=onHand(i.id);
   const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
   return `<tr>
-    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div></td>
+    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${expiryBadge(i.id)}</td>
     <td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td>
     <td class="r" data-label="Modes">${modes.length?esc(modes.map(m=>m.name).join(', ')):'<span class="hint">—</span>'}</td>
     <td class="r" data-label="In stock"><span class="badge ${b}">${stockShort(i)}</span></td>
@@ -1297,7 +1303,10 @@ async function addPurchase(){
   }
   const {error,auditErr,addedLabel}=await applyRestock(item_id,qty,base,unit_cost,entry_date,S.user.id,newCost,newPackPrice,newModePrices);
   if(error) return err(error);
-  if(expiryDate) await sb.rpc('add_expiry_batch',{p_item_id:item_id,p_expiry_date:expiryDate});
+  if(expiryDate){
+    const {error:expErr}=await sb.rpc('add_expiry_batch',{p_item_id:item_id,p_expiry_date:expiryDate});
+    if(expErr) toast('Restocked, but saving the expiry date failed: '+expErr.message,true);
+  }
   if(auditErr) toast('Restocked, but audit log entry failed: '+auditErr.message,true);
   else toast(`Added ${addedLabel} to stock`);
   await loadData(); render();
@@ -2356,8 +2365,11 @@ async function checkout(){
     showReceipt(receiptSnap);
   }catch(e){ err(e); $('#checkoutBtn').disabled=false; }
 }
+let lastReceipt=null;
 function showReceipt(snap){
+  lastReceipt=snap;
   const methodLabel={cash:'Cash',transfer:'Transfer',card:'Card',credit:'Credit'}[snap.method]||snap.method;
+  const isNative=!!window.Capacitor?.isNativePlatform?.();
   $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="receiptCard"><div class="bd">
     <div class="receipt" id="receiptPrint">
       <div class="rhead">
@@ -2369,11 +2381,69 @@ function showReceipt(snap){
       <div class="rline tot"><span>Total</span><span class="num">${money(snap.total)}</span></div>
     </div>
     <div class="frow noprint" style="margin-top:14px">
-      <button class="btn primary" onclick="window.print()">${icon('printer')} Print receipt</button>
+      ${isNative
+        ? `<button class="btn primary" onclick="printReceiptBluetooth()">${icon('printer')} Print to Bluetooth printer</button>`
+        : `<button class="btn primary" onclick="window.print()">${icon('printer')} Print receipt</button>`}
       <button class="btn ghost" onclick="document.getElementById('receiptCard').remove()">Close</button>
     </div>
   </div></div>`);
   window.scrollTo({top:0,behavior:'smooth'});
+}
+
+/* ---------- Bluetooth receipt printing (native only) ----------
+   Prints to a device already paired via Android's own Bluetooth settings —
+   this never initiates pairing itself, Android requires that go through
+   system UI. Uses the standard Serial Port Profile, the same one most
+   generic Bluetooth thermal printers (and some Android POS terminals that
+   expose their built-in printer this way) accept connections on. Whether a
+   specific terminal actually exposes its printer this way varies by
+   manufacturer — see BtPrinterPlugin.java for the native side. */
+function moneyPlain(n){ return 'N'+Number(n||0).toLocaleString('en-NG',{maximumFractionDigits:0}); }
+function padLine(left,right){
+  const width=32; // standard 58mm printer character width
+  const space=Math.max(1,width-left.length-right.length);
+  return left+' '.repeat(space)+right;
+}
+function escposReceipt(snap){
+  const ESC='\x1B', GS='\x1D';
+  const methodLabel={cash:'Cash',transfer:'Transfer',card:'Card',credit:'Credit'}[snap.method]||snap.method;
+  let s='';
+  s+=ESC+'@'; // initialize
+  s+=ESC+'a'+'\x01'; // center align
+  s+=GS+'!'+'\x11'+snap.bizName+'\n'+GS+'!'+'\x00'; // double-size name, then reset
+  s+=new Date(snap.date).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})+'\n';
+  s+=snap.custName+' - '+methodLabel+'\n';
+  s+=ESC+'a'+'\x00'; // left align
+  s+='--------------------------------\n';
+  snap.lines.forEach(l=>{
+    const name=l.name+(l.mode&&!l.isPack?' ('+l.mode+')':'')+' x'+l.qty;
+    s+=padLine(name,moneyPlain(l.price*l.qty))+'\n';
+  });
+  s+='--------------------------------\n';
+  s+=ESC+'E'+'\x01'+padLine('TOTAL',moneyPlain(snap.total))+ESC+'E'+'\x00'+'\n';
+  s+='\n\n\n'; // feed for tear-off — no cut command, not every printer has a cutter
+  return s.replace(/[^\x00-\xFF]/g,'?'); // most cheap ESC/POS printers only support a single-byte code page
+}
+function strToBase64Binary(str){
+  let binary=''; for(let i=0;i<str.length;i++) binary+=String.fromCharCode(str.charCodeAt(i)&0xFF);
+  return btoa(binary);
+}
+async function printReceiptBluetooth(){
+  if(!lastReceipt) return;
+  try{
+    const {devices}=await window.Capacitor.Plugins.BtPrinter.listPaired();
+    if(!devices||!devices.length) return alert('No paired Bluetooth devices found. Pair your printer/terminal first in Android Settings → Bluetooth, then try again.');
+    let address=devices[0].address;
+    if(devices.length>1){
+      const choice=prompt('Choose a printer:\n'+devices.map((d,i)=>`${i+1}. ${d.name}`).join('\n')+'\n\nEnter a number:');
+      const idx=parseInt(choice,10)-1;
+      if(isNaN(idx)||!devices[idx]) return;
+      address=devices[idx].address;
+    }
+    const data=strToBase64Binary(escposReceipt(lastReceipt));
+    await window.Capacitor.Plugins.BtPrinter.printRaw({address,data});
+    toast('Sent to printer');
+  }catch(e){ toast('Print failed: '+(e.message||e),true); }
 }
 
 /* ============================================================
@@ -2408,7 +2478,7 @@ function vStockList(v){
     ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Remaining</th></tr></thead>
     <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
       const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
-      return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;}).join('')}</tbody></table>`
+      return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;}).join('')}</tbody></table>`
     :'<div class="empty">No items yet.</div>'}
   </div></div>`;
 }
@@ -2576,8 +2646,18 @@ function waCustomer(id,kind){
 
 /* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
 const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+// small "Expiry: {date}" indicator for a single item, shown on its row
+// regardless of how far off the date is — the alert card below is only for
+// the genuinely urgent (180-day) case, but an item's tracked expiry should
+// always be visible somewhere, not just when it's imminent
+function expiryBadge(itemId){
+  const r=(S.expiringSoon||[]).find(x=>x.item_id===itemId);
+  if(!r) return '';
+  const urgent=new Date(r.expiry_date)-Date.now() <= 180*86400000;
+  return `<div class="cat" style="${urgent?'color:var(--amber);font-weight:600':''}">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` (${r.batch_count} batches)`:''} — <a href="#" onclick="viewExpiryBatches('${itemId}');return false">manage</a></div>`;
+}
 function expiringSoonCard(){
-  const rows=S.expiringSoon||[];
+  const rows=(S.expiringSoon||[]).filter(r=>new Date(r.expiry_date)-Date.now() <= 180*86400000);
   if(!rows.length) return '';
   return `<div class="card" id="expiringSoonCard" style="border-color:var(--amber)"><div class="hd"><h2>${icon('alert')} Expiring soon</h2><span class="desc">within 6 months</span></div><div class="bd tight">
     <table><tbody>${rows.map(r=>`<tr>

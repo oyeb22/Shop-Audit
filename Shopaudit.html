@@ -926,6 +926,8 @@ function vItems(v){
       <div class="field"><label>Opening stock</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5"></div>
       <div class="field"><label>Low-stock alert</label><input id="iThr" type="number" min="0" step="any" value="2"></div>
     </div>
+    <div class="field"><label>Opening stock's expiry date (optional)</label><input id="iExpiry" type="date"></div>
+    <p class="hint" style="margin:-4px 0 12px">Only for items that expire. Leave blank if not relevant.</p>
     <div class="field">
       <label>Other ways to sell this (optional)</label>
       <div id="draftModesBox"></div>
@@ -997,6 +999,7 @@ async function addItem(){
   if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1, or remove it`,true);
   const modes=draftModes.filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
+  const expiryDate=$('#iExpiry')?.value||null;
   const rec={business_id:S.biz.id,name,category:$('#iCat').value.trim()||'General',
     pack_price:packSell, cost_price:packCost, modes, low_stock_threshold:threshold,
     barcode:$('#iBarcode').value.trim()||null, unit_name:$('#iUnit').value.trim()||'Pack'};
@@ -1005,7 +1008,7 @@ async function addItem(){
   try{
     if(needsApproval('items')){
       const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-        action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks}});
+        action_type:'add_item', item_id:null, payload:{...rec, _opening_packs:openPacks, expiryDate}});
       if(error) return err(error);
       toast('Sent for approval'); draftModes=[]; render();
       return;
@@ -1017,6 +1020,10 @@ async function addItem(){
     if(openPacks>0){
       const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:data.id,quantity:openPacks,base_units:openPacks,unit_cost:packCost,entry_date:today(),created_by:S.user.id});
       if(r.error) return err(r.error);
+      if(expiryDate){
+        const {error:expErr}=await sb.rpc('add_expiry_batch',{p_item_id:data.id,p_expiry_date:expiryDate});
+        if(expErr) toast('Item added, but saving the expiry date failed: '+expErr.message,true);
+      }
     }
     const stockValueAfter=stockValueBefore+openPacks*packCost;
     const openingLine=openPacks>0?`, opening stock ${breakdownQty(data,openPacks)}, store value ${money(stockValueBefore)}→${money(stockValueAfter)}`:'';
@@ -1916,12 +1923,13 @@ async function approveChange(id){
     // thinner summary than what actually happened
     let applyDetail=null;
     if(c.action_type==='add_item'){
-      const {_opening_packs,...rec}=c.payload;
+      const {_opening_packs,expiryDate,...rec}=c.payload;
       const {data:item,error}=await sb.from('items').insert(rec).select().single();
       if(error) throw error;
       if(_opening_packs>0){
         const r=await sb.from('purchases').insert({business_id:S.biz.id,item_id:item.id,quantity:_opening_packs,base_units:_opening_packs,unit_cost:rec.cost_price,entry_date:today(),created_by:c.requested_by});
         if(r.error) throw r.error;
+        if(expiryDate) await sb.rpc('add_expiry_batch',{p_item_id:item.id,p_expiry_date:expiryDate});
       }
     }else if(c.action_type==='edit_item'){
       const {error}=await sb.from('items').update(c.payload).eq('id',c.item_id);
@@ -2490,12 +2498,18 @@ async function vCustomers(v){
   v.innerHTML='<div class="empty">Loading…</div>';
   // total spend per customer (revenue across all their sales)
   const {data:sales}=await sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id);
+  // a single checkout inserts one sales row per cart line item, so raw row
+  // count isn't "visits" — a customer buying 7 different items in one trip
+  // isn't 7 visits. Count distinct days they bought something instead,
+  // since there's no separate checkout/transaction id to group rows by.
   S._spend={}; S._visits={}; S._last={};
+  const visitDays={};
   (sales||[]).forEach(s=>{ if(!s.customer_id) return;
     S._spend[s.customer_id]=(S._spend[s.customer_id]||0)+s.quantity*Number(s.unit_price);
-    S._visits[s.customer_id]=(S._visits[s.customer_id]||0)+1;
+    (visitDays[s.customer_id]=visitDays[s.customer_id]||new Set()).add(s.entry_date);
     if(!S._last[s.customer_id]||s.entry_date>S._last[s.customer_id]) S._last[s.customer_id]=s.entry_date;
   });
+  Object.keys(visitDays).forEach(id=>S._visits[id]=visitDays[id].size);
   S._custSort=S._custSort||'spend'; S._custQ=S._custQ||'';
   v.innerHTML=`
   <div class="stats">
@@ -2819,6 +2833,11 @@ function vSettings(v){
     <div class="row"><button class="btn primary" onclick="saveSettings()">Save</button>
     <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send summary now</button></div>
   </div></div>
+  <div class="card"><div class="hd"><h2>Notifications</h2></div><div class="bd">
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:6px">
+      <input id="setNotifySale" type="checkbox" ${S.biz.notify_on_sale?'checked':''} style="width:auto" onchange="saveNotifySale(this.checked)"> Notify me on every sale</label>
+    <p class="hint">Sends you a push notification each time a sale is made. Only works in the TheMonishop Android app, not the website — open the app at least once and stay signed in so your device is registered.</p>
+  </div></div>
   <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
     <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span>. Share it from the <b>Team</b> tab to add receptionists.</p>
   </div></div>
@@ -2882,6 +2901,12 @@ async function resetData(includeItems){
     await sb.from('audit_log').delete().eq('business_id',bid);
     S.cart=[]; toast('Data reset, clean slate'); await loadData(); render();
   }catch(e){ err(e); }
+}
+async function saveNotifySale(checked){
+  const {error}=await sb.from('businesses').update({notify_on_sale:checked}).eq('id',S.biz.id);
+  if(error){ $('#setNotifySale').checked=!checked; return err(error); }
+  S.biz.notify_on_sale=checked;
+  toast(checked?'You will be notified on every sale':'Sale notifications turned off');
 }
 async function saveSettings(){
   const wa_enabled=$('#setWa').checked, wa_number=$('#setWaNum').value.replace(/[^0-9]/g,'')||null;

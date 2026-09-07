@@ -1022,7 +1022,7 @@ async function addItem(){
       if(r.error) return err(r.error);
       if(expiryDate){
         const {error:expErr}=await sb.rpc('add_expiry_batch',{p_item_id:data.id,p_expiry_date:expiryDate});
-        if(expErr) toast('Item added, but saving the expiry date failed: '+expErr.message,true);
+        if(expErr) alert('Item added, but saving the expiry date failed:\n'+expErr.message);
       }
     }
     const stockValueAfter=stockValueBefore+openPacks*packCost;
@@ -1312,7 +1312,7 @@ async function addPurchase(){
   if(error) return err(error);
   if(expiryDate){
     const {error:expErr}=await sb.rpc('add_expiry_batch',{p_item_id:item_id,p_expiry_date:expiryDate});
-    if(expErr) toast('Restocked, but saving the expiry date failed: '+expErr.message,true);
+    if(expErr) alert('Restocked, but saving the expiry date failed:\n'+expErr.message);
   }
   if(auditErr) toast('Restocked, but audit log entry failed: '+auditErr.message,true);
   else toast(`Added ${addedLabel} to stock`);

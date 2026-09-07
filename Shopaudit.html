@@ -728,16 +728,27 @@ async function render(){
 async function renderNoBiz(){
   $('#bizSelect').innerHTML='<option>No business yet</option>'; $('#rolePill').textContent='—'; $('#navGrid').innerHTML=''; $('#navCurrent').textContent='';
   $('#navToggleBtn').classList.add('hidden'); $('#topSignoutBtn').classList.remove('hidden');
-  const [{data:pending},{data:rs}]=await Promise.all([
+  const [{data:pending},{data:rs},{data:marketerStatus}]=await Promise.all([
     sb.from('join_requests').select('*, business:businesses(name)').eq('user_id',S.user.id).eq('status','pending'),
-    sb.from('referral_settings').select('*').eq('id',1).maybeSingle()
+    sb.from('referral_settings').select('*').eq('id',1).maybeSingle(),
+    sb.rpc('my_marketer_status')
   ]);
+  // this account signed up as a marketer, not a shop owner — this screen
+  // (and the native app generally, which only ever loads this page, never
+  // marketer.html) isn't where they belong. Shown ahead of the create/join
+  // form since marketers have repeatedly landed here by mistake and gotten
+  // confused about which login they're supposed to use.
+  const isMarketer = marketerStatus && marketerStatus.length && marketerStatus[0].user_id!=null;
+  const marketerHtml = isMarketer ? `<div class="card" style="border-color:var(--amber)"><div class="bd">
+    <p class="hint" style="margin-bottom:10px"><b>This looks like your marketer account, not a shop account.</b> This app is for running a shop — your marketer dashboard (referral link, bonus tracking) is a separate page.</p>
+    <a class="btn primary" href="marketer.html">Open marketer dashboard</a>
+  </div></div>` : '';
   const pendingHtml = (pending&&pending.length) ? `<div class="card"><div class="hd"><h2>Waiting for approval</h2></div><div class="bd">
     ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending. The admin needs to approve it before you get access.</p>`).join('')}
   </div></div>` : '';
   const refCode=localStorage.getItem('themonishop_ref')||'';
   const referralField = rs?.enabled ? `<div class="field"><label>Referral code (optional)</label><input id="nbRef" value="${esc(refCode)}" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>` : '';
-  $('#view').innerHTML= pendingHtml + `
+  $('#view').innerHTML= marketerHtml + pendingHtml + `
   <div class="split">
     <div class="card"><div class="hd"><h2>Create a business</h2></div><div class="bd">
       <p class="hint" style="margin-bottom:12px">You'll become the <b>admin</b>. Set prices, stock and see all reports.</p>
@@ -1561,15 +1572,19 @@ function todayStory(sales){
   const topId=Object.entries(byItem).sort((a,b)=>b[1]-a[1])[0]?.[0];
   const topName=topId?(S.items.find(i=>i.id===topId)||{}).name||null:null;
   const creditToday=dayS.filter(s=>s.payment_method==='credit').reduce((a,s)=>a+rev(s),0);
-  const lowCount=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).length;
-  return {todayRev,todayProf,itemCount:dayS.length,topName,avgRev,vsAvgPct,creditToday,lowCount};
+  const lowNames=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).map(i=>i.name);
+  return {todayRev,todayProf,itemCount:dayS.length,topName,avgRev,vsAvgPct,creditToday,lowNames};
 }
 function todayStoryLines(s){
   const lines=[`${money(s.todayRev)} today from ${s.itemCount} item(s) sold, profit ${money(s.todayProf)}`];
   if(s.vsAvgPct!==null) lines.push(s.vsAvgPct>=0?`${s.vsAvgPct}% above your usual day`:`${Math.abs(s.vsAvgPct)}% below your usual day`);
   if(s.topName) lines.push(`Best seller: ${s.topName}`);
   if(s.creditToday>0) lines.push(`${money(s.creditToday)} given on credit today`);
-  lines.push(s.lowCount>0?`${s.lowCount} item(s) need restocking`:'Nothing low on stock');
+  if(s.lowNames.length){
+    const shown=s.lowNames.slice(0,5).join(', ');
+    const extra=s.lowNames.length>5?` +${s.lowNames.length-5} more`:'';
+    lines.push(`Needs restocking: ${shown}${extra}`);
+  } else lines.push('Nothing low on stock');
   return lines;
 }
 async function exportCSV(){

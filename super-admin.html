@@ -107,6 +107,7 @@ tr:last-child td{border-bottom:none}
     <div class="toggle"><input id="mkApplicationsOpen" type="checkbox" style="width:auto"> <label for="mkApplicationsOpen" style="font-weight:600">Applications open</label></div>
     <div class="field"><label>Monthly target (paid referrals)</label><input id="mkTarget" type="number" min="1" step="1"></div>
     <div class="field"><label>Bonus when target is hit (₦ per month)</label><input id="mkBonus" type="number" min="0" step="500"></div>
+    <div class="field"><label>Renewal bonus (₦ when a referred business renews in a later year)</label><input id="mkRenewalBonus" type="number" min="0" step="500"></div>
     <button class="btn" onclick="saveMarketerSettings()">Save</button>
   </div>
 
@@ -136,6 +137,18 @@ tr:last-child td{border-bottom:none}
   <div class="card wide">
     <h2>Monthly bonuses — paid</h2>
     <div id="mkPaidTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card wide">
+    <h2>Renewal bonuses — unpaid</h2>
+    <p class="hint" style="margin-bottom:10px">A marketer's referred business paid again in a later year.</p>
+    <div id="mkRenewalUnpaidSummary" class="summary"></div>
+    <div id="mkRenewalUnpaidTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card wide">
+    <h2>Renewal bonuses — paid</h2>
+    <div id="mkRenewalPaidTable"><div class="empty">Loading…</div></div>
   </div>
 </div>
 
@@ -184,6 +197,7 @@ async function afterSignIn(){
   loadMarketers();
   loadMarketerSettings();
   loadMarketerMonthlyBonuses();
+  loadMarketerRenewalBonuses();
   loadMarketerCycles();
 }
 
@@ -321,9 +335,10 @@ async function loadMarketerSettings(){
   $('#mkApplicationsOpen').checked=!!data.applications_open;
   $('#mkTarget').value=data.monthly_target;
   $('#mkBonus').value=data.bonus_amount;
+  $('#mkRenewalBonus').value=data.renewal_bonus_amount;
 }
 async function saveMarketerSettings(){
-  const {error}=await sb.rpc('set_marketer_settings',{p_bonus:+$('#mkBonus').value||0,p_target:+$('#mkTarget').value||1,p_applications_open:$('#mkApplicationsOpen').checked});
+  const {error}=await sb.rpc('set_marketer_settings',{p_bonus:+$('#mkBonus').value||0,p_target:+$('#mkTarget').value||1,p_applications_open:$('#mkApplicationsOpen').checked,p_renewal_bonus:+$('#mkRenewalBonus').value||0});
   if(error) return toast(error.message,true);
   toast('Saved');
 }
@@ -359,6 +374,42 @@ async function loadMarketerMonthlyBonuses(){
     <td>${esc(r.marketer_name)}</td><td>${periodLabel(r)}</td>
     <td>${money(r.bonus_amount)}</td><td>${fmtD(r.marked_paid_at||r.created_at)}</td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">No payouts recorded yet.</div>';
+}
+
+async function loadMarketerRenewalBonuses(){
+  const {data,error}=await sb.rpc('platform_marketer_renewal_bonuses');
+  if(error){ toast(error.message,true); return; }
+  const rows=data||[];
+  const unpaid=rows.filter(r=>r.status==='eligible');
+  const paid=rows.filter(r=>r.status==='paid');
+
+  const unpaidTotal=unpaid.reduce((a,r)=>a+Number(r.bonus_amount||0),0);
+  $('#mkRenewalUnpaidSummary').innerHTML=`
+    <div><div class="n">${unpaid.length}</div><div class="l">Unpaid renewals</div></div>
+    <div><div class="n">${money(unpaidTotal)}</div><div class="l">Total owed</div></div>`;
+
+  $('#mkRenewalUnpaidTable').innerHTML = unpaid.length ? `<table><thead><tr>
+    <th>Marketer</th><th>Business</th><th>Amount</th><th>Since</th><th>Pay to</th><th></th>
+  </tr></thead><tbody>${unpaid.map(r=>`<tr>
+    <td>${esc(r.marketer_name)}</td><td>${esc(r.business_name)}</td>
+    <td><span class="badge gold">${money(r.bonus_amount)}</span></td>
+    <td>${fmtD(r.created_at)}</td>
+    <td>${r.payout_account_number?`${esc(r.payout_bank_name||'')}<div class="hint">${esc(r.payout_account_number)} · ${esc(r.payout_account_name||'')}</div>`:'<span class="hint">not provided yet</span>'}</td>
+    <td><button class="btn ghost" onclick="markMarketerRenewalBonusPaid('${r.id}')">Mark paid</button></td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">Nothing owed right now.</div>';
+
+  $('#mkRenewalPaidTable').innerHTML = paid.length ? `<table><thead><tr>
+    <th>Marketer</th><th>Business</th><th>Amount</th><th>Paid on</th>
+  </tr></thead><tbody>${paid.map(r=>`<tr>
+    <td>${esc(r.marketer_name)}</td><td>${esc(r.business_name)}</td>
+    <td>${money(r.bonus_amount)}</td><td>${fmtD(r.marked_paid_at||r.created_at)}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No payouts recorded yet.</div>';
+}
+async function markMarketerRenewalBonusPaid(id){
+  const {error}=await sb.rpc('mark_marketer_renewal_bonus_paid',{p_id:id});
+  if(error) return toast(error.message,true);
+  toast('Marked paid');
+  loadMarketerRenewalBonuses();
 }
 
 async function loadMarketerCycles(){

@@ -146,6 +146,12 @@ tr:last-child td{border-bottom:none}
     </div>
 
     <div class="card wide">
+      <h2>Renewal bonuses</h2>
+      <p class="hint" style="margin-bottom:10px">Paid when a business you referred subscribes again in a later year.</p>
+      <div id="renewalBonusTable"><div class="empty">Loading…</div></div>
+    </div>
+
+    <div class="card wide">
       <h2>All referrals</h2>
       <div id="refTable"><div class="empty">Loading…</div></div>
     </div>
@@ -270,6 +276,7 @@ async function afterSignIn(){
     if(settings) mkTarget=settings.monthly_target;
     loadReferrals();
     loadMonthlyBonuses();
+    loadRenewalBonuses();
     subscribeRealtime();
   }
 }
@@ -338,12 +345,24 @@ async function loadMonthlyBonuses(){
   $('#stOwed').textContent=money(owed);
 
   const label = s => s==='paid' ? '<span class="badge ok">Paid out</span>' : '<span class="badge gold">Owed to you</span>';
+  const periodLabel = r => r.year ? `${MONTH_NAMES[r.month-1]} ${r.year}` : (r.cycle_start ? `${fmtD(r.cycle_start)} – ${fmtD(r.cycle_end)}` : '—');
   $('#bonusTable').innerHTML = rows.length ? `<table><thead><tr>
-    <th>Month</th><th>Paid referrals</th><th>Target</th><th>Bonus</th><th>Status</th>
+    <th>Cycle</th><th>Paid referrals</th><th>Target</th><th>Bonus</th><th>Status</th>
   </tr></thead><tbody>${rows.map(r=>`<tr>
-    <td>${MONTH_NAMES[r.month-1]} ${r.year}</td><td>${r.paid_referrals_count}</td><td>${r.target}</td>
+    <td>${periodLabel(r)}</td><td>${r.paid_referrals_count}</td><td>${r.target}</td>
     <td>${money(r.bonus_amount)}</td><td>${label(r.status)}</td>
   </tr>`).join('')}</tbody></table>` : '<div class="empty">No monthly bonus earned yet — keep sharing your link.</div>';
+}
+async function loadRenewalBonuses(){
+  const {data,error}=await sb.rpc('my_marketer_renewal_bonuses');
+  if(error){ toast(error.message,true); return; }
+  const rows=data||[];
+  const label = s => s==='paid' ? '<span class="badge ok">Paid out</span>' : '<span class="badge gold">Owed to you</span>';
+  $('#renewalBonusTable').innerHTML = rows.length ? `<table><thead><tr>
+    <th>Business</th><th>Bonus</th><th>Since</th><th>Status</th>
+  </tr></thead><tbody>${rows.map(r=>`<tr>
+    <td>${esc(r.business_name)}</td><td>${money(r.bonus_amount)}</td><td>${fmtD(r.created_at)}</td><td>${label(r.status)}</td>
+  </tr>`).join('')}</tbody></table>` : '<div class="empty">No renewal bonuses yet — these show up when a business you referred subscribes again in a later year.</div>';
 }
 
 async function savePayout(){

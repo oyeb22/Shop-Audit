@@ -1522,6 +1522,7 @@ async function vTill(v){
     <div class="stat"><div class="label">Cash in till</div><div class="value num">…</div></div>
     <div class="stat"><div class="label">Transfer in till</div><div class="value num">…</div></div>
   </div>
+  <div class="card"><div class="hd"><h2>By team member</h2><span class="desc">who's holding what, since the till was last cleared</span></div><div class="bd tight" id="tillByStaff"><div class="empty">Loading…</div></div></div>
   <div class="card"><div class="hd"><h2>Clear the till</h2><span class="desc">log money you've physically removed from the business</span></div><div class="bd">
     <div class="frow">
       <div class="field"><label>Method</label><select id="tMethod"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div>
@@ -1531,7 +1532,7 @@ async function vTill(v){
     <button class="btn primary" onclick="clearTill()">Record clearing</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Recent clearings</h2></div><div class="bd tight rtable"><div id="tillList" class="empty">Loading…</div></div></div>`;
-  loadTillSummary(); loadTillClearings();
+  loadTillSummary(); loadTillClearings(); loadTillByStaff();
 }
 async function loadTillSummary(){
   const {data,error}=await sb.rpc('till_summary',{b:S.biz.id});
@@ -1540,6 +1541,14 @@ async function loadTillSummary(){
   $('#tillStats').innerHTML=`
     <div class="stat"><div class="label">Cash in till</div><div class="value num">${money(s.cash_balance)}</div></div>
     <div class="stat"><div class="label">Transfer in till</div><div class="value num">${money(s.transfer_balance)}</div></div>`;
+}
+async function loadTillByStaff(){
+  const {data,error}=await sb.rpc('till_breakdown_by_staff',{b:S.biz.id});
+  if(error){ $('#tillByStaff').innerHTML='<div class="empty">Could not load.</div>'; return; }
+  const rows=(data||[]).filter(r=>r.cash_amount>0||r.transfer_amount>0);
+  $('#tillByStaff').innerHTML = rows.length ? `<table><thead><tr><th>Name</th><th class="r">Cash</th><th class="r">Transfer</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td>${esc(r.full_name)}</td><td class="r num">${money(r.cash_amount)}</td><td class="r num">${money(r.transfer_amount)}</td></tr>`).join('')}</tbody></table>`
+    : '<div class="empty">Nothing collected since the last clearing.</div>';
 }
 // shared by the immediate path (clearTill) and the approval path (approveChange)
 async function applyTillClear(method,amount,note,before,actorId){
@@ -2602,11 +2611,21 @@ async function vMySales(v){
       <div class="stat good"><div class="label">Today</div><div class="value num">${money(dT.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dT.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
       <div class="stat"><div class="label">This month</div><div class="value num">${money(dM.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dM.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
     </div>
+    <div class="card"><div class="hd"><h2>With you right now</h2><span class="desc">from your own sales, since the till was last cleared</span></div><div class="bd tight" id="myTillShare"><div class="empty">Loading…</div></div></div>
     <div class="card"><div class="hd"><h2>My recent sales</h2></div><div class="bd tight">
       ${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th>Customer</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
       <tbody>${data.slice(0,80).map(s=>`<tr><td class="num">${s.entry_date}</td><td class="itemname">${esc(nm(s.item_id))}${s.sold_as?` <span class="cat">${esc(s.sold_as)}</span>`:''}</td><td>${esc(cn(s.customer_id))||'<span class="hint">—</span>'}</td><td class="r num">${s.quantity}</td><td class="r num">${money(rev(s))}</td></tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales recorded by you yet.</div>'}
     </div></div>`;
+  loadMyTillShare();
+}
+async function loadMyTillShare(){
+  const {data,error}=await sb.rpc('till_breakdown_by_staff',{b:S.biz.id});
+  const box=$('#myTillShare'); if(!box) return;
+  if(error){ box.innerHTML='<div class="empty">Could not load.</div>'; return; }
+  const mine=(data||[]).find(r=>r.user_id===S.user.id)||{cash_amount:0,transfer_amount:0};
+  box.innerHTML=`<div class="stats"><div class="stat"><div class="label">Cash</div><div class="value num">${money(mine.cash_amount)}</div></div>
+    <div class="stat"><div class="label">Transfer</div><div class="value num">${money(mine.transfer_amount)}</div></div></div>`;
 }
 
 /* ============================================================

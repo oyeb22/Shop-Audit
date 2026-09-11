@@ -69,11 +69,18 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .navMenu .signout{width:100%;text-align:center;padding:11px;border-radius:10px;font-weight:600;font-size:14px;color:var(--red);border:1px solid #E8C9C5}
 @media(max-width:640px){.navMenu .grid{grid-template-columns:1fr}}
 
-.tourOverlay{position:fixed;inset:0;z-index:80;background:rgba(23,21,15,.5);display:flex;align-items:center;justify-content:center;padding:20px}
-.tourCard{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:26px 24px;max-width:360px;width:100%}
-.tourCard h2{font-family:'Fraunces',serif;font-size:20px;margin-bottom:10px}
-.tourCard p{font-size:14.5px;color:var(--muted);line-height:1.5;margin-bottom:20px}
-.tourDots{display:flex;gap:5px;margin-bottom:16px}
+/* bottom-sheet tour: pinned to the bottom of the screen so the real page
+   (navigated to for each step) stays fully visible above it, rather than a
+   full-screen overlay blocking what it's supposed to be explaining */
+.tourSheet{position:fixed;left:0;right:0;bottom:0;z-index:80;background:var(--card);border-top:1px solid var(--line);
+  box-shadow:0 -8px 24px -8px rgba(23,21,15,.25);padding:16px 18px calc(16px + env(safe-area-inset-bottom));
+  max-height:42vh;overflow-y:auto}
+.tourSheet .tourHead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tourSheet .tourStepNum{font-size:12px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.04em}
+.tourSheet h2{font-family:'Fraunces',serif;font-size:18px}
+.tourSheet ul{margin:0 0 14px 18px}
+.tourSheet li{font-size:14px;color:var(--muted);line-height:1.5;margin-bottom:4px}
+.tourDots{display:flex;gap:5px;margin-bottom:10px}
 .tourDots span{width:6px;height:6px;border-radius:50%;background:var(--line)}
 .tourDots span.on{background:var(--green)}
 .tourBtns{display:flex;justify-content:space-between;gap:10px}
@@ -725,39 +732,68 @@ function go(t){ S.tab=t; buildNav(); closeNavMenu(); render(); }
 function toggleNavMenu(){ $('#navMenu').classList.toggle('show'); }
 function closeNavMenu(){ $('#navMenu').classList.remove('show'); }
 
-/* ---------- first-time tour: one short step per tab, skippable, reopenable via the "?" button ---------- */
+/* ---------- guided tour: each step actually navigates to the real tab and
+   explains it as a bottom sheet, so the live page stays visible above it —
+   skippable, reopenable anytime via the "?" button ---------- */
 const TOUR_STEPS={
   admin:[
-    {title:'Dashboard',body:"Your day at a glance: today's revenue and profit, how today compares to your usual day, low stock, and anything expiring soon."},
-    {title:'Sell',body:'Ring up a sale. Tap an item, pick how it\'s being sold (pack, half bag, etc.), add to cart, checkout.'},
-    {title:'Items',body:'Add and edit what you sell — prices, low-stock alerts, other ways to sell an item, and expiry tracking for perishables.'},
-    {title:'Restock',body:"Log new stock coming in. You can update cost or selling price here too, and add a batch's expiry date if it has one."},
-    {title:'Customers',body:'Track who owes you and who\'s paid. Send WhatsApp reminders straight from here.'},
-    {title:'Reconcile',body:'Count physical stock against what the system expects — catches shrinkage immediately instead of at month end.'},
-    {title:'Till',body:"See your running cash/transfer balance, and log money you've physically removed from the till."},
-    {title:'Reports',body:"Real profit, real expenses and stock value for any date range — not just what's sitting in your bank account."},
-    {title:'Expenses',body:'Log rent, transport, repairs — anything outside stock purchases, so your profit numbers stay accurate.'},
-    {title:'Team',body:'Approve staff who request to join, promote or demote roles, and see everyone with access.'},
-    {title:'Settings',body:'Your plan, WhatsApp message templates, and which manager actions need your approval before they apply.'},
-    {title:'Audit log',body:'Every sale, restock and change, tied to whoever did it.'},
-    {title:'Approvals',body:"Anything a manager submitted that's waiting on your sign-off."}
+    {tab:'dashboard',title:'Dashboard',points:[
+      "\"Today's story\" tells you in plain words whether today's better or worse than your usual day, and who your best seller was.",
+      'The stat tiles show revenue, profit, low/out-of-stock count and outstanding credit at a glance.',
+      "Needs restocking and Expiring soon cards only show up when something actually needs your attention."]},
+    {tab:'sell',title:'Sell',points:[
+      'Tap an item to open it, choose how it\'s being sold (full pack, half bag, by the cup — whatever modes you set up), then add to cart.',
+      'Pick Cash, Transfer, or Credit (attach a customer) before you checkout.',
+      'After checkout you get a receipt you can print to a Bluetooth thermal printer.']},
+    {tab:'items',title:'Items',points:[
+      '"Add item" sets the pack price, an optional cost price, and a low-stock alert threshold.',
+      "\"Other ways to sell this\" lets you add Half bag, Mudu, or any other size — price and cost scale automatically.",
+      'Tap Edit on any item to change its price, or set an expiry date if it\'s perishable.']},
+    {tab:'restock',title:'Restock',points:[
+      'Pick the item, how much you\'re adding, and in what unit (packs, half bags, etc.).',
+      'If the cost changed this time, enter it here — it blends into a weighted average, it doesn\'t overwrite what older stock cost.',
+      "Tick \"Also update selling price\" if the price is changing too, and add the batch's expiry date if it has one."]},
+    {tab:'customers',title:'Customers',points:[
+      'Every customer\'s balance owed shows here, sortable by top spender, most owing, or most recent.',
+      'Tap a customer to send a WhatsApp payment reminder or thank-you in one tap, no phone number saved on your end needed beyond theirs.']},
+    {tab:'reconcile',title:'Reconcile',points:[
+      'Count what\'s physically on the shelf and enter it — the system shows the expected count next to it automatically.',
+      'Any gap (shrinkage) is flagged immediately and logged, not discovered weeks later.']},
+    {tab:'till',title:'Till',points:[
+      'Shows your running cash and transfer balance, computed from sales minus whatever you\'ve recorded as cleared.',
+      "\"Clear the till\" logs money you've physically removed, e.g. taken to the bank."]},
+    {tab:'reports',title:'Reports',points:[
+      'Pick any date range — today, this month, all time, or custom — to see real revenue, profit and expenses for that period.',
+      'The "Stock on hand" card shows what your current inventory is worth, at cost.']},
+    {tab:'expenses',title:'Expenses',points:[
+      'Log rent, transport, repairs, anything that isn\'t stock — this is what makes Dashboard/Reports profit numbers real, not just revenue.']},
+    {tab:'members',title:'Team',points:[
+      'Your invite code is here — share it and new staff land as a pending request.',
+      'Approve them as Manager or Receptionist, or promote/demote anyone already on the team.']},
+    {tab:'settings',title:'Settings',points:[
+      'See your plan/trial status and renew from here.',
+      'Set WhatsApp message templates, and choose which manager actions (items, restock, reconcile, till) need your approval versus happen instantly.']},
+    {tab:'audit',title:'Audit log',points:[
+      'Every sale, restock, credit entry and approval, tied to exactly who did it and when — your record if anything ever looks off.']},
+    {tab:'approvals',title:'Approvals',points:[
+      'Anything a manager submitted that\'s waiting on you shows up here — approve or reject with a reason.']}
   ],
   manager:[
-    {title:'Dashboard',body:"Your day at a glance: today's revenue and profit, low stock, and anything expiring soon."},
-    {title:'Sell',body:'Ring up a sale. Tap an item, pick how it\'s being sold, add to cart, checkout.'},
-    {title:'Items',body:'Add and edit items — depending on your admin\'s settings, some changes may need their approval first.'},
-    {title:'Restock',body:"Log new stock coming in, and add a batch's expiry date if it has one."},
-    {title:'Customers',body:'Track who owes and who\'s paid, and send WhatsApp reminders.'},
-    {title:'Reconcile',body:'Count physical stock against what the system expects.'},
-    {title:'Till',body:'See the running cash/transfer balance and log money removed from the till.'},
-    {title:'Reports',body:'Profit, expenses and stock value for any date range.'},
-    {title:'Expenses',body:'Log rent, transport, repairs — anything outside stock purchases.'}
+    {tab:'dashboard',title:'Dashboard',points:["Today's revenue, profit, low stock and anything expiring soon, at a glance."]},
+    {tab:'sell',title:'Sell',points:['Tap an item, choose how it\'s being sold, add to cart, checkout with Cash/Transfer/Credit.']},
+    {tab:'items',title:'Items',points:['Add or edit items — depending on your admin\'s settings, some changes may need their approval before they apply.']},
+    {tab:'restock',title:'Restock',points:['Log new stock, update cost/price if it changed, and add a batch\'s expiry date if it has one.']},
+    {tab:'customers',title:'Customers',points:['Track who owes and who\'s paid, and send WhatsApp reminders in one tap.']},
+    {tab:'reconcile',title:'Reconcile',points:['Count the shelf against what the system expects — flags shrinkage immediately.']},
+    {tab:'till',title:'Till',points:['Running cash/transfer balance, and a place to log money removed from the till.']},
+    {tab:'reports',title:'Reports',points:['Profit, expenses and stock value for any date range.']},
+    {tab:'expenses',title:'Expenses',points:['Log rent, transport, repairs — anything outside stock purchases.']}
   ],
   receptionist:[
-    {title:'Sell',body:'Ring up a sale here. Tap an item, pick how it\'s being sold, add to cart, checkout.'},
-    {title:'Customers',body:'Track who owes and who\'s paid, and send WhatsApp reminders.'},
-    {title:'My sales',body:'Everything you\'ve personally sold.'},
-    {title:'Items',body:'Prices and stock levels — read-only, but you can still mark a perishable batch as sold out once it\'s gone.'}
+    {tab:'sell',title:'Sell',points:['Tap an item, choose how it\'s being sold, add to cart, checkout with Cash/Transfer/Credit.']},
+    {tab:'customers',title:'Customers',points:['See who owes and who\'s paid, and send a WhatsApp reminder or thank-you in one tap.']},
+    {tab:'mysales',title:'My sales',points:['Everything you\'ve personally sold — your own record.']},
+    {tab:'stocklist',title:'Items',points:['Prices and stock levels, read-only — but you can still mark a perishable batch as sold out once it\'s gone.']}
   ]
 };
 function tourKey(){ return `tourSeen_${S.biz.id}_${S.user.id}`; }
@@ -767,26 +803,31 @@ function maybeStartTour(){
 }
 let tourIdx=0;
 function startTour(){ tourIdx=0; renderTourStep(); }
+function tourSteps(){ return TOUR_STEPS[S.role]||TOUR_STEPS.admin; }
 function renderTourStep(){
-  document.getElementById('tourOverlay')?.remove();
-  const steps=TOUR_STEPS[S.role]||TOUR_STEPS.admin;
+  document.getElementById('tourSheet')?.remove();
+  const steps=tourSteps();
   const s=steps[tourIdx];
   if(!s){ closeTour(); return; }
-  document.body.insertAdjacentHTML('beforeend',`<div class="tourOverlay" id="tourOverlay">
-    <div class="tourCard">
-      <div class="tourDots">${steps.map((_,i)=>`<span class="${i===tourIdx?'on':''}"></span>`).join('')}</div>
-      <h2>${esc(s.title)}</h2>
-      <p>${esc(s.body)}</p>
-      <div class="tourBtns">
-        <button class="btn ghost sm" onclick="closeTour()">Skip</button>
-        <button class="btn primary sm" onclick="tourNext()">${tourIdx===steps.length-1?'Done':'Next'}</button>
+  go(s.tab); // actually navigate to the real page so it's visible behind the sheet
+  document.body.insertAdjacentHTML('beforeend',`<div class="tourSheet" id="tourSheet">
+    <div class="tourDots">${steps.map((_,i)=>`<span class="${i===tourIdx?'on':''}"></span>`).join('')}</div>
+    <div class="tourHead"><span class="tourStepNum">Step ${tourIdx+1} of ${steps.length}</span></div>
+    <h2>${esc(s.title)}</h2>
+    <ul>${s.points.map(p=>`<li>${esc(p)}</li>`).join('')}</ul>
+    <div class="tourBtns">
+      <div class="row" style="gap:8px">
+        ${tourIdx>0?`<button class="btn ghost sm" onclick="tourBack()">Back</button>`:''}
+        <button class="btn ghost sm" onclick="closeTour()">Skip tour</button>
       </div>
+      <button class="btn primary sm" onclick="tourNext()">${tourIdx===steps.length-1?'Done':'Next: '+ (steps[tourIdx+1]?steps[tourIdx+1].title:'')}</button>
     </div>
   </div>`);
 }
 function tourNext(){ tourIdx++; renderTourStep(); }
+function tourBack(){ tourIdx=Math.max(0,tourIdx-1); renderTourStep(); }
 function closeTour(){
-  document.getElementById('tourOverlay')?.remove();
+  document.getElementById('tourSheet')?.remove();
   try{ localStorage.setItem(tourKey(),'1'); }catch{}
 }
 

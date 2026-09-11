@@ -69,6 +69,15 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .navMenu .signout{width:100%;text-align:center;padding:11px;border-radius:10px;font-weight:600;font-size:14px;color:var(--red);border:1px solid #E8C9C5}
 @media(max-width:640px){.navMenu .grid{grid-template-columns:1fr}}
 
+.tourOverlay{position:fixed;inset:0;z-index:80;background:rgba(23,21,15,.5);display:flex;align-items:center;justify-content:center;padding:20px}
+.tourCard{background:var(--card);border-radius:16px;box-shadow:var(--shadow);padding:26px 24px;max-width:360px;width:100%}
+.tourCard h2{font-family:'Fraunces',serif;font-size:20px;margin-bottom:10px}
+.tourCard p{font-size:14.5px;color:var(--muted);line-height:1.5;margin-bottom:20px}
+.tourDots{display:flex;gap:5px;margin-bottom:16px}
+.tourDots span{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.tourDots span.on{background:var(--green)}
+.tourBtns{display:flex;justify-content:space-between;gap:10px}
+
 /* cards & grid */
 .view{padding:22px 0 80px}
 .row{display:flex;gap:14px;flex-wrap:wrap}
@@ -285,6 +294,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
       <button class="navToggle hidden" id="topSignoutBtn" onclick="signOut()" aria-label="Sign out"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       <div class="navCurrent" id="navCurrent">Dashboard</div>
       <div class="spacer"></div>
+      <button class="navToggle" onclick="startTour()" aria-label="Help" title="What does this app do?">?</button>
       <div class="bizsel">
         <select id="bizSelect" class="biz" onchange="switchBiz(this.value)"></select>
         <span id="rolePill" class="rolepill">—</span>
@@ -520,6 +530,7 @@ async function switchBiz(id){
   buildNav(); await loadData(); render();
   subscribeRealtime();
   registerPush();
+  maybeStartTour();
 }
 
 /* ---------- push notifications (native only, no-op on the plain website) ----------
@@ -713,6 +724,71 @@ function buildNav(){
 function go(t){ S.tab=t; buildNav(); closeNavMenu(); render(); }
 function toggleNavMenu(){ $('#navMenu').classList.toggle('show'); }
 function closeNavMenu(){ $('#navMenu').classList.remove('show'); }
+
+/* ---------- first-time tour: one short step per tab, skippable, reopenable via the "?" button ---------- */
+const TOUR_STEPS={
+  admin:[
+    {title:'Dashboard',body:"Your day at a glance: today's revenue and profit, how today compares to your usual day, low stock, and anything expiring soon."},
+    {title:'Sell',body:'Ring up a sale. Tap an item, pick how it\'s being sold (pack, half bag, etc.), add to cart, checkout.'},
+    {title:'Items',body:'Add and edit what you sell — prices, low-stock alerts, other ways to sell an item, and expiry tracking for perishables.'},
+    {title:'Restock',body:"Log new stock coming in. You can update cost or selling price here too, and add a batch's expiry date if it has one."},
+    {title:'Customers',body:'Track who owes you and who\'s paid. Send WhatsApp reminders straight from here.'},
+    {title:'Reconcile',body:'Count physical stock against what the system expects — catches shrinkage immediately instead of at month end.'},
+    {title:'Till',body:"See your running cash/transfer balance, and log money you've physically removed from the till."},
+    {title:'Reports',body:"Real profit, real expenses and stock value for any date range — not just what's sitting in your bank account."},
+    {title:'Expenses',body:'Log rent, transport, repairs — anything outside stock purchases, so your profit numbers stay accurate.'},
+    {title:'Team',body:'Approve staff who request to join, promote or demote roles, and see everyone with access.'},
+    {title:'Settings',body:'Your plan, WhatsApp message templates, and which manager actions need your approval before they apply.'},
+    {title:'Audit log',body:'Every sale, restock and change, tied to whoever did it.'},
+    {title:'Approvals',body:"Anything a manager submitted that's waiting on your sign-off."}
+  ],
+  manager:[
+    {title:'Dashboard',body:"Your day at a glance: today's revenue and profit, low stock, and anything expiring soon."},
+    {title:'Sell',body:'Ring up a sale. Tap an item, pick how it\'s being sold, add to cart, checkout.'},
+    {title:'Items',body:'Add and edit items — depending on your admin\'s settings, some changes may need their approval first.'},
+    {title:'Restock',body:"Log new stock coming in, and add a batch's expiry date if it has one."},
+    {title:'Customers',body:'Track who owes and who\'s paid, and send WhatsApp reminders.'},
+    {title:'Reconcile',body:'Count physical stock against what the system expects.'},
+    {title:'Till',body:'See the running cash/transfer balance and log money removed from the till.'},
+    {title:'Reports',body:'Profit, expenses and stock value for any date range.'},
+    {title:'Expenses',body:'Log rent, transport, repairs — anything outside stock purchases.'}
+  ],
+  receptionist:[
+    {title:'Sell',body:'Ring up a sale here. Tap an item, pick how it\'s being sold, add to cart, checkout.'},
+    {title:'Customers',body:'Track who owes and who\'s paid, and send WhatsApp reminders.'},
+    {title:'My sales',body:'Everything you\'ve personally sold.'},
+    {title:'Items',body:'Prices and stock levels — read-only, but you can still mark a perishable batch as sold out once it\'s gone.'}
+  ]
+};
+function tourKey(){ return `tourSeen_${S.biz.id}_${S.user.id}`; }
+function maybeStartTour(){
+  try{ if(localStorage.getItem(tourKey())) return; }catch{}
+  startTour();
+}
+let tourIdx=0;
+function startTour(){ tourIdx=0; renderTourStep(); }
+function renderTourStep(){
+  document.getElementById('tourOverlay')?.remove();
+  const steps=TOUR_STEPS[S.role]||TOUR_STEPS.admin;
+  const s=steps[tourIdx];
+  if(!s){ closeTour(); return; }
+  document.body.insertAdjacentHTML('beforeend',`<div class="tourOverlay" id="tourOverlay">
+    <div class="tourCard">
+      <div class="tourDots">${steps.map((_,i)=>`<span class="${i===tourIdx?'on':''}"></span>`).join('')}</div>
+      <h2>${esc(s.title)}</h2>
+      <p>${esc(s.body)}</p>
+      <div class="tourBtns">
+        <button class="btn ghost sm" onclick="closeTour()">Skip</button>
+        <button class="btn primary sm" onclick="tourNext()">${tourIdx===steps.length-1?'Done':'Next'}</button>
+      </div>
+    </div>
+  </div>`);
+}
+function tourNext(){ tourIdx++; renderTourStep(); }
+function closeTour(){
+  document.getElementById('tourOverlay')?.remove();
+  try{ localStorage.setItem(tourKey(),'1'); }catch{}
+}
 
 /* ---------- top-level render ---------- */
 async function render(){

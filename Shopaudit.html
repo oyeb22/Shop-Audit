@@ -175,6 +175,10 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .prod .opt{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer}
 .prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
 .prod .opt small{font-weight:600;color:var(--green)}
+.prod .pcat{font-size:11px;color:var(--muted);margin-top:1px}
+.catHead{display:flex;align-items:center;gap:8px;padding:10px 2px 8px;font-weight:700;font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;border-bottom:1px solid var(--line);margin-bottom:2px}
+.catHead .catCount{font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:auto}
+.catChevron{display:inline-block;width:12px}
 /* cart */
 .cart{position:sticky;top:78px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
 .cart .chd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
@@ -714,6 +718,20 @@ function breakdownQty(i,total){
 function packBreakdown(i){ return breakdownQty(i,onHand(i.id)); }
 function stockLabel(i){ return `${packBreakdown(i)} in stock`; }
 function stockShort(i){ return packBreakdown(i); }
+// groups items by category (alphabetical, "General" bucket for none) — shared
+// by Sell, Items and the read-only stock list so a shop with a big catalog
+// can collapse categories it isn't looking at instead of scrolling a long
+// flat list. Collapse state is one shared set across all three views (the
+// same "Drinks" section stays collapsed/expanded wherever you see it).
+function groupItemsByCategory(items){
+  const map=new Map();
+  items.forEach(i=>{ const cat=i.category||'General'; if(!map.has(cat)) map.set(cat,[]); map.get(cat).push(i); });
+  return [...map.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+}
+function collapsedCats(){ return S._collapsedCats || (S._collapsedCats=new Set()); }
+// URI-encoded so a category name with a quote or special character can
+// never break out of the inline onclick attribute it's embedded in
+function catJsKey(cat){ return encodeURIComponent(cat); }
 // turn a local NG number into wa.me international format
 function waNumber(phone){
   let n=String(phone||'').replace(/[^0-9]/g,'');
@@ -730,7 +748,9 @@ function buildNav(){
   if(S.role==='admin'){
     tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
   }else if(S.role==='manager'){
-    tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses']];
+    // no Reports (full business financials) and no cost/profit figures
+    // elsewhere — a manager is staff, promoted, not the owner
+    tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['expenses','Expenses']];
   }else{
     tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
   }
@@ -847,14 +867,13 @@ const TOUR_STEPS={
       'Anything a manager submitted that\'s waiting on you shows up here — approve or reject with a reason.']}
   ],
   manager:[
-    {tab:'dashboard',title:'Dashboard',points:["Today's revenue, profit, low stock and anything expiring soon, at a glance."]},
+    {tab:'dashboard',title:'Dashboard',points:["Today's revenue, low stock and anything expiring soon, at a glance."]},
     {tab:'sell',title:'Sell',points:['Tap an item, choose how it\'s being sold, add to cart, checkout with Cash/Transfer/Credit.']},
     {tab:'items',title:'Items',points:['Add or edit items — depending on your admin\'s settings, some changes may need their approval before they apply.'],fields:ITEM_FIELDS},
-    {tab:'restock',title:'Restock',points:['Log new stock, update cost/price if it changed, and add a batch\'s expiry date if it has one.'],fields:RESTOCK_FIELDS},
+    {tab:'restock',title:'Restock',points:['Log new stock and add a batch\'s expiry date if it has one.'],fields:RESTOCK_FIELDS},
     {tab:'customers',title:'Customers',points:['Track who owes and who\'s paid, and send WhatsApp reminders in one tap.'],fields:CUSTOMER_FIELDS},
     {tab:'reconcile',title:'Reconcile',points:['Count the shelf against what the system expects — flags shrinkage immediately.'],fields:RECONCILE_FIELDS},
     {tab:'till',title:'Till',points:['Running cash/transfer balance, and a place to log money removed from the till.'],fields:TILL_FIELDS},
-    {tab:'reports',title:'Reports',points:['Profit, expenses and stock value for any date range.']},
     {tab:'expenses',title:'Expenses',points:['Log rent, transport, repairs — anything outside stock purchases.'],fields:EXPENSE_FIELDS}
   ],
   receptionist:[
@@ -948,6 +967,9 @@ function closeTour(){
 /* ---------- top-level render ---------- */
 async function render(){
   if(!S.biz){ renderNoBiz(); return; }
+  // defensive: managers have no Reports tab in nav, but guard the dispatch
+  // too in case S.tab is left over from a role switch
+  if(S.role==='manager' && S.tab==='reports') S.tab='dashboard';
   const v=$('#view');
   const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals};
   (map[S.tab]||vDashboard)(v);
@@ -1070,16 +1092,17 @@ async function vDashboard(v){
   S._todayCusts=todayCusts;
 
   const story=todayStory(sales);
+  const isMgr=S.role==='manager';
   v.innerHTML=`
     <div class="card"><div class="hd"><h2>Today's story</h2><span class="desc">how the shop did today, in plain terms</span></div><div class="bd">
-      ${todayStoryLines(story).map(l=>`<p style="margin-bottom:4px">${esc(l)}</p>`).join('')}
+      ${todayStoryLines(story,isMgr).map(l=>`<p style="margin-bottom:4px">${esc(l)}</p>`).join('')}
     </div></div>
     <div class="stats">
-      <div class="stat good"><div class="label">Today's revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold · net profit ${money(sum(dayS,prof)-dayExp)}</div></div>
-      <div class="stat"><div class="label">This month's revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}</div></div>
+      <div class="stat good"><div class="label">Today's revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold${isMgr?'':` · net profit ${money(sum(dayS,prof)-dayExp)}`}</div></div>
+      <div class="stat"><div class="label">This month's revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">${isMgr?`${monS.length} item(s) sold`:`net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}`}</div></div>
       <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
       <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
-      <div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>
+      ${isMgr?'':`<div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>`}
     </div>
     ${S.biz.wa_enabled?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <div style="flex:1;min-width:200px"><b>WhatsApp daily summary</b><div class="hint">Composes today's numbers and opens WhatsApp ready to send.</div></div>
@@ -1096,12 +1119,12 @@ async function vDashboard(v){
       <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${esc(breakdownQty(i,i.low_stock_threshold))}</td></tr>`).join('')}</tbody></table>
     </div></div>`:''}
     ${expiringSoonCard()}
-    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days · net of approved expenses</span></div><div class="bd tight rtable">
-      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Items sold</th><th class="r">Revenue</th><th class="r">Expenses</th><th class="r">Net profit</th></tr></thead>
-      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Items sold">${o.c}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td></tr>`).join('')}</tbody></table>`
+    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days${isMgr?'':' · net of approved expenses'}</span></div><div class="bd tight rtable">
+      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Items sold</th><th class="r">Revenue</th>${isMgr?'':'<th class="r">Expenses</th><th class="r">Net profit</th>'}</tr></thead>
+      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Items sold">${o.c}</td><td class="r num" data-label="Revenue">${money(o.r)}</td>${isMgr?'':`<td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td>`}</tr>`).join('')}</tbody></table>`
       :'<div class="empty">No sales recorded yet.</div>'}
     </div></div>
-    <div class="card"><div class="hd"><h2>Stock & sales per item</h2><span class="desc">sold, last 120 days · see Reports for all-time</span></div><div class="bd tight rtable">
+    <div class="card"><div class="hd"><h2>Stock & sales per item</h2><span class="desc">sold, last 120 days${isMgr?'':' · see Reports for all-time'}</span></div><div class="bd tight rtable">
       <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Sold (120d)</th></tr></thead>
       <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r" data-label="Remaining"><span class="badge ${b}">${stockShort(i)}</span></td><td class="r num" data-label="Sold (120d)">${breakdownQty(i,sold[i.id]||0)}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
     </div></div>`;
@@ -1240,8 +1263,9 @@ function vItems(v){
     </div>
     <div class="frow">
       <div class="field"><label>Pack price: sell (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 45000"></div>
-      <div class="field"><label>Pack price: cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for" oninput="renderDraftModes()"></div>
+      ${isManager?'':`<div class="field"><label>Pack price: cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for" oninput="renderDraftModes()"></div>`}
     </div>
+    ${isManager?'<p class="hint" style="margin:-6px 0 12px">Cost price is set by the admin — ask them to fill it in on Edit after this is approved.</p>':''}
     <div class="field">
       <label>Barcode (optional)</label>
       <div style="display:flex;gap:8px">
@@ -1273,8 +1297,9 @@ function vItems(v){
     <button class="btn primary" id="addItemBtn" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?', changes go to the admin for approval':''}</span></div><div class="bd tight rtable">
+    <div style="padding:0 18px 10px"><input class="custInput" id="itemsSearch" placeholder="Search items…" value="${esc(itemsListQuery)}" oninput="filterItemsTable(this.value)"></div>
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
-    <tbody>${S.items.map(rowItem).join('')||'<tr><td colspan="5" class="empty">No items yet.</td></tr>'}</tbody></table>
+    <tbody id="itemsTableBody">${itemsTableRows()}</tbody></table>
   </div></div>
   ${expiringSoonCard()}
   ${isManager?'<div class="card"><div class="hd"><h2>My submitted changes</h2></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
@@ -1305,6 +1330,26 @@ function rowItem(i){
     <td class="r"><button class="btn ghost sm" onclick='editItem("${i.id}")'>Edit</button></td>
   </tr>`;
 }
+// same collapsible-category treatment as the Sell page's product grid —
+// searching bypasses grouping (category still shown per row via rowItem's
+// own subtitle), otherwise items are clustered under clickable category
+// headers so a big catalog doesn't turn into one long scroll
+let itemsListQuery='';
+function itemsTableRows(){
+  const q=itemsListQuery.trim().toLowerCase();
+  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q));
+  if(!list.length) return `<tr><td colspan="5" class="empty">${S.items.length?'No match for that search.':'No items yet.'}</td></tr>`;
+  const groups=groupItemsByCategory(list);
+  if(q || groups.length<=1) return list.map(rowItem).join('');
+  const collapsed=collapsedCats();
+  return groups.map(([cat,its])=>{
+    const isCollapsed=collapsed.has(cat);
+    return `<tr class="catHeadRow"><td colspan="5" style="padding:6px 18px"><div class="catHead" style="border-bottom:none;margin-bottom:0" onclick="toggleCat('${catJsKey(cat)}');$('#itemsTableBody').innerHTML=itemsTableRows()">
+      <span class="catChevron">${isCollapsed?'▸':'▾'}</span>${esc(cat)}<span class="catCount">${its.length}</span>
+    </div></td></tr>${isCollapsed?'':its.map(rowItem).join('')}`;
+  }).join('');
+}
+function filterItemsTable(q){ itemsListQuery=q; $('#itemsTableBody').innerHTML=itemsTableRows(); }
 // ---- mode builder (Add item): mutate draftModes directly on input so typing never loses focus ----
 function renderDraftModes(){
   const box=$('#draftModesBox'); if(!box) return;
@@ -1331,7 +1376,7 @@ async function addItem(){
   const btn=$('#addItemBtn'); if(btn?.disabled) return; // guards against a slow double-tap firing twice
   if(S.role!=='manager' && !planActive() && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached, upgrade to add more items',true);
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
-  const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost').value||0;
+  const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost')?.value||0;
   const openPacks=iOpenBaseUnits(), threshold=iThrBaseUnits();
   if(!packSell) return toast('Enter the pack sell price',true);
   const incomplete=draftModes.find(m=>m.name.trim()&&(!(m.price>0)||!(m.per_pack>=1)));
@@ -1374,6 +1419,7 @@ async function addItem(){
 }
 function editItem(id){
   const i=S.items.find(x=>x.id===id);
+  const isManager=S.role==='manager';
   let modes=itemModes(i).map(m=>({...m}));
   // this item predates the modes system and used to sell by single unit — offer that
   // back as a suggested mode instead of silently dropping it (nothing is saved until
@@ -1388,7 +1434,7 @@ function editItem(id){
     </div>
     <div class="frow">
       <div class="field"><label>Pack price: sell (₦)</label><input id="ePack" type="number" value="${fullPackPrice(i)}"></div>
-      <div class="field"><label>Pack price: cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>
+      ${isManager?'':`<div class="field"><label>Pack price: cost (₦)</label><input id="eCost" type="number" value="${fullPackCost(i)}" oninput="renderEditModes()"></div>`}
     </div>
     <div class="frow">
       <div class="field">
@@ -1477,8 +1523,13 @@ async function saveItem(id){
   if(incomplete) return toast(`"${incomplete.name}" needs a price and a fit-per-pack of at least 1, or remove it`,true);
   const modes=(window._editModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1)
     .map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
+  // managers can't see or touch cost price (see editItem()'s hidden #eCost) —
+  // always carry the item's existing cost through unchanged for them, rather
+  // than defaulting to 0 because the field isn't in the DOM to read from
+  const i=S.items.find(x=>x.id===id);
+  const cost_price = S.role==='manager' ? fullPackCost(i) : (+$('#eCost').value||0);
   const rec={name:$('#eName').value.trim(),category:$('#eCat').value.trim()||'General',
-    pack_price:+$('#ePack').value||0, cost_price:+$('#eCost').value||0,
+    pack_price:+$('#ePack').value||0, cost_price,
     low_stock_threshold:eThrBaseUnits(), modes,
     barcode:$('#eBarcode').value.trim()||null, unit_name:unitValue('eUnit')};
 
@@ -1573,7 +1624,8 @@ function effectiveRestockCost(i){
 function renderRestockPriceFields(){
   const i=S.items.find(x=>x.id===$('#rItem').value); if(!i) return;
   const modes=itemModes(i);
-  const cost=effectiveRestockCost(i);
+  const isMgr=S.role==='manager';
+  const cost=isMgr?0:effectiveRestockCost(i);
   $('#rPriceFields').innerHTML=`
     <div class="field"><label>Pack sell price (₦)</label><input id="rNewPackPrice" type="number" min="0" step="1" value="${fullPackPrice(i)}">
       <p class="hint" id="rPackCostHint" style="margin-top:4px">${cost?`cost ${money(cost)}`:''}</p></div>
@@ -1590,15 +1642,19 @@ function rPackInfo(){
   $('#rInfo').innerHTML = mode
     ? `${qty||0} × ${esc(mode.name)} = <b>${fmtPacks(baseUnits)}</b> ${esc(unit)} added to stock.`
     : `Adds <b>${fmtPacks(qty||0)}</b> ${esc(unit)} to stock.`;
-  const currentCost=Number(i.cost_price)||0;
-  const newCost=+$('#rNewCost')?.value||0;
-  const before=onHand(i.id);
-  let costText=`Current cost: ${money(currentCost)} per ${esc(i.unit_name||'Pack')}.`;
-  if(newCost>0 && baseUnits>0){
-    const avgCost=(before+baseUnits)>0 ? ((before*currentCost)+(baseUnits*newCost))/(before+baseUnits) : newCost;
-    costText+=` After this restock: ${money(Math.round(avgCost*100)/100)} (weighted average).`;
+  // managers can still enter what they paid (needed to keep cost accurate),
+  // but the existing/resulting cost basis itself isn't shown to them
+  if(S.role!=='manager'){
+    const currentCost=Number(i.cost_price)||0;
+    const newCost=+$('#rNewCost')?.value||0;
+    const before=onHand(i.id);
+    let costText=`Current cost: ${money(currentCost)} per ${esc(i.unit_name||'Pack')}.`;
+    if(newCost>0 && baseUnits>0){
+      const avgCost=(before+baseUnits)>0 ? ((before*currentCost)+(baseUnits*newCost))/(before+baseUnits) : newCost;
+      costText+=` After this restock: ${money(Math.round(avgCost*100)/100)} (weighted average).`;
+    }
+    $('#rCostInfo').textContent=costText;
   }
-  $('#rCostInfo').textContent=costText;
   if($('#rUpdatePrice')?.checked){
     const eff=effectiveRestockCost(i);
     const packHint=$('#rPackCostHint'); if(packHint) packHint.textContent=eff?`cost ${money(eff)}`:'';
@@ -1976,8 +2032,10 @@ function todayStory(sales){
   const lowNames=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold).map(i=>i.name);
   return {todayRev,todayProf,itemCount:dayS.length,topName,avgRev,vsAvgPct,creditToday,lowNames};
 }
-function todayStoryLines(s){
-  const lines=[`${money(s.todayRev)} today from ${s.itemCount} item(s) sold, profit ${money(s.todayProf)}`];
+function todayStoryLines(s,hideProfit){
+  const lines=[hideProfit
+    ? `${money(s.todayRev)} today from ${s.itemCount} item(s) sold`
+    : `${money(s.todayRev)} today from ${s.itemCount} item(s) sold, profit ${money(s.todayProf)}`];
   if(s.vsAvgPct!==null) lines.push(s.vsAvgPct>=0?`${s.vsAvgPct}% above your usual day`:`${Math.abs(s.vsAvgPct)}% below your usual day`);
   if(s.topName) lines.push(`Best seller: ${s.topName}`);
   if(s.creditToday>0) lines.push(`${money(s.creditToday)} given on credit today`);
@@ -2650,23 +2708,36 @@ function productCards(){
   const q=posQuery.trim().toLowerCase();
   const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)||(i.barcode||'').toLowerCase().includes(q));
   if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match for that search.</div>';
-  return list.map(i=>{
-    const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
-    const expanded=expandedProductId===i.id;
-    return `<div class="prod ${out?'disabled':''} ${expanded?'expanded':''}" onclick="${out?'':`toggleProduct('${i.id}')`}">
-      <div class="phead">
-        <div class="pIcon">${esc(i.name.charAt(0).toUpperCase())}</div>
-        <div class="pname">${esc(i.name)}</div>
-      </div>
-      ${expanded?`
-        <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
-        <div class="opts" onclick="event.stopPropagation()">
-          <button class="opt" onclick='addToCart("${i.id}",-1)'>${esc(i.unit_name||'Pack')}<small>${money(fullPackPrice(i))}</small></button>
-          ${modes.map((m,mi)=>`<button class="opt" onclick='addToCart("${i.id}",${mi})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
-        </div>`:''}
-    </div>`;
+  const groups=groupItemsByCategory(list);
+  // while actively searching, or when there's really only one category,
+  // grouping just gets in the way — flat list instead, but a search hit
+  // still names its category so you know where to find it on the shelf
+  if(q || groups.length<=1) return list.map(i=>productCard(i,!!q)).join('');
+  const collapsed=collapsedCats();
+  return groups.map(([cat,its])=>{
+    const isCollapsed=collapsed.has(cat);
+    return `<div class="catHead" style="grid-column:1/-1" onclick="toggleCat('${catJsKey(cat)}');$('#prodGrid').innerHTML=productCards()">
+      <span class="catChevron">${isCollapsed?'▸':'▾'}</span>${esc(cat)}<span class="catCount">${its.length}</span>
+    </div>${isCollapsed?'':its.map(i=>productCard(i,false)).join('')}`;
   }).join('');
 }
+function productCard(i,showCat){
+  const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
+  const expanded=expandedProductId===i.id;
+  return `<div class="prod ${out?'disabled':''} ${expanded?'expanded':''}" onclick="${out?'':`toggleProduct('${i.id}')`}">
+    <div class="phead">
+      <div class="pIcon">${esc(i.name.charAt(0).toUpperCase())}</div>
+      <div><div class="pname">${esc(i.name)}</div>${showCat?`<div class="pcat">${esc(i.category||'General')}</div>`:''}</div>
+    </div>
+    ${expanded?`
+      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
+      <div class="opts" onclick="event.stopPropagation()">
+        <button class="opt" onclick='addToCart("${i.id}",-1)'>${esc(i.unit_name||'Pack')}<small>${money(fullPackPrice(i))}</small></button>
+        ${modes.map((m,mi)=>`<button class="opt" onclick='addToCart("${i.id}",${mi})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
+      </div>`:''}
+  </div>`;
+}
+function toggleCat(catEncoded){ const cat=decodeURIComponent(catEncoded); const set=collapsedCats(); if(set.has(cat)) set.delete(cat); else set.add(cat); }
 function toggleProduct(id){ expandedProductId = expandedProductId===id ? null : id; $('#prodGrid').innerHTML=productCards(); }
 function posFilter(q){ posQuery=q; $('#prodGrid').innerHTML=productCards(); }
 function matchByBarcode(code){ return S.items.filter(i=>i.barcode && i.barcode===code); }
@@ -2921,13 +2992,33 @@ async function loadMyTillShare(){
 function vStockList(v){
   v.innerHTML=`${expiringSoonCard()}
   <div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
-    ${S.items.length?`<table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Remaining</th></tr></thead>
-    <tbody>${S.items.map(i=>{const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
-      const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
-      return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;}).join('')}</tbody></table>`
+    ${S.items.length?`<div style="padding:0 18px 10px"><input class="custInput" id="stockSearch" placeholder="Search items…" value="${esc(stockListQuery)}" oninput="filterStockTable(this.value)"></div>
+    <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Remaining</th></tr></thead>
+    <tbody id="stockTableBody">${stockTableRows()}</tbody></table>`
     :'<div class="empty">No items yet.</div>'}
   </div></div>`;
 }
+function stockRow(i){
+  const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
+  const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
+  return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;
+}
+let stockListQuery='';
+function stockTableRows(){
+  const q=stockListQuery.trim().toLowerCase();
+  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q));
+  if(!list.length) return `<tr><td colspan="3" class="empty">No match for that search.</td></tr>`;
+  const groups=groupItemsByCategory(list);
+  if(q || groups.length<=1) return list.map(stockRow).join('');
+  const collapsed=collapsedCats();
+  return groups.map(([cat,its])=>{
+    const isCollapsed=collapsed.has(cat);
+    return `<tr class="catHeadRow"><td colspan="3" style="padding:6px 18px"><div class="catHead" style="border-bottom:none;margin-bottom:0" onclick="toggleCat('${catJsKey(cat)}');$('#stockTableBody').innerHTML=stockTableRows()">
+      <span class="catChevron">${isCollapsed?'▸':'▾'}</span>${esc(cat)}<span class="catCount">${its.length}</span>
+    </div></td></tr>${isCollapsed?'':its.map(stockRow).join('')}`;
+  }).join('');
+}
+function filterStockTable(q){ stockListQuery=q; $('#stockTableBody').innerHTML=stockTableRows(); }
 
 /* ============================================================
    CUSTOMERS — credit / owing  (admin + receptionist)

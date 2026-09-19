@@ -33,6 +33,8 @@ h1,h2,.brand{font-family:'Fraunces',serif}
 .field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;padding:12px 18px;border-radius:10px;font-weight:700;font-size:14px;border:none;cursor:pointer;background:var(--green);color:#fff;font-family:inherit}
 .btn:hover{background:var(--green-d)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
+.btn.ghost:hover{background:#F0EADC}
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .hint{font-size:13px;color:var(--muted);text-align:center;margin-top:12px}
 .bizrow{border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
@@ -79,7 +81,7 @@ let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',3200); }
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let CURRENT_PRICE = null, BASE_PRICE = null;
+let PLANS = [];
 
 sb.auth.getSession().then(({data})=>{ if(data.session) afterSignIn(); });
 
@@ -96,16 +98,17 @@ async function afterSignIn(){
   $('#authCard').style.display='none';
   const payCard=$('#payCard'); payCard.style.display='block'; payCard.innerHTML='<div class="empty">Loading…</div>';
 
-  const [{data:pricing,error:pe}, {data:members,error:me}] = await Promise.all([
-    sb.from('pricing').select('*').eq('id',1).single(),
+  const [{data:plans,error:pe}, {data:members,error:me}] = await Promise.all([
+    sb.from('pricing_plans').select('*').order('sort_order'),
     sb.from('business_members').select('role,business:businesses(*)').eq('role','admin')
   ]);
-  if(pe){ payCard.innerHTML='<div class="empty">Could not load pricing. Try again shortly.</div>'; return; }
+  if(pe || !plans?.length){ payCard.innerHTML='<div class="empty">Could not load pricing. Try again shortly.</div>'; return; }
   if(me){ payCard.innerHTML='<div class="empty">Could not load your businesses. Try again shortly.</div>'; return; }
 
-  BASE_PRICE = Number(pricing.base_price);
-  CURRENT_PRICE = Math.round(BASE_PRICE * (1 - Number(pricing.discount_percent)/100));
-  const discounted = pricing.discount_percent > 0;
+  PLANS = plans;
+  // cheapest per-month plan is the best value — used to badge it, not to
+  // hide the other two, since some owners would rather pay less up front
+  const cheapestPerMonth = Math.min(...plans.map(p=>p.price/p.months));
 
   const businesses = (members||[]).map(m=>m.business).filter(Boolean);
   const rows = businesses.map(b=>{
@@ -125,22 +128,25 @@ async function afterSignIn(){
     return;
   }
 
+  const planButtons = (b) => plans.map(p=>{
+    const perMonth = p.price/p.months;
+    const best = Math.abs(perMonth-cheapestPerMonth)<0.01;
+    return `<button class="btn ${best?'':'ghost'}" style="margin-bottom:8px" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}","${p.id}")'>
+      ${esc(p.label)} — ${money(p.price)}${best?' · best value':''}</button>`;
+  }).join('');
+
   const actionRow = r => {
     const b=r.b;
-    const label = r.status==='never' ? `Activate for ${money(CURRENT_PRICE)}`
-      : r.status==='expired' ? `Renew for ${money(CURRENT_PRICE)}`
-      : `Renew early for ${money(CURRENT_PRICE)}`;
     const note = r.status==='expired'
       ? `<div class="discount" style="color:var(--red)">Expired ${fmtD(b.paid_until)}. Renew to keep unlimited access</div>`
       : r.status==='renew-soon'
         ? `<div class="discount">Paid until ${fmtD(b.paid_until)} (${r.daysLeft} day${r.daysLeft===1?'':'s'} left)</div>`
-        : discounted ? `<div class="discount">${esc(pricing.discount_note||pricing.discount_percent+'% off')}</div>` : '';
+        : '';
     return `
     <div class="bizrow">
       <div class="name">${esc(b.name)}</div>
       ${note}
-      <div class="price">${discounted?`<span class="was">${money(BASE_PRICE)}</span>`:''}${money(CURRENT_PRICE)}</div>
-      <button class="btn" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}")'>${label}</button>
+      <div style="display:flex;flex-direction:column;margin-top:10px">${planButtons(b)}</div>
     </div>`;
   };
   const settledRow = r => `
@@ -152,19 +158,21 @@ async function afterSignIn(){
   payCard.innerHTML =
     needsAction.map(actionRow).join('') +
     settled.map(settledRow).join('') +
-    `<p class="hint">₦${CURRENT_PRICE.toLocaleString('en-NG')} per year, charged in full each year. No discounted renewals. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
+    `<p class="hint">Pick whichever length works for you — longer plans work out cheaper per month. By paying you agree to our <a href="terms.html" target="_blank">Terms</a> and <a href="privacy.html" target="_blank">Privacy Policy</a>.</p>`;
 }
 
-function payFor(businessId, businessName){
+function payFor(businessId, businessName, planId){
   if(PAYSTACK_PUBLIC_KEY.includes('xxxx')){ toast('Payment isn\'t set up yet. Paste a real Paystack public key into pay.html',true); return; }
+  const plan = PLANS.find(p=>p.id===planId);
+  if(!plan){ toast('Unknown plan, please refresh and try again',true); return; }
   sb.auth.getUser().then(({data})=>{
     const email = data.user.email;
     const handler = PaystackPop.setup({
       key: PAYSTACK_PUBLIC_KEY,
       email,
-      amount: CURRENT_PRICE * 100, // kobo
+      amount: plan.price * 100, // kobo
       currency: 'NGN',
-      metadata: { business_id: businessId, business_name: businessName },
+      metadata: { business_id: businessId, business_name: businessName, plan_id: planId },
       callback: function(response){
         confirmPayment(response.reference);
       },

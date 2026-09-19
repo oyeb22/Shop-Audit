@@ -29,9 +29,11 @@
   "operatingSystem": "Web",
   "url": "https://themonishop.com.ng/",
   "offers": {
-    "@type": "Offer",
-    "price": "30000",
-    "priceCurrency": "NGN"
+    "@type": "AggregateOffer",
+    "lowPrice": "3000",
+    "highPrice": "30000",
+    "priceCurrency": "NGN",
+    "offerCount": "3"
   }
 }
 </script>
@@ -130,7 +132,7 @@ section.band{background:var(--band);border-top:1px solid var(--line);border-bott
 .feature p{font-size:15.5px;color:var(--muted)}
 
 /* pricing */
-.pricing-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;max-width:680px;margin:0 auto}
+.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;max-width:960px;margin:0 auto}
 @media(max-width:640px){.pricing-grid{grid-template-columns:1fr}}
 .pricecard{background:var(--card);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:28px}
 .pricecard.hi{border-color:var(--green);position:relative}
@@ -344,10 +346,10 @@ footer .copy{color:var(--muted);font-size:12.5px}
   <div class="wrap">
     <div class="section-head">
       <div class="eyebrow">Pricing</div>
-      <h2>Try it free. Upgrade when you need more.</h2>
-      <p>The paid plan is ₦30,000 a year, flat. No hidden fees, no price hikes.</p>
+      <h2>Try it free. Pay however works for you.</h2>
+      <p>Monthly, half-yearly, or yearly — longer plans work out cheaper per month. No hidden fees.</p>
     </div>
-    <div class="pricing-grid">
+    <div class="pricing-grid" id="pricingGrid">
       <div class="pricecard">
         <div class="tier">Free trial</div>
         <div class="amt">₦0</div>
@@ -359,19 +361,6 @@ footer .copy{color:var(--muted);font-size:12.5px}
           <li>After 7 days: 15 items, solo owner, unless you upgrade</li>
         </ul>
         <a class="btn ghost" href="Shopaudit.html" style="width:100%">Start free trial</a>
-      </div>
-      <div class="pricecard hi">
-        <div class="tier">Paid</div>
-        <div id="priceDiscount"></div>
-        <div class="amt" id="priceAmt">₦30,000</div>
-        <div class="note">Per year, flat</div>
-        <ul>
-          <li>Unlimited items</li>
-          <li>Team accounts, managers & receptionists</li>
-          <li>Admin approval on new members & item changes</li>
-          <li>Everything in Free, no limits</li>
-        </ul>
-        <a class="btn primary" href="Shopaudit.html" style="width:100%">Upgrade to paid</a>
       </div>
     </div>
   </div>
@@ -471,19 +460,33 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
 
-fetch(SUPABASE_URL + '/rest/v1/pricing?id=eq.1&select=*', {
+fetch(SUPABASE_URL + '/rest/v1/pricing_plans?select=*&order=sort_order', {
   headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
-}).then(r => r.ok ? r.json() : null).then(rows => {
-  if (!rows || !rows[0]) return;
-  const p = rows[0];
-  const base = Number(p.base_price);
-  const current = Math.round(base * (1 - Number(p.discount_percent) / 100));
-  document.getElementById('priceAmt').innerHTML =
-    (p.discount_percent > 0 ? '<span class="was">' + money(base) + '</span>' : '') + money(current);
-  if (p.discount_percent > 0) {
-    document.getElementById('priceDiscount').innerHTML =
-      '<span class="discount">' + (p.discount_note || (p.discount_percent + '% off')) + '</span>';
-  }
+}).then(r => r.ok ? r.json() : null).then(plans => {
+  if (!plans || !plans.length) return;
+  const grid = document.getElementById('pricingGrid');
+  const cheapestPerMonth = Math.min.apply(null, plans.map(function(p){ return p.price / p.months; }));
+  plans.forEach(function(p){
+    const perMonth = Math.round(p.price / p.months);
+    const isBest = Math.abs(perMonth - cheapestPerMonth) < 1;
+    const discounted = p.discount_percent > 0;
+    const base = discounted ? Math.round(p.price / (1 - p.discount_percent / 100)) : p.price;
+    const card = document.createElement('div');
+    card.className = 'pricecard' + (isBest ? ' hi' : '');
+    card.innerHTML =
+      '<div class="tier">' + p.label + '</div>' +
+      (isBest ? '<div class="discount">Best value</div>' : discounted ? '<div class="discount">' + (p.discount_note || (p.discount_percent + '% off')) + '</div>' : '') +
+      '<div class="amt">' + (discounted ? '<span class="was">' + money(base) + '</span>' : '') + money(p.price) + '</div>' +
+      '<div class="note">' + (p.months === 1 ? 'Per month' : 'For ' + p.months + ' months · ≈' + money(perMonth) + '/month') + '</div>' +
+      '<ul>' +
+        '<li>Unlimited items</li>' +
+        '<li>Team accounts, managers & receptionists</li>' +
+        '<li>Admin approval on new members & item changes</li>' +
+        '<li>Everything in Free, no limits</li>' +
+      '</ul>' +
+      '<a class="btn ' + (isBest ? 'primary' : 'ghost') + '" href="Shopaudit.html" style="width:100%">Choose ' + p.label + '</a>';
+    grid.appendChild(card);
+  });
 }).catch(() => {});
 
 fetch(SUPABASE_URL + '/rest/v1/marketer_settings?id=eq.1&select=*', {

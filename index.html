@@ -15,6 +15,7 @@
 <meta name="twitter:title" content="TheMonishop">
 <meta name="twitter:description" content="Stock, sales, credit and profit tracking for your shop, with WhatsApp reminders and staff accountability built in.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316432F'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-weight='700' font-size='26' fill='white' text-anchor='middle'%3ETM%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -171,6 +172,7 @@ footer .copy{color:var(--muted);font-size:12.5px}
       <a href="#trust">Prevent theft</a>
       <a href="#features">Features</a>
       <a href="#pricing">Pricing</a>
+      <a href="#marketers">Earn with us</a>
       <a href="#faq">FAQ</a>
     </nav>
     <div class="spacer"></div>
@@ -185,7 +187,7 @@ footer .copy{color:var(--muted);font-size:12.5px}
   <div class="split">
     <div>
       <h1>Run your shop from your phone, not your memory</h1>
-      <p>Track stock, sales and credit automatically, send WhatsApp reminders, and stop dishonest staff before they cost you.</p>
+      <p>Track stock, sales and credit automatically from your phone, send WhatsApp reminders, and stop dishonest staff before they cost you.</p>
       <div class="ctas">
         <a class="btn primary lg" href="Shopaudit.html">Get started free</a>
         <a class="btn ghost lg" href="#trust">See how it protects you</a>
@@ -228,7 +230,7 @@ footer .copy{color:var(--muted);font-size:12.5px}
   <div class="section-head">
     <div class="eyebrow">How it works</div>
     <h2>Set up once, then it runs itself</h2>
-    <p>No till hardware, no training. If you can use WhatsApp, you can use this.</p>
+    <p>No till hardware, no training, and nothing left to memory. If you can use WhatsApp, you can use this.</p>
   </div>
   <div class="steps">
     <div class="step">
@@ -302,7 +304,7 @@ footer .copy{color:var(--muted);font-size:12.5px}
   <div class="section-head">
     <div class="eyebrow">What it does</div>
     <h2>Built for how Nigerian shops actually sell</h2>
-    <p>Not a generic inventory app. Pack-based pricing, WhatsApp built in, and roles for the people who work with you.</p>
+    <p>Not a generic inventory-tracking app. Pack-based pricing, WhatsApp built in, and roles for the people who work with you.</p>
   </div>
   <div class="features">
     <div class="feature">
@@ -369,7 +371,7 @@ footer .copy{color:var(--muted);font-size:12.5px}
           <li>Admin approval on new members & item changes</li>
           <li>Everything in Free, no limits</li>
         </ul>
-        <a class="btn primary" href="Shopaudit.html" style="width:100%">Get started</a>
+        <a class="btn primary" href="Shopaudit.html" style="width:100%">Upgrade to paid</a>
       </div>
     </div>
   </div>
@@ -379,11 +381,34 @@ footer .copy{color:var(--muted);font-size:12.5px}
   <div class="wrap">
     <div class="section-head">
       <div class="eyebrow">Earn with us</div>
-      <h2>Refer shops, get paid when they upgrade</h2>
-      <p>We're hiring marketers to bring shop owners onto TheMonishop, on salary, plus a bonus when you hit your monthly referral target. Apply, get your own referral link, and track your progress on a live dashboard.</p>
+      <h2>Get shop owners onto TheMonishop, get paid</h2>
+      <p>We're hiring marketers — no experience required, just people you already know or can reach. Apply, get your own referral link, and track everything on a live dashboard.</p>
+    </div>
+    <div class="steps" style="margin-bottom:40px">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>Apply</h3>
+        <p>Tell us a bit about yourself below. Takes a minute, no experience needed.</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>Get your link</h3>
+        <p>Once approved, you get your own referral code and a dashboard tracking everyone who signs up through it.</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>Share it</h3>
+        <p>WhatsApp, social media, or shop owners you already know in person — however you reach people works.</p>
+      </div>
+      <div class="step">
+        <div class="num">4</div>
+        <h3>Get paid</h3>
+        <p id="mkPayLine">Salary agreed directly, plus a bonus for hitting your monthly target and a bonus every time a shop you referred renews.</p>
+      </div>
     </div>
     <div style="text-align:center">
-      <a class="btn primary lg" href="marketer.html">Apply to become a marketer</a>
+      <a class="btn primary lg" id="mkApplyBtn" href="marketer.html">Apply to become a marketer</a>
+      <p class="hint" id="mkPausedNote" style="margin-top:14px;display:none">Applications are temporarily paused — check back soon.</p>
     </div>
   </div>
 </section>
@@ -458,6 +483,22 @@ fetch(SUPABASE_URL + '/rest/v1/pricing?id=eq.1&select=*', {
   if (p.discount_percent > 0) {
     document.getElementById('priceDiscount').innerHTML =
       '<span class="discount">' + (p.discount_note || (p.discount_percent + '% off')) + '</span>';
+  }
+}).catch(() => {});
+
+fetch(SUPABASE_URL + '/rest/v1/marketer_settings?id=eq.1&select=*', {
+  headers: { apikey: SUPABASE_ANON_KEY, Authorization: 'Bearer ' + SUPABASE_ANON_KEY }
+}).then(r => r.ok ? r.json() : null).then(rows => {
+  if (!rows || !rows[0]) return;
+  const s = rows[0];
+  const payLine = document.getElementById('mkPayLine');
+  if (payLine) payLine.textContent = 'Salary agreed directly, plus ' + money(s.bonus_amount) + ' for hitting '
+    + s.monthly_target + ' paid referrals in your 30-day cycle, and ' + money(s.renewal_bonus_amount)
+    + ' every time a shop you referred renews.';
+  if (s.applications_open === false) {
+    const btn = document.getElementById('mkApplyBtn'), note = document.getElementById('mkPausedNote');
+    if (btn) { btn.style.pointerEvents = 'none'; btn.style.opacity = '.5'; btn.textContent = 'Applications paused'; }
+    if (note) note.style.display = 'block';
   }
 }).catch(() => {});
 </script>

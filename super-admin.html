@@ -32,6 +32,7 @@ a{color:var(--green)}
 .field label{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
 .field input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;color:var(--ink);font-family:inherit;font-size:15px}
 .field input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
+.field select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#FCFAF5;color:var(--ink);font-family:inherit;font-size:15px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 16px;border-radius:10px;font-weight:700;font-size:13.5px;border:none;cursor:pointer;background:var(--green);color:#fff;font-family:inherit}
 .btn:hover{background:var(--green-d)}
 .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--ink)}
@@ -76,6 +77,18 @@ tr:last-child td{border-bottom:none}
   <div class="card wide">
     <h2>Businesses</h2>
     <div id="bizTable"><div class="empty">Loading…</div></div>
+  </div>
+
+  <div class="card hidden" id="activateCard">
+    <h2>Activate plan</h2>
+    <p class="hint" style="margin-bottom:14px">For a shop owner who paid you directly (transfer, cash) instead of through the app. This does exactly what a real payment does — extends their access and credits any referring marketer's bonus the same way.</p>
+    <p class="hint" style="margin-bottom:10px"><b id="activateBizName"></b></p>
+    <div class="field"><label>Plan</label><select id="activatePlan"></select></div>
+    <div class="field"><label>Note (optional, saved to the audit log)</label><input id="activateNote" placeholder="e.g. paid via bank transfer 12 Sep"></div>
+    <div style="display:flex;gap:10px">
+      <button class="btn" id="activateConfirmBtn" onclick="confirmActivate()">Confirm activation</button>
+      <button class="btn ghost" onclick="cancelActivate()">Cancel</button>
+    </div>
   </div>
 
   <div class="card">
@@ -192,6 +205,7 @@ async function afterSignIn(){
   $('#authScreen').classList.add('hidden');
   $('#dash').classList.remove('hidden');
   renderBusinesses(bizData||[]);
+  loadPricingPlans();
   loadSettings();
   loadReferrals();
   loadMarketers();
@@ -222,9 +236,11 @@ function bizStatus(b){
   return {label:'Free (capped)', cls:'zero', detail:'15 items, owner only'};
 }
 
+let BIZ_ROWS=[];
 function renderBusinesses(rows){
+  BIZ_ROWS=rows;
   $('#bizTable').innerHTML = rows.length ? `<table><thead><tr>
-    <th>Name</th><th>Admin</th><th>Status</th><th>Joined</th><th>Referral code</th><th>Members</th><th>Items</th>
+    <th>Name</th><th>Admin</th><th>Status</th><th>Joined</th><th>Referral code</th><th>Members</th><th>Items</th><th></th>
   </tr></thead><tbody>${rows.map(b=>{
     const s=bizStatus(b);
     return `<tr>
@@ -235,7 +251,37 @@ function renderBusinesses(rows){
     <td>${esc(b.referral_code||'')}</td>
     <td>${b.member_count}</td>
     <td>${b.item_count}</td>
+    <td><button class="btn ghost" onclick='openActivate("${b.business_id}")'>Activate plan</button></td>
   </tr>`;}).join('')}</tbody></table>` : '<div class="empty">No businesses yet.</div>';
+}
+
+let PLANS=[];
+async function loadPricingPlans(){
+  const {data,error}=await sb.from('pricing_plans').select('*').order('sort_order');
+  if(error){ console.error('pricing_plans load failed:',error); return; }
+  PLANS=data||[];
+}
+function openActivate(bizId){
+  const b=BIZ_ROWS.find(x=>x.business_id===bizId); if(!b) return;
+  $('#activateBizName').textContent=b.business_name;
+  $('#activatePlan').innerHTML=PLANS.map(p=>`<option value="${esc(p.id)}">${esc(p.label)} — ₦${Number(p.price).toLocaleString('en-NG')}</option>`).join('');
+  $('#activatePlan').dataset.bizId=bizId;
+  $('#activateNote').value='';
+  $('#activateCard').classList.remove('hidden');
+  $('#activateCard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cancelActivate(){ $('#activateCard').classList.add('hidden'); }
+async function confirmActivate(){
+  const bizId=$('#activatePlan').dataset.bizId, planId=$('#activatePlan').value, note=$('#activateNote').value.trim();
+  const btn=$('#activateConfirmBtn'); btn.disabled=true;
+  const {data,error}=await sb.rpc('admin_activate_plan',{p_business_id:bizId,p_plan_id:planId,p_note:note||null});
+  btn.disabled=false;
+  if(error) return toast(error.message,true);
+  if(data && data.success===false){ toast('Already recorded — no change made (this looks like a duplicate).'); }
+  else toast('Plan activated');
+  cancelActivate();
+  const {data:bizData}=await sb.rpc('platform_overview');
+  renderBusinesses(bizData||[]);
 }
 
 async function loadSettings(){

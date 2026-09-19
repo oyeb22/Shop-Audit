@@ -386,7 +386,26 @@ function openUpgrade(){
 }
 let toastT;
 function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='toast show'+(isErr?' err':''); clearTimeout(toastT); toastT=setTimeout(()=>t.className='toast',2600); }
-function err(e){ console.error(e); toast((e&&e.message)||'Something went wrong',true); }
+// a rejected write can look like a generic Postgres/RLS error ("new row
+// violates row-level security policy") to whoever's staring at the screen —
+// if that rejection lines up with an expired plan, say that plainly and
+// show the upgrade screen instead of leaving them to puzzle out a raw error
+function err(e){
+  console.error(e);
+  const looksLikeRls = e && (e.code==='42501' || /row-level security/i.test(e.message||''));
+  if(looksLikeRls && S.biz){
+    refreshPlanStatus().then(()=>{
+      if(!planActive()){
+        alert('Your subscription has expired. Subscribe to keep using TheMonishop.');
+        buildNav(); render();
+      } else {
+        toast((e&&e.message)||'Something went wrong',true);
+      }
+    });
+    return;
+  }
+  toast((e&&e.message)||'Something went wrong',true);
+}
 
 /* ---------- barcode scanning ---------- */
 let scanStream=null, scanRAF=null;
@@ -744,6 +763,7 @@ function waNumber(phone){
 /* ---------- navigation ---------- */
 function buildNav(){
   $('#navToggleBtn').classList.remove('hidden'); $('#topSignoutBtn').classList.add('hidden');
+  if(!planActive()){ $('#navCurrent').textContent='Upgrade required'; $('#navGrid').innerHTML=''; return; }
   let tabs;
   if(S.role==='admin'){
     tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
@@ -885,11 +905,12 @@ const TOUR_STEPS={
 };
 function tourKey(){ return `tourSeen_${S.biz.id}_${S.user.id}`; }
 function maybeStartTour(){
+  if(!planActive()) return; // nothing to tour behind the upgrade wall
   try{ if(localStorage.getItem(tourKey())) return; }catch{}
   startTour();
 }
 let tourIdx=0, tourFieldIdx=-1; // tourFieldIdx -1 = the page-overview sheet, 0+ = pointing at one field
-function startTour(){ tourIdx=0; tourFieldIdx=-1; renderTourStep(); }
+function startTour(){ if(!planActive()) return; tourIdx=0; tourFieldIdx=-1; renderTourStep(); }
 function tourSteps(){ return TOUR_STEPS[S.role]||TOUR_STEPS.admin; }
 function clearTourOverlays(){
   document.getElementById('tourSheet')?.remove();
@@ -967,13 +988,54 @@ function closeTour(){
 /* ---------- top-level render ---------- */
 async function render(){
   if(!S.biz){ renderNoBiz(); return; }
+  const v=$('#view');
+  // trial expired (or paid plan lapsed past grace) and never paid — hard
+  // block, not the old soft 15-item/owner-only downgrade. Checked on every
+  // render (not just on business switch) so it also catches a trial ending
+  // while the app is already open.
+  if(!planActive()){ renderLockout(v); return; }
   // defensive: managers have no Reports tab in nav, but guard the dispatch
   // too in case S.tab is left over from a role switch
   if(S.role==='manager' && S.tab==='reports') S.tab='dashboard';
-  const v=$('#view');
   const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals};
   (map[S.tab]||vDashboard)(v);
 }
+// full-screen block for an unpaid business whose trial has ended (or whose
+// paid plan lapsed past the grace period) — replaces the entire tab content
+// regardless of which tab is selected, admin included. The only way out is
+// paying: an admin gets a direct "Upgrade now" button (openUpgrade() opens
+// pay.html), a manager/receptionist just gets told to ask their admin,
+// since they have no way to pay for someone else's business.
+function renderLockout(v){
+  const isAdmin=S.role==='admin';
+  const fmtD=t=>new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+  const wasEverPaid=S.biz.is_paid && S.biz.paid_until;
+  const title=wasEverPaid?'This plan has expired':'The free trial has ended';
+  const sub=wasEverPaid
+    ? `${esc(S.biz.name)}'s plan expired on ${fmtD(S.biz.paid_until)}, and the grace period has passed.`
+    : `${esc(S.biz.name)}'s 7-day free trial has ended.`;
+  v.innerHTML=`<div class="card" style="max-width:460px;margin:60px auto;text-align:center"><div class="bd">
+    <h2 style="margin-bottom:10px">${title}</h2>
+    <p class="hint" style="margin-bottom:20px">${sub} ${isAdmin
+      ? 'Upgrade to keep using TheMonishop — nothing is lost, your data will be right here the moment you pay.'
+      : 'Ask your admin to renew the plan — access comes back on its own as soon as they do.'}</p>
+    ${isAdmin?'<button class="btn primary lg" onclick="openUpgrade()">Upgrade now</button>':''}
+  </div></div>`;
+}
+// S.biz's is_paid/paid_until are only ever refreshed when a business is
+// selected (switchBiz) — a trial can quietly expire while someone just sits
+// on an open tab for hours. This keeps that in-memory copy honest so the
+// lockout screen appears on its own, not only the next time they happen to
+// reload or attempt something that gets rejected.
+async function refreshPlanStatus(){
+  if(!S.biz) return;
+  const {data,error}=await sb.from('businesses').select('is_paid,paid_until').eq('id',S.biz.id).single();
+  if(error||!data) return;
+  const wasActive=planActive();
+  Object.assign(S.biz,data);
+  if(wasActive && !planActive()){ buildNav(); render(); }
+}
+setInterval(refreshPlanStatus,120000);
 
 /* ============================================================
    NO BUSINESS YET  (create / join)
@@ -3327,8 +3389,8 @@ function vSettings(v){
     <div style="flex:1;min-width:200px">You have full access during your trial: unlimited items and team members. Upgrade any time to keep it after the trial ends.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
   </div></div>`;
-    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">₦30,000/year</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">Your free trial has ended. Free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits for a year.</div>
+    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">From ₦3,000/month</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1;min-width:200px">Your free trial has ended. Free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits — pick monthly, 6 months, or a year.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
   </div></div>`;
     if(!S.biz.paid_until) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">

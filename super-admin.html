@@ -232,8 +232,9 @@ function bizStatus(b){
   if(b.trial_ends_at){
     const d=daysUntil(b.trial_ends_at);
     if(d>=0) return {label:'Trial', cls:'gold', detail:`${d}d left`};
+    return {label:'Locked', cls:'zero', detail:`trial ended ${fmtD(b.trial_ends_at)}, never paid`};
   }
-  return {label:'Free (capped)', cls:'zero', detail:'15 items, owner only'};
+  return {label:'Locked', cls:'zero', detail:'never paid, no trial on record'};
 }
 
 let BIZ_ROWS=[];

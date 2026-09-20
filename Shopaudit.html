@@ -852,7 +852,7 @@ const TOUR_STEPS={
     {tab:'sell',title:'Sell',points:[
       'Tap an item to open it, choose how it\'s being sold (full pack, half bag, by the cup — whatever modes you set up), then add to cart.',
       'Pick Cash, Transfer, or Credit (attach a customer) before you checkout.',
-      'After checkout you get a receipt you can print to a Bluetooth thermal printer.']},
+      'After checkout you get a receipt you can print to a Bluetooth thermal printer, or send straight to WhatsApp instead.']},
     {tab:'items',title:'Items',points:[
       'The Pack is the biggest form you sell an item in — set its price, an optional cost price, and a low-stock alert threshold.',
       '"Other ways to sell this" is for anything smaller than a Pack — a half bag, a dozen, a single piece. You say how many of it fit inside one Pack, and price/cost scale down from the Pack automatically.',
@@ -2941,10 +2941,31 @@ function showReceipt(snap){
       ${isNative
         ? `<button class="btn primary" onclick="printReceiptBluetooth()">${icon('printer')} Print to Bluetooth printer</button>`
         : `<button class="btn primary" onclick="window.print()">${icon('printer')} Print receipt</button>`}
+      <button class="btn ghost" onclick="shareReceiptWhatsApp()">${icon('chat')} Share via WhatsApp</button>
       <button class="btn ghost" onclick="document.getElementById('receiptCard').remove()">Close</button>
     </div>
   </div></div>`);
   window.scrollTo({top:0,behavior:'smooth'});
+}
+// plain readable text, not the raw ESC/POS bytes escposReceipt() builds for
+// the Bluetooth printer — this is what actually gets typed into WhatsApp
+function receiptWaText(snap){
+  const methodLabel={cash:'Cash',transfer:'Transfer',card:'Card',credit:'Credit'}[snap.method]||snap.method;
+  let s=`🧾 ${snap.bizName}\n${new Date(snap.date).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})}\n${snap.custName} · ${methodLabel}\n—————————————\n`;
+  snap.lines.forEach(l=>{
+    const name=l.name+(l.mode&&!l.isPack?` (${l.mode})`:'')+' x'+l.qty;
+    s+=`${name} — ${money(l.price*l.qty)}\n`;
+  });
+  s+=`—————————————\nTotal: ${money(snap.total)}`;
+  return s;
+}
+// no phone number in the link on purpose — opens WhatsApp's own share
+// sheet so the seller picks whoever they're handing the receipt to (usually
+// the customer standing in front of them), rather than requiring a saved
+// customer phone number to exist first
+function shareReceiptWhatsApp(){
+  if(!lastReceipt) return;
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(receiptWaText(lastReceipt))}`,'waSend');
 }
 
 /* ---------- Bluetooth receipt printing (native only) ----------

@@ -439,6 +439,7 @@ function openImport(bizId){
   $('#importBizName').textContent=b.business_name;
   $('#importFile').value='';
   $('#importPreview').innerHTML='';
+  $('#importConfirmBtn').classList.remove('hidden');
   $('#importConfirmBtn').disabled=true; $('#importConfirmBtn').textContent='Import 0 items';
   $('#importCard').classList.remove('hidden');
   $('#importCard').scrollIntoView({behavior:'smooth',block:'center'});
@@ -455,11 +456,21 @@ async function confirmImport(){
   btn.disabled=false;
   if(error){ btn.textContent=`Import ${valid.length} items`; return toast(error.message,true); }
   const errCount=(data.errors||[]).length;
-  toast(`Imported ${data.created} item(s)${errCount?`, ${errCount} failed (see console)`:''}`, errCount>0);
-  if(errCount) console.error('Import errors:', data.errors);
-  cancelImport();
+  toast(`Imported ${data.created} item(s)${errCount?`, ${errCount} failed`:''}`, errCount>0);
   const {data:bizData}=await sb.rpc('platform_overview');
   renderBusinesses(bizData||[]);
+  if(errCount){
+    // shown right on the page, not just the console — this is tested on a
+    // phone without easy DevTools access
+    $('#importPreview').innerHTML=`<p class="hint" style="margin-top:12px;color:var(--red)"><b>${errCount} item(s) failed to import:</b></p>
+      <table style="margin-top:8px"><thead><tr><th>Item</th><th>Reason</th></tr></thead><tbody>
+      ${(data.errors||[]).map(e=>`<tr><td>${esc(e.name)}</td><td style="color:var(--red)">${esc(e.error)}</td></tr>`).join('')}
+      </tbody></table>`;
+    $('#importConfirmBtn').classList.add('hidden');
+    $('#importFile').value='';
+  }else{
+    cancelImport();
+  }
 }
 
 async function loadSettings(){

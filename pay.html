@@ -106,9 +106,6 @@ async function afterSignIn(){
   if(me){ payCard.innerHTML='<div class="empty">Could not load your businesses. Try again shortly.</div>'; return; }
 
   PLANS = plans;
-  // cheapest per-month plan is the best value — used to badge it, not to
-  // hide the other two, since some owners would rather pay less up front
-  const cheapestPerMonth = Math.min(...plans.map(p=>p.price/p.months));
 
   const businesses = (members||[]).map(m=>m.business).filter(Boolean);
   const rows = businesses.map(b=>{
@@ -128,20 +125,28 @@ async function afterSignIn(){
     return;
   }
 
-  const planButtons = (b) => plans.map(p=>{
-    const perMonth = p.price/p.months;
-    const best = Math.abs(perMonth-cheapestPerMonth)<0.01;
-    return `<button class="btn ${best?'':'ghost'}" style="margin-bottom:8px" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}","${p.id}")'>
-      ${esc(p.label)} — ${money(p.price)}${best?' · best value':''}</button>`;
-  }).join('');
+  // a branch only ever sees its own single add-on plan, never the main
+  // three — best-value badge computed within whichever set actually applies
+  // to this business, not across both mixed together
+  const planButtons = (b) => {
+    const applicable = b.parent_business_id ? plans.filter(p=>p.id==='branch_annual') : plans.filter(p=>p.id!=='branch_annual');
+    const cheapestPerMonth = Math.min(...applicable.map(p=>p.price/p.months));
+    return applicable.map(p=>{
+      const perMonth = p.price/p.months;
+      const best = applicable.length>1 && Math.abs(perMonth-cheapestPerMonth)<0.01;
+      return `<button class="btn ${best?'':'ghost'}" style="margin-bottom:8px" onclick='payFor("${b.id}","${esc(b.name).replace(/"/g,'&quot;')}","${p.id}")'>
+        ${esc(p.label)} — ${money(p.price)}${best?' · best value':''}</button>`;
+    }).join('');
+  };
 
   const actionRow = r => {
     const b=r.b;
+    const branchTag = b.parent_business_id ? '<div class="discount">Branch store</div>' : '';
     const note = r.status==='expired'
       ? `<div class="discount" style="color:var(--red)">Expired ${fmtD(b.paid_until)}. Renew to keep unlimited access</div>`
       : r.status==='renew-soon'
         ? `<div class="discount">Paid until ${fmtD(b.paid_until)} (${r.daysLeft} day${r.daysLeft===1?'':'s'} left)</div>`
-        : '';
+        : branchTag;
     return `
     <div class="bizrow">
       <div class="name">${esc(b.name)}</div>
@@ -152,6 +157,7 @@ async function afterSignIn(){
   const settledRow = r => `
     <div class="bizrow">
       <div class="name">${esc(r.b.name)}</div>
+      ${r.b.parent_business_id?'<div class="discount">Branch store</div>':''}
       <div class="discount">${r.status==='lifetime'?'Paid (lifetime)':`Paid until ${fmtD(r.b.paid_until)}`}</div>
     </div>`;
 

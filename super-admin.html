@@ -411,7 +411,7 @@ function renderImportPreview(items){
     <td>${i.line}</td><td>${esc(i.name)}</td><td>${esc(i.category||'General')}</td>
     <td>₦${i.pack_price.toLocaleString('en-NG')}</td><td>₦${i.cost_price.toLocaleString('en-NG')}</td>
     <td>${esc(i.unit_name)}</td><td>${i.opening_stock}</td>
-    <td>${i.modes.length?esc(i.modes.map(m=>m.name).join(', ')):'—'}</td>
+    <td>${i.modes.length?esc(i.modes.map(m=>`${m.name} ₦${m.price.toLocaleString('en-NG')}/${m.per_pack}`).join(', ')):'—'}</td>
     <td>${i.errors.length?`<span style="color:var(--red)">${esc(i.errors.join('; '))}</span>`
       :i.warnings.length?`<span style="color:var(--amber)">${esc(i.warnings.join('; '))}</span>`
       :'<span style="color:var(--green)">OK</span>'}</td>

@@ -91,6 +91,17 @@ tr:last-child td{border-bottom:none}
     </div>
   </div>
 
+  <div class="card wide hidden" id="importCard">
+    <h2>Import items (CSV)</h2>
+    <p class="hint" style="margin-bottom:14px">Bulk-add items for <b id="importBizName"></b> from a CSV a shop owner sent you. <a href="#" onclick="downloadImportTemplate();return false">Download a template</a> to see the exact format.</p>
+    <div class="field"><label>CSV file</label><input type="file" accept=".csv,text/csv" id="importFile" onchange="handleImportFile(event)"></div>
+    <div id="importPreview"></div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button class="btn" id="importConfirmBtn" onclick="confirmImport()" disabled>Import 0 items</button>
+      <button class="btn ghost" onclick="cancelImport()">Cancel</button>
+    </div>
+  </div>
+
   <div class="card">
     <h2>Referral settings</h2>
     <div class="toggle"><input id="refEnabled" type="checkbox" style="width:auto"> <label for="refEnabled" style="font-weight:600">Referral program enabled</label></div>
@@ -252,7 +263,7 @@ function renderBusinesses(rows){
     <td>${esc(b.referral_code||'')}</td>
     <td>${b.member_count}</td>
     <td>${b.item_count}</td>
-    <td><button class="btn ghost" onclick='openActivate("${b.business_id}")'>Activate plan</button></td>
+    <td><div style="display:flex;gap:6px"><button class="btn ghost" onclick='openActivate("${b.business_id}")'>Activate plan</button><button class="btn ghost" onclick='openImport("${b.business_id}")'>Import CSV</button></div></td>
   </tr>`;}).join('')}</tbody></table>` : '<div class="empty">No businesses yet.</div>';
 }
 
@@ -281,6 +292,138 @@ async function confirmActivate(){
   if(data && data.success===false){ toast('Already recorded — no change made (this looks like a duplicate).'); }
   else toast('Plan activated');
   cancelActivate();
+  const {data:bizData}=await sb.rpc('platform_overview');
+  renderBusinesses(bizData||[]);
+}
+
+/* ---------- bulk item import from CSV ----------
+   CSV format documented in downloadImportTemplate() below. Everything is
+   parsed and validated in the browser first — only rows that pass validation
+   are ever sent to admin_bulk_import_items(), which does its own per-row
+   error handling server-side as a second line of defense (e.g. a duplicate
+   barcode the client couldn't have known about). */
+function downloadImportTemplate(){
+  const csv='name,category,pack_price,cost_price,unit_name,opening_stock,low_stock_threshold,barcode,modes,expiry_date\r\n'
+    + 'Rice (50kg),Grains,45000,40000,Bag,10,2,,,\r\n'
+    + 'Milo,Drinks,8500,7200,Carton,5,1,,Sachet:250:36,\r\n';
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download='themonishop-item-import-template.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+// a proper (if small) CSV parser — handles quoted fields and embedded commas,
+// since a name or category pasted from Excel/Sheets can easily contain one
+function parseCSV(text){
+  const rows=[]; let row=[], field='', inQuotes=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i], next=text[i+1];
+    if(inQuotes){
+      if(c==='"'&&next==='"'){ field+='"'; i++; }
+      else if(c==='"'){ inQuotes=false; }
+      else field+=c;
+    }else{
+      if(c==='"') inQuotes=true;
+      else if(c===',' ){ row.push(field); field=''; }
+      else if(c==='\r'){ /* ignore, \n handles the line break */ }
+      else if(c==='\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field+=c;
+    }
+  }
+  if(field.length||row.length){ row.push(field); rows.push(row); }
+  return rows.filter(r=>!(r.length===1&&r[0]===''));
+}
+// "Sachet:250:36; Half bag:22000:2" -> [{name,price,per_pack}], same shape
+// items.modes already expects — invalid pieces (no price, no per_pack) are
+// dropped rather than failing the whole row, since modes are optional
+function parseModesField(s){
+  if(!s||!s.trim()) return [];
+  return s.split(';').map(p=>p.trim()).filter(Boolean).map(p=>{
+    const [name,price,perPack]=p.split(':').map(x=>(x||'').trim());
+    return {name, price:+price||0, per_pack:+perPack||0};
+  }).filter(m=>m.name&&m.price>0&&m.per_pack>=1);
+}
+function parseImportCSV(text){
+  const rows=parseCSV(text);
+  if(!rows.length) return {items:[], headerError:'Empty file'};
+  const header=rows[0].map(h=>h.trim().toLowerCase());
+  const idx=n=>header.indexOf(n);
+  const iName=idx('name'), iCat=idx('category'), iPack=idx('pack_price'), iCost=idx('cost_price'),
+    iUnit=idx('unit_name'), iOpen=idx('opening_stock'), iThr=idx('low_stock_threshold'),
+    iBarcode=idx('barcode'), iModes=idx('modes'), iExpiry=idx('expiry_date');
+  if(iName<0||iPack<0) return {items:[], headerError:'CSV must have at least "name" and "pack_price" columns — download the template to see the exact headers expected'};
+  const items=[];
+  for(let r=1;r<rows.length;r++){
+    const row=rows[r];
+    if(row.every(c=>!c||!c.trim())) continue;
+    const get=i=>i>=0?(row[i]||'').trim():'';
+    const name=get(iName), packPrice=+get(iPack)||0;
+    const errors=[];
+    if(!name) errors.push('Missing name');
+    if(!(packPrice>0)) errors.push('Missing or invalid pack_price');
+    items.push({line:r+1, name, category:get(iCat), pack_price:packPrice, cost_price:+get(iCost)||0,
+      unit_name:get(iUnit)||'Pack', opening_stock:+get(iOpen)||0, low_stock_threshold:+get(iThr)||2,
+      barcode:get(iBarcode)||null, modes:parseModesField(get(iModes)), expiry_date:get(iExpiry)||null, errors});
+  }
+  return {items, headerError:null};
+}
+function renderImportPreview(items){
+  const box=$('#importPreview');
+  const validCount=items.filter(i=>!i.errors.length).length;
+  $('#importConfirmBtn').disabled=validCount===0;
+  $('#importConfirmBtn').textContent=`Import ${validCount} item${validCount===1?'':'s'}`;
+  if(!items.length){ box.innerHTML='<p class="hint" style="margin-top:12px">No rows found in that file.</p>'; return; }
+  box.innerHTML=`<div style="overflow-x:auto;margin-top:12px"><table><thead><tr>
+    <th>Line</th><th>Name</th><th>Category</th><th>Pack price</th><th>Cost</th><th>Unit</th><th>Opening</th><th>Modes</th><th>Status</th>
+  </tr></thead><tbody>${items.map(i=>`<tr>
+    <td>${i.line}</td><td>${esc(i.name)}</td><td>${esc(i.category||'General')}</td>
+    <td>₦${i.pack_price.toLocaleString('en-NG')}</td><td>₦${i.cost_price.toLocaleString('en-NG')}</td>
+    <td>${esc(i.unit_name)}</td><td>${i.opening_stock}</td>
+    <td>${i.modes.length?esc(i.modes.map(m=>m.name).join(', ')):'—'}</td>
+    <td>${i.errors.length?`<span style="color:var(--red)">${esc(i.errors.join('; '))}</span>`:'<span style="color:var(--green)">OK</span>'}</td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+let IMPORT_ITEMS=[], IMPORT_BIZ_ID=null;
+function handleImportFile(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    const {items,headerError}=parseImportCSV(reader.result);
+    if(headerError){
+      $('#importPreview').innerHTML=`<p class="hint" style="margin-top:12px;color:var(--red)">${esc(headerError)}</p>`;
+      IMPORT_ITEMS=[]; $('#importConfirmBtn').disabled=true; $('#importConfirmBtn').textContent='Import 0 items';
+      return;
+    }
+    IMPORT_ITEMS=items;
+    renderImportPreview(items);
+  };
+  reader.readAsText(file);
+}
+function openImport(bizId){
+  const b=BIZ_ROWS.find(x=>x.business_id===bizId); if(!b) return;
+  IMPORT_BIZ_ID=bizId; IMPORT_ITEMS=[];
+  $('#importBizName').textContent=b.business_name;
+  $('#importFile').value='';
+  $('#importPreview').innerHTML='';
+  $('#importConfirmBtn').disabled=true; $('#importConfirmBtn').textContent='Import 0 items';
+  $('#importCard').classList.remove('hidden');
+  $('#importCard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+function cancelImport(){ $('#importCard').classList.add('hidden'); }
+async function confirmImport(){
+  const valid=IMPORT_ITEMS.filter(i=>!i.errors.length);
+  if(!valid.length) return;
+  const btn=$('#importConfirmBtn'); btn.disabled=true; btn.textContent='Importing…';
+  const payload=valid.map(i=>({name:i.name, category:i.category||null, pack_price:i.pack_price, cost_price:i.cost_price,
+    unit_name:i.unit_name, opening_stock:i.opening_stock, low_stock_threshold:i.low_stock_threshold,
+    barcode:i.barcode, modes:i.modes, expiry_date:i.expiry_date}));
+  const {data,error}=await sb.rpc('admin_bulk_import_items',{p_business_id:IMPORT_BIZ_ID,p_items:payload});
+  btn.disabled=false;
+  if(error){ btn.textContent=`Import ${valid.length} items`; return toast(error.message,true); }
+  const errCount=(data.errors||[]).length;
+  toast(`Imported ${data.created} item(s)${errCount?`, ${errCount} failed (see console)`:''}`, errCount>0);
+  if(errCount) console.error('Import errors:', data.errors);
+  cancelImport();
   const {data:bizData}=await sb.rpc('platform_overview');
   renderBusinesses(bizData||[]);
 }

@@ -3153,6 +3153,33 @@ function strToBase64Binary(str){
   let binary=''; for(let i=0;i<str.length;i++) binary+=String.fromCharCode(str.charCodeAt(i)&0xFF);
   return btoa(binary);
 }
+// plain, ASCII-safe receipt text — what actually gets sent to a Bluetooth
+// target now, instead of escposReceipt()'s raw ESC/POS byte stream.
+// escposReceipt() is kept in place (unused for now) for a real standalone
+// ESC/POS thermal printer later; this app's actual hardware right now is a
+// POS terminal whose print-helper companion app (see print-helper-app/)
+// expects plain text it hands straight to the terminal's own printer SDK —
+// no ESC/POS control codes for it to misinterpret as garbage characters.
+function receiptPlainText(snap){
+  const methodLabel={cash:'Cash',transfer:'Transfer',card:'Card',credit:'Credit'}[snap.method]||snap.method;
+  let s=`${snap.bizName}\n${new Date(snap.date).toLocaleString('en-NG',{dateStyle:'medium',timeStyle:'short'})}\n${snap.custName} - ${methodLabel}\n--------------------------------\n`;
+  snap.lines.forEach(l=>{
+    const name=l.name+(l.mode&&!l.isPack?` (${l.mode})`:'')+' x'+l.qty;
+    s+=padLine(name,moneyPlain(l.price*l.qty))+'\n';
+  });
+  s+='--------------------------------\n';
+  s+=padLine('TOTAL',moneyPlain(snap.total))+'\n';
+  return s;
+}
+// UTF-8-safe base64 — strToBase64Binary() above truncates each character to
+// a single byte (fine for escposReceipt(), which already strips non-Latin1
+// characters itself), but this path needs real UTF-8 encoding first so it
+// doesn't mangle multi-byte characters before they ever reach that filter
+function strToBase64Utf8(str){
+  const bytes=new TextEncoder().encode(str);
+  let binary=''; bytes.forEach(b=>binary+=String.fromCharCode(b));
+  return btoa(binary);
+}
 async function printReceiptBluetooth(){
   if(!lastReceipt) return;
   try{
@@ -3165,10 +3192,15 @@ async function printReceiptBluetooth(){
       if(isNaN(idx)||!devices[idx]) return;
       address=devices[idx].address;
     }
-    const data=strToBase64Binary(escposReceipt(lastReceipt));
+    const data=strToBase64Utf8(receiptPlainText(lastReceipt));
     await window.Capacitor.Plugins.BtPrinter.printRaw({address,data});
     toast('Sent to printer');
-  }catch(e){ toast('Print failed: '+(e.message||e),true); }
+  }catch(e){
+    // alert(), not toast() — this needs to stay on screen long enough to
+    // read and act on, not vanish before it can even be screenshotted
+    const detail=(e&&e.message)?e.message:(typeof e==='string'?e:JSON.stringify(e||{}));
+    alert('Print failed: '+detail);
+  }
 }
 
 /* ============================================================

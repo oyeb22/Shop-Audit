@@ -355,6 +355,9 @@ const $ = s => document.querySelector(s);
 const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
 const today = () => new Date().toISOString().slice(0,10);
 const monthStart = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); };
+// one calendar day after a 'YYYY-MM-DD' date string — for turning an
+// inclusive entry_date "to" bound into an exclusive created_at upper bound
+const nextDay = iso => { const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); };
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // tiny inline icon set — plain geometric strokes, no emoji, no external icon library/CDN
 const ICON_PATHS = {
@@ -766,14 +769,14 @@ function buildNav(){
   if(!planActive()){ $('#navCurrent').textContent='Upgrade required'; $('#navGrid').innerHTML=''; return; }
   let tabs;
   if(S.role==='admin'){
-    tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals']];
+    tabs=[['dashboard','Dashboard'],['sell','Sell'],['additem','Add item'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals'],['eod','End of day']];
     // branch management lives on the root business only — a branch doesn't
     // get to spawn its own sub-branches, keeps the structure flat
-    if(!S.biz.parent_business_id) tabs.splice(9,0,['branches','Branches']);
+    if(!S.biz.parent_business_id) tabs.splice(10,0,['branches','Branches']);
   }else if(S.role==='manager'){
     // no Reports (full business financials) and no cost/profit figures
     // elsewhere — a manager is staff, promoted, not the owner
-    tabs=[['dashboard','Dashboard'],['sell','Sell'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['expenses','Expenses']];
+    tabs=[['dashboard','Dashboard'],['sell','Sell'],['additem','Add item'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['expenses','Expenses'],['eod','End of day']];
   }else{
     tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
   }
@@ -820,6 +823,8 @@ const RECONCILE_FIELDS=[
   {sel:'#cApply',text:'Leave this ticked to correct the system\'s stock to match your physical count.'}
 ];
 const TILL_FIELDS=[
+  {sel:'#pAmt',text:'If you run POS/agency transactions: how much cash you handed the customer.'},
+  {sel:'#pCharge',text:'Optional — any charge you kept for the transaction, on top of the cash given.'},
   {sel:'#tMethod',text:'Whether the money you physically removed was cash or a bank transfer.'},
   {sel:'#tAmt',text:'How much you removed.'},
   {sel:'#tNote',text:'Optional — what it was for, e.g. a bank deposit.'}
@@ -842,7 +847,7 @@ const SETTINGS_FIELDS=[
   {sel:'#setNotifySale',text:'Sends you a push notification every time a sale is made — only works in the Android app, not the website.'},
   {sel:'#setNotifyLowStock',text:'Sends a push to you and your managers the moment an item drops to its low-stock alert level — off by default, and only alerts once per dip.'},
   {sel:'#setNotifyExpiry',text:'Sends a push to you and your managers once a tracked batch is within 7 days of expiring — checked once a day, off by default.'},
-  {sel:'#apItems',text:'These four toggles decide what a manager can do immediately versus what needs your approval first — item changes, restock, reconciliation, and till clearing, each its own switch. All on by default.'},
+  {sel:'#apItems',text:'These toggles decide what a manager can do immediately versus what needs your approval first — item changes, restock, reconciliation, till clearing, and POS transactions, each its own switch. All on by default.'},
   {sel:'#setReminderHrs',text:'If something\'s still waiting on your approval, repeat the notification at this interval until you respond.'},
   {sel:'#setPayoutBank',text:'Where your referral bonus gets paid — bank name, account number, and account name, just below.'}
 ];
@@ -856,10 +861,13 @@ const TOUR_STEPS={
       'Tap an item to open it, choose how it\'s being sold (full pack, half bag, by the cup — whatever modes you set up), then add to cart.',
       'Pick Cash, Transfer, or Credit (attach a customer) before you checkout.',
       'After checkout you get a receipt you can print to a Bluetooth thermal printer, or send straight to WhatsApp instead.']},
-    {tab:'items',title:'Items',points:[
+    {tab:'additem',title:'Add item',points:[
       'The Pack is the biggest form you sell an item in — set its price, an optional cost price, and a low-stock alert threshold.',
-      '"Other ways to sell this" is for anything smaller than a Pack — a half bag, a dozen, a single piece. You say how many of it fit inside one Pack, and price/cost scale down from the Pack automatically.',
-      'Tap Edit on any item to change its price, or set an expiry date if it\'s perishable.'],fields:ITEM_FIELDS},
+      '"Other ways to sell this" is for anything smaller than a Pack — a half bag, a dozen, a single piece. You say how many of it fit inside one Pack, and price/cost scale down from the Pack automatically.'],fields:ITEM_FIELDS},
+    {tab:'items',title:'Items',points:[
+      'Search by name or category to find anything fast, even in a large catalog.',
+      'Similar items are grouped under a collapsible category header — tap it to expand or collapse.',
+      'Tap Edit on any item to change its price or modes, or set an expiry date if it\'s perishable.']},
     {tab:'restock',title:'Restock',points:[
       'Pick the item, how much you\'re adding, and in what unit (packs, half bags, etc.).',
       'If the cost changed this time, enter it here — it blends into a weighted average, it doesn\'t overwrite what older stock cost.',
@@ -872,6 +880,7 @@ const TOUR_STEPS={
       'Any gap (shrinkage) is flagged immediately and logged, not discovered weeks later.'],fields:RECONCILE_FIELDS},
     {tab:'till',title:'Till',points:[
       'Shows your running cash and transfer balance, computed from sales minus whatever you\'ve recorded as cleared.',
+      'If you also run POS/agency transactions (customer transfers, you hand them cash), log them here so your cash balance actually tallies.',
       "\"Clear the till\" logs money you've physically removed, e.g. taken to the bank."],fields:TILL_FIELDS},
     {tab:'reports',title:'Reports',points:[
       'Pick any date range — today, this month, all time, or custom — to see real revenue, profit and expenses for that period.',
@@ -887,17 +896,22 @@ const TOUR_STEPS={
     {tab:'audit',title:'Audit log',points:[
       'Every sale, restock, credit entry and approval, tied to exactly who did it and when — your record if anything ever looks off.']},
     {tab:'approvals',title:'Approvals',points:[
-      'Anything a manager submitted that\'s waiting on you shows up here — approve or reject with a reason.']}
+      'Anything a manager submitted that\'s waiting on you shows up here — approve or reject with a reason.']},
+    {tab:'eod',title:'End of day',points:[
+      'Pick any past date to see exactly what was on the shelf at the end of that day — worked out from your history, not a guess.',
+      'Useful for settling a dispute about stock, or checking a day you weren\'t around for.']}
   ],
   manager:[
     {tab:'dashboard',title:'Dashboard',points:["Today's revenue, low stock and anything expiring soon, at a glance."]},
     {tab:'sell',title:'Sell',points:['Tap an item, choose how it\'s being sold, add to cart, checkout with Cash/Transfer/Credit.']},
-    {tab:'items',title:'Items',points:['Add or edit items — depending on your admin\'s settings, some changes may need their approval before they apply.'],fields:ITEM_FIELDS},
+    {tab:'additem',title:'Add item',points:['Add a new item — depending on your admin\'s settings, this may need their approval before it applies.'],fields:ITEM_FIELDS},
+    {tab:'items',title:'Items',points:['Search, browse by category, and tap Edit to change prices or modes.']},
     {tab:'restock',title:'Restock',points:['Log new stock and add a batch\'s expiry date if it has one.'],fields:RESTOCK_FIELDS},
     {tab:'customers',title:'Customers',points:['Track who owes and who\'s paid, and send WhatsApp reminders in one tap.'],fields:CUSTOMER_FIELDS},
     {tab:'reconcile',title:'Reconcile',points:['Count the shelf against what the system expects — flags shrinkage immediately.'],fields:RECONCILE_FIELDS},
-    {tab:'till',title:'Till',points:['Running cash/transfer balance, and a place to log money removed from the till.'],fields:TILL_FIELDS},
-    {tab:'expenses',title:'Expenses',points:['Log rent, transport, repairs — anything outside stock purchases.'],fields:EXPENSE_FIELDS}
+    {tab:'till',title:'Till',points:['Running cash/transfer balance, a place to log POS/agency transactions, and a place to log money removed from the till.'],fields:TILL_FIELDS},
+    {tab:'expenses',title:'Expenses',points:['Log rent, transport, repairs — anything outside stock purchases.'],fields:EXPENSE_FIELDS},
+    {tab:'eod',title:'End of day',points:['Pick any past date to see what was on the shelf at the end of that day.']}
   ],
   receptionist:[
     {tab:'sell',title:'Sell',points:['Tap an item, choose how it\'s being sold, add to cart, checkout with Cash/Transfer/Credit.']},
@@ -1001,7 +1015,7 @@ async function render(){
   // too in case S.tab is left over from a role switch
   if(S.role==='manager' && S.tab==='reports') S.tab='dashboard';
   if(S.tab==='branches' && (S.role!=='admin' || S.biz.parent_business_id)) S.tab='dashboard';
-  const map={dashboard:vDashboard,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches};
+  const map={dashboard:vDashboard,additem:vAddItem,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches,eod:vEndOfDay};
   (map[S.tab]||vDashboard)(v);
 }
 // full-screen block for an unpaid business whose trial has ended (or whose
@@ -1312,7 +1326,7 @@ function trialDaysLeft(){
 }
 function trialActive(){ return trialDaysLeft()>0; }
 function planActive(){ return paidActive() || trialActive(); }
-function vItems(v){
+function vAddItem(v){
   draftModes=[];
   const isManager=S.role==='manager';
   const isPaid=planActive();
@@ -1367,17 +1381,21 @@ function vItems(v){
       <button class="btn ghost sm" id="addModeBtn" type="button" onclick="addDraftMode()">+ Add a mode (e.g. Half bag, Dozen, Carton of 6)</button>
     </div>
     <button class="btn primary" id="addItemBtn" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?', changes go to the admin for approval':''}</span></div><div class="bd tight rtable">
+  </div></div>`;
+  renderDraftModes();
+  iOpenModeOptions();
+  iThrModeOptions();
+}
+function vItems(v){
+  const isManager=S.role==='manager';
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?', changes go to the admin for approval':''}</span><div class="spacer"></div><button class="btn ghost sm" onclick="go('additem')">+ Add item</button></div><div class="bd tight rtable">
     <div style="padding:0 18px 10px"><input class="custInput" id="itemsSearch" placeholder="Search items…" value="${esc(itemsListQuery)}" oninput="filterItemsTable(this.value)"></div>
     <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
     <tbody id="itemsTableBody">${itemsTableRows()}</tbody></table>
   </div></div>
   ${expiringSoonCard()}
   ${isManager?'<div class="card"><div class="hd"><h2>My submitted changes</h2></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
-  renderDraftModes();
-  iOpenModeOptions();
-  iThrModeOptions();
   if(isManager) loadMyChanges();
 }
 async function loadMyChanges(){
@@ -1926,6 +1944,16 @@ async function vTill(v){
     <div class="stat"><div class="label">Transfer in till</div><div class="value num">…</div></div>
   </div>
   <div class="card"><div class="hd"><h2>By team member</h2><span class="desc">who's holding what, since the till was last cleared</span></div><div class="bd tight" id="tillByStaff"><div class="empty">Loading…</div></div></div>
+  <div class="card"><div class="hd"><h2>POS transaction</h2><span class="desc">customer transfers or pays by card, you hand them cash</span></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>Cash given to customer (₦)</label><input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5000" oninput="posInfo()"></div>
+      <div class="field"><label>Charge kept (₦, optional)</label><input id="pCharge" type="number" min="0" step="1" placeholder="e.g. 100" oninput="posInfo()"></div>
+    </div>
+    <p class="hint" id="pInfo" style="margin:-4px 0 12px"></p>
+    <div class="field"><label>Note (optional)</label><input id="pNote" placeholder="e.g. customer's name"></div>
+    <button class="btn primary" onclick="recordPosTransaction()">Record</button>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Recent POS transactions</h2></div><div class="bd tight rtable"><div id="posList" class="empty">Loading…</div></div></div>
   <div class="card"><div class="hd"><h2>Clear the till</h2><span class="desc">log money you've physically removed from the business</span></div><div class="bd">
     <div class="frow">
       <div class="field"><label>Method</label><select id="tMethod"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div>
@@ -1935,7 +1963,43 @@ async function vTill(v){
     <button class="btn primary" onclick="clearTill()">Record clearing</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Recent clearings</h2></div><div class="bd tight rtable"><div id="tillList" class="empty">Loading…</div></div></div>`;
-  loadTillSummary(); loadTillClearings(); loadTillByStaff();
+  loadTillSummary(); loadTillClearings(); loadTillByStaff(); loadPosTransactions();
+}
+function posInfo(){
+  const amt=+$('#pAmt').value||0, charge=+$('#pCharge').value||0;
+  $('#pInfo').textContent = amt ? `Customer pays ${money(amt+charge)} total by transfer/card${charge?`, you keep ${money(charge)}`:''}.` : '';
+}
+// shared by the immediate path (recordPosTransaction) and the approval path (approveChange)
+async function applyPosTransaction(amount,charge,note,actorId){
+  const {error}=await sb.from('pos_transactions').insert({business_id:S.biz.id,amount,charge:charge||0,note:note||null,created_by:actorId});
+  if(error) return {error};
+  const detail=`${money(amount)} cash given, ${money(amount+(charge||0))} received by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}`;
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'pos_transaction',detail});
+  if(auditErr) console.error('audit_log insert failed:',auditErr);
+  return {error:null,auditErr,detail};
+}
+async function recordPosTransaction(){
+  const amount=+$('#pAmt').value||0, charge=+$('#pCharge').value||0, note=$('#pNote').value.trim();
+  if(!amount||amount<=0) return toast('Enter the cash amount given',true);
+  if(needsApproval('pos')){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'pos_transaction',item_id:null,payload:{amount,charge,note}});
+    if(error) return err(error);
+    toast('Sent for approval'); vTill($('#view'));
+    return;
+  }
+  const {error,auditErr}=await applyPosTransaction(amount,charge,note,S.user.id);
+  if(error) return err(error);
+  if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
+  else toast('POS transaction recorded');
+  vTill($('#view'));
+}
+async function loadPosTransactions(){
+  const {data,error}=await sb.from('pos_transactions').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
+  if(error) return;
+  const fmtD=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  $('#posList').outerHTML=`<div id="posList">${data.length?`<table><thead><tr><th>Date</th><th class="r">Cash given</th><th class="r">Charge kept</th><th>Note</th></tr></thead>
+  <tbody>${data.map(p=>`<tr><td class="num hint" data-label="Date">${fmtD(p.created_at)}</td><td class="r num" data-label="Cash given">${money(p.amount)}</td><td class="r num" data-label="Charge kept">${money(p.charge)}</td><td class="hint" data-label="Note">${esc(p.note||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No POS transactions yet.</div>'}</div>`;
 }
 async function loadTillSummary(){
   const {data,error}=await sb.rpc('till_summary',{b:S.biz.id});
@@ -2028,23 +2092,26 @@ function repRange(which){
 }
 async function runReport(){
   const from=$('#repFrom').value, to=$('#repTo').value;
-  const [salesRes,expRes,purRes]=await Promise.all([
+  const [salesRes,expRes,purRes,posRes]=await Promise.all([
     sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
     sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
-    sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to)
+    sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+    sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to))
   ]);
   if(salesRes.error) return err(salesRes.error);
   const data=salesRes.data;
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
   const totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
-  const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0), netProfit=totP-totExp;
+  const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0);
+  const totPos=(posRes.data||[]).reduce((a,p)=>a+Number(p.charge||0),0);
+  const netProfit=totP-totExp+totPos;
   const totSpent=(purRes.data||[]).reduce((a,p)=>a+Number(p.unit_cost||0)*Number(p.base_units||p.quantity||0),0);
   const byMethod={cash:0,transfer:0,credit:0,card:0};
   data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
   const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
   const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
   const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
-  S._report={from,to,rows,nm,byMethod,totExp,netProfit};
+  S._report={from,to,rows,nm,byMethod,totExp,totPos,netProfit};
   const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
   const stockLow=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).low,0);
   const stockHigh=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).high,0);
@@ -2053,7 +2120,8 @@ async function runReport(){
       <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">gross profit ${money(totP)}</div></div>
       <div class="stat bad"><div class="label">Spent on stock</div><div class="value num">${money(totSpent)}</div><div class="sub">restocking, this range</div></div>
       <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
-      <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses</div></div>
+      ${totPos>0?`<div class="stat good"><div class="label">POS commission</div><div class="value num">${money(totPos)}</div><div class="sub">kept from POS transactions</div></div>`:''}
+      <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses + POS commission</div></div>
       <div class="stat"><div class="label">${icon('cash')} Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
       <div class="stat"><div class="label">${icon('bank')} Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
       <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
@@ -2072,6 +2140,66 @@ async function runReport(){
       </div>
     </div></div>`;
 }
+/* ============================================================
+   END OF DAY STOCK — what was on the shelf as at a given date,
+   computed on demand from purchases/sales/adjustments history
+   (see end_of_day_stock() RPC) so it works for any past day, not
+   just from whenever this shipped.
+   ============================================================ */
+let eodRows=[], eodQuery='';
+function vEndOfDay(v){
+  v.innerHTML=`
+  <div class="card"><div class="hd"><h2>End of day stock</h2><span class="desc">what was on the shelf at the end of a given day</span></div><div class="bd">
+    <div class="frow">
+      <div class="field"><label>Date</label><input id="eodDate" type="date" value="${today()}" onchange="loadEndOfDay()"></div>
+      <div class="field" style="display:flex;align-items:flex-end;gap:8px"><button class="btn ghost sm" onclick="$('#eodDate').value=today();loadEndOfDay()">Today</button>
+      <button class="btn ghost sm" onclick="eodShift(-1)">◂ Prev day</button><button class="btn ghost sm" onclick="eodShift(1)">Next day ▸</button></div>
+    </div>
+  </div></div>
+  <div class="card"><div class="hd"><h2>Stock as at <span id="eodDesc"></span></h2></div><div class="bd tight rtable">
+    <div style="padding:0 18px 10px"><input class="custInput" id="eodSearch" placeholder="Search items…" oninput="filterEodTable(this.value)"></div>
+    <table><thead><tr><th>Item</th><th class="r">Stock</th></tr></thead><tbody id="eodTableBody"><tr><td colspan="2" class="empty">Loading…</td></tr></tbody></table>
+  </div></div>`;
+  loadEndOfDay();
+}
+function eodShift(days){
+  const d=new Date(($('#eodDate').value||today())+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  $('#eodDate').value=d.toISOString().slice(0,10);
+  loadEndOfDay();
+}
+async function loadEndOfDay(){
+  const d=$('#eodDate').value||today();
+  $('#eodDesc').textContent=new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+  $('#eodTableBody').innerHTML=`<tr><td colspan="2" class="empty">Loading…</td></tr>`;
+  const {data,error}=await sb.rpc('end_of_day_stock',{b:S.biz.id,d});
+  if(error) return err(error);
+  eodRows=data||[];
+  renderEodTable();
+}
+function renderEodTable(){
+  const q=eodQuery.trim().toLowerCase();
+  const list=eodRows.filter(r=>!q||r.name.toLowerCase().includes(q)||(r.category||'').toLowerCase().includes(q));
+  const rowHtml=r=>{
+    const it=S.items.find(i=>i.id===r.item_id);
+    const qtyText=it?breakdownQty(it,Number(r.on_hand)):`${fmtPacks(Number(r.on_hand))} ${pluralize(r.unit_name||'Pack',Number(r.on_hand))}`;
+    return `<tr><td class="itemname">${esc(r.name)}<div class="cat">${esc(r.category||'')}</div></td><td class="r num" data-label="Stock">${qtyText}</td></tr>`;
+  };
+  if(!list.length){ $('#eodTableBody').innerHTML=`<tr><td colspan="2" class="empty">${eodRows.length?'No match for that search.':'No items yet.'}</td></tr>`; return; }
+  if(q){ $('#eodTableBody').innerHTML=list.map(rowHtml).join(''); return; }
+  const groups=new Map();
+  list.forEach(r=>{ const cat=r.category||'General'; if(!groups.has(cat)) groups.set(cat,[]); groups.get(cat).push(r); });
+  const sorted=[...groups.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  if(sorted.length<=1){ $('#eodTableBody').innerHTML=list.map(rowHtml).join(''); return; }
+  $('#eodTableBody').innerHTML=sorted.map(([cat,rows])=>{
+    const isCollapsed=collapsedCats().has(cat);
+    return `<tr class="catHeadRow"><td colspan="2" style="padding:6px 18px"><div class="catHead" style="border-bottom:none;margin-bottom:0" onclick="toggleCat('${catJsKey(cat)}');renderEodTable()">
+      <span class="catChevron">${isCollapsed?'▸':'▾'}</span>${esc(cat)}<span class="catCount">${rows.length}</span>
+    </div></td></tr>${isCollapsed?'':rows.map(rowHtml).join('')}`;
+  }).join('');
+}
+function filterEodTable(q){ eodQuery=q; renderEodTable(); }
+
 // the low/high per-pack-equivalent price for an item across the pack price
 // AND every mode — deliberately doesn't assume pack is always cheaper (a
 // wholesale mode can undercut it) or always pricier (a retail-split mode
@@ -2120,7 +2248,7 @@ function todayStoryLines(s,hideProfit){
 }
 async function exportCSV(){
   const r=S._report; if(!r) return;
-  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
+  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nPOS commission,${r.totPos||0}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
   r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
   const filename=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`;
   // a plain <a download> click is silently a no-op inside the native app's
@@ -2326,6 +2454,7 @@ const AUDIT_META={
   restock_added:           {label:'Restock',              cls:'gold'},
   reconciliation_recorded: {label:'Reconciliation',       cls:'gold'},
   till_cleared:            {label:'Till cleared',         cls:'blue'},
+  pos_transaction:         {label:'POS transaction',      cls:'blue'},
   expenditure_added:       {label:'Expense recorded',     cls:'gold'},
   expenditure_approved:    {label:'Expense approved',     cls:'pos'},
   expenditure_rejected:    {label:'Expense rejected',     cls:'neg'},
@@ -2379,6 +2508,7 @@ function pendingChangeText(c){
     return `${nm}: expected ${item?breakdownQty(item,p.exp):fmtPacks(p.exp)}, counted ${item?breakdownQty(item,p.counted):fmtPacks(p.counted)}${p.apply?' (corrected system stock)':' (system stock not corrected)'}${p.note?` — ${p.note}`:''}`;
   }
   if(c.action_type==='till_clear') return `${money(p.amount)} ${p.method} cleared${p.note?` — ${p.note}`:''}`;
+  if(c.action_type==='pos_transaction') return `${money(p.amount)} cash given, ${money(p.amount+(p.charge||0))} received${p.charge?`, kept ${money(p.charge)}`:''}${p.note?` — ${p.note}`:''}`;
   return c.action_type;
 }
 async function vApprovals(v){
@@ -2400,7 +2530,7 @@ async function vApprovals(v){
   v.innerHTML=pendingHtml+historyHtml;
 }
 function renderApprovalHistoryRow(c,nameOf){
-  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing'}[c.action_type]||c.action_type;
+  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing',pos_transaction:'POS transaction'}[c.action_type]||c.action_type;
   const fmt=t=>t?new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
   const approved=c.status==='approved';
   return `<tr>
@@ -2411,7 +2541,7 @@ function renderApprovalHistoryRow(c,nameOf){
 }
 function renderApprovalCard(c){
   const item = c.item_id ? S.items.find(i=>i.id===c.item_id) : null;
-  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing'}[c.action_type]||c.action_type;
+  const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing',pos_transaction:'POS transaction'}[c.action_type]||c.action_type;
   const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   let body='';
   if(c.action_type==='add_item'){
@@ -2444,6 +2574,10 @@ function renderApprovalCard(c){
       ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
   }else if(c.action_type==='till_clear'){
     body=`<p><b>${money(c.payload.amount)} ${esc(c.payload.method)}</b></p>
+      ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
+  }else if(c.action_type==='pos_transaction'){
+    body=`<p><b>${money(c.payload.amount)} cash given</b></p>
+      <p class="hint">Customer pays ${money(c.payload.amount+(c.payload.charge||0))} by transfer/card${c.payload.charge?`, you keep ${money(c.payload.charge)}`:''}</p>
       ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
   }
   return `<div class="card" id="pc-${c.id}"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
@@ -2508,6 +2642,11 @@ async function approveChange(id,silent){
       const nowBefore=p.method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
       if(p.amount>nowBefore+1e-6) throw new Error(`Only ${money(nowBefore)} ${p.method} is in the till now`);
       const {error,detail}=await applyTillClear(p.method,p.amount,p.note,nowBefore,c.requested_by);
+      if(error) throw error;
+      applyDetail=detail;
+    }else if(c.action_type==='pos_transaction'){
+      const p=c.payload;
+      const {error,detail}=await applyPosTransaction(p.amount,p.charge,p.note,c.requested_by);
       if(error) throw error;
       applyDetail=detail;
     }
@@ -3646,8 +3785,10 @@ function vSettings(v){
       <input id="apRestock" type="checkbox" ${S.approvalSettings?.restock!==false?'checked':''} style="width:auto"> Restock needs approval</label>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
       <input id="apReconcile" type="checkbox" ${S.approvalSettings?.reconcile!==false?'checked':''} style="width:auto"> Reconciliation needs approval</label>
-    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
       <input id="apTill" type="checkbox" ${S.approvalSettings?.till!==false?'checked':''} style="width:auto"> Till clearing needs approval</label>
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:14px">
+      <input id="apPos" type="checkbox" ${S.approvalSettings?.pos!==false?'checked':''} style="width:auto"> POS transactions need approval</label>
     <button class="btn primary" onclick="saveApprovalSettings()">Save</button>
   </div></div>
   <div class="card"><div class="hd"><h2>Approval reminders</h2><span class="desc">nudge you again if something's still waiting</span></div><div class="bd">
@@ -3744,7 +3885,7 @@ async function savePayoutDetails(){
 }
 async function saveApprovalSettings(){
   const settings={business_id:S.biz.id,items:$('#apItems').checked,restock:$('#apRestock').checked,
-    reconcile:$('#apReconcile').checked,till:$('#apTill').checked};
+    reconcile:$('#apReconcile').checked,till:$('#apTill').checked,pos:$('#apPos').checked};
   const {error}=await sb.from('approval_settings').upsert(settings);
   if(error) return err(error);
   S.approvalSettings=settings;

@@ -823,8 +823,9 @@ const RECONCILE_FIELDS=[
   {sel:'#cApply',text:'Leave this ticked to correct the system\'s stock to match your physical count.'}
 ];
 const TILL_FIELDS=[
-  {sel:'#pAmt',text:'If you run POS/agency transactions: how much cash you handed the customer.'},
-  {sel:'#pCharge',text:'Optional — any charge you kept for the transaction, on top of the cash given.'},
+  {sel:'#pType',text:'If you run POS/agency transactions: which way the cash moved — you gave cash out, or you took cash in and sent a transfer instead.'},
+  {sel:'#pAmt',text:'How much cash changed hands in that transaction.'},
+  {sel:'#pCharge',text:'Optional — any charge you kept, either direction.'},
   {sel:'#tMethod',text:'Whether the money you physically removed was cash or a bank transfer.'},
   {sel:'#tAmt',text:'How much you removed.'},
   {sel:'#tNote',text:'Optional — what it was for, e.g. a bank deposit.'}
@@ -880,7 +881,7 @@ const TOUR_STEPS={
       'Any gap (shrinkage) is flagged immediately and logged, not discovered weeks later.'],fields:RECONCILE_FIELDS},
     {tab:'till',title:'Till',points:[
       'Shows your running cash and transfer balance, computed from sales minus whatever you\'ve recorded as cleared.',
-      'If you also run POS/agency transactions (customer transfers, you hand them cash), log them here so your cash balance actually tallies.',
+      'If you also run POS/agency transactions (either direction — cash out for a transfer, or cash in for a transfer), log them here so your cash balance actually tallies.',
       "\"Clear the till\" logs money you've physically removed, e.g. taken to the bank."],fields:TILL_FIELDS},
     {tab:'reports',title:'Reports',points:[
       'Pick any date range — today, this month, all time, or custom — to see real revenue, profit and expenses for that period.',
@@ -1944,9 +1945,15 @@ async function vTill(v){
     <div class="stat"><div class="label">Transfer in till</div><div class="value num">…</div></div>
   </div>
   <div class="card"><div class="hd"><h2>By team member</h2><span class="desc">who's holding what, since the till was last cleared</span></div><div class="bd tight" id="tillByStaff"><div class="empty">Loading…</div></div></div>
-  <div class="card"><div class="hd"><h2>POS transaction</h2><span class="desc">customer transfers or pays by card, you hand them cash</span></div><div class="bd">
+  <div class="card"><div class="hd"><h2>POS transaction</h2><span class="desc">agency banking — cash for transfer, either direction</span></div><div class="bd">
+    <div class="field"><label>Direction</label>
+      <select id="pType" onchange="posInfo()">
+        <option value="cash_out">Customer transfers/pays by card → you give them cash</option>
+        <option value="cash_in">Customer gives you cash → you send them a transfer</option>
+      </select>
+    </div>
     <div class="frow">
-      <div class="field"><label>Cash given to customer (₦)</label><input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5000" oninput="posInfo()"></div>
+      <div class="field"><label id="pAmtLabel">Cash given to customer (₦)</label><input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5000" oninput="posInfo()"></div>
       <div class="field"><label>Charge kept (₦, optional)</label><input id="pCharge" type="number" min="0" step="1" placeholder="e.g. 100" oninput="posInfo()"></div>
     </div>
     <p class="hint" id="pInfo" style="margin:-4px 0 12px"></p>
@@ -1966,29 +1973,35 @@ async function vTill(v){
   loadTillSummary(); loadTillClearings(); loadTillByStaff(); loadPosTransactions();
 }
 function posInfo(){
-  const amt=+$('#pAmt').value||0, charge=+$('#pCharge').value||0;
-  $('#pInfo').textContent = amt ? `Customer pays ${money(amt+charge)} total by transfer/card${charge?`, you keep ${money(charge)}`:''}.` : '';
+  const type=$('#pType').value, amt=+$('#pAmt').value||0, charge=+$('#pCharge').value||0;
+  $('#pAmtLabel').textContent = type==='cash_out' ? 'Cash given to customer (₦)' : 'Cash received from customer (₦)';
+  if(!amt){ $('#pInfo').textContent=''; return; }
+  $('#pInfo').textContent = type==='cash_out'
+    ? `Customer pays ${money(amt+charge)} total by transfer/card${charge?`, you keep ${money(charge)}`:''}.`
+    : `You send ${money(Math.max(amt-charge,0))} by transfer/card${charge?`, you keep ${money(charge)}`:''}.`;
 }
 // shared by the immediate path (recordPosTransaction) and the approval path (approveChange)
-async function applyPosTransaction(amount,charge,note,actorId){
-  const {error}=await sb.from('pos_transactions').insert({business_id:S.biz.id,amount,charge:charge||0,note:note||null,created_by:actorId});
+async function applyPosTransaction(type,amount,charge,note,actorId){
+  const {error}=await sb.from('pos_transactions').insert({business_id:S.biz.id,type,amount,charge:charge||0,note:note||null,created_by:actorId});
   if(error) return {error};
-  const detail=`${money(amount)} cash given, ${money(amount+(charge||0))} received by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}`;
+  const detail=type==='cash_out'
+    ? `${money(amount)} cash given, ${money(amount+(charge||0))} received by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}`
+    : `${money(amount)} cash received, ${money(Math.max(amount-(charge||0),0))} sent by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}`;
   const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'pos_transaction',detail});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
   return {error:null,auditErr,detail};
 }
 async function recordPosTransaction(){
-  const amount=+$('#pAmt').value||0, charge=+$('#pCharge').value||0, note=$('#pNote').value.trim();
-  if(!amount||amount<=0) return toast('Enter the cash amount given',true);
+  const type=$('#pType').value, amount=+$('#pAmt').value||0, charge=+$('#pCharge').value||0, note=$('#pNote').value.trim();
+  if(!amount||amount<=0) return toast('Enter the cash amount',true);
   if(needsApproval('pos')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'pos_transaction',item_id:null,payload:{amount,charge,note}});
+      action_type:'pos_transaction',item_id:null,payload:{type,amount,charge,note}});
     if(error) return err(error);
     toast('Sent for approval'); vTill($('#view'));
     return;
   }
-  const {error,auditErr}=await applyPosTransaction(amount,charge,note,S.user.id);
+  const {error,auditErr}=await applyPosTransaction(type,amount,charge,note,S.user.id);
   if(error) return err(error);
   if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
   else toast('POS transaction recorded');
@@ -1998,8 +2011,8 @@ async function loadPosTransactions(){
   const {data,error}=await sb.from('pos_transactions').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
   if(error) return;
   const fmtD=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  $('#posList').outerHTML=`<div id="posList">${data.length?`<table><thead><tr><th>Date</th><th class="r">Cash given</th><th class="r">Charge kept</th><th>Note</th></tr></thead>
-  <tbody>${data.map(p=>`<tr><td class="num hint" data-label="Date">${fmtD(p.created_at)}</td><td class="r num" data-label="Cash given">${money(p.amount)}</td><td class="r num" data-label="Charge kept">${money(p.charge)}</td><td class="hint" data-label="Note">${esc(p.note||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No POS transactions yet.</div>'}</div>`;
+  $('#posList').outerHTML=`<div id="posList">${data.length?`<table><thead><tr><th>Date</th><th>Direction</th><th class="r">Cash</th><th class="r">Charge kept</th><th>Note</th></tr></thead>
+  <tbody>${data.map(p=>`<tr><td class="num hint" data-label="Date">${fmtD(p.created_at)}</td><td data-label="Direction"><span class="badge blue">${p.type==='cash_out'?'Gave cash':'Took cash'}</span></td><td class="r num" data-label="Cash">${money(p.amount)}</td><td class="r num" data-label="Charge kept">${money(p.charge)}</td><td class="hint" data-label="Note">${esc(p.note||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No POS transactions yet.</div>'}</div>`;
 }
 async function loadTillSummary(){
   const {data,error}=await sb.rpc('till_summary',{b:S.biz.id});
@@ -2508,7 +2521,9 @@ function pendingChangeText(c){
     return `${nm}: expected ${item?breakdownQty(item,p.exp):fmtPacks(p.exp)}, counted ${item?breakdownQty(item,p.counted):fmtPacks(p.counted)}${p.apply?' (corrected system stock)':' (system stock not corrected)'}${p.note?` — ${p.note}`:''}`;
   }
   if(c.action_type==='till_clear') return `${money(p.amount)} ${p.method} cleared${p.note?` — ${p.note}`:''}`;
-  if(c.action_type==='pos_transaction') return `${money(p.amount)} cash given, ${money(p.amount+(p.charge||0))} received${p.charge?`, kept ${money(p.charge)}`:''}${p.note?` — ${p.note}`:''}`;
+  if(c.action_type==='pos_transaction') return p.type==='cash_out'
+    ? `${money(p.amount)} cash given, ${money(p.amount+(p.charge||0))} received${p.charge?`, kept ${money(p.charge)}`:''}${p.note?` — ${p.note}`:''}`
+    : `${money(p.amount)} cash received, ${money(Math.max(p.amount-(p.charge||0),0))} sent${p.charge?`, kept ${money(p.charge)}`:''}${p.note?` — ${p.note}`:''}`;
   return c.action_type;
 }
 async function vApprovals(v){
@@ -2576,8 +2591,12 @@ function renderApprovalCard(c){
     body=`<p><b>${money(c.payload.amount)} ${esc(c.payload.method)}</b></p>
       ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
   }else if(c.action_type==='pos_transaction'){
-    body=`<p><b>${money(c.payload.amount)} cash given</b></p>
+    body = c.payload.type==='cash_out'
+      ? `<p><b>${money(c.payload.amount)} cash given</b></p>
       <p class="hint">Customer pays ${money(c.payload.amount+(c.payload.charge||0))} by transfer/card${c.payload.charge?`, you keep ${money(c.payload.charge)}`:''}</p>
+      ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`
+      : `<p><b>${money(c.payload.amount)} cash received</b></p>
+      <p class="hint">You send ${money(Math.max(c.payload.amount-(c.payload.charge||0),0))} by transfer/card${c.payload.charge?`, you keep ${money(c.payload.charge)}`:''}</p>
       ${c.payload.note?`<p class="hint">${esc(c.payload.note)}</p>`:''}`;
   }
   return `<div class="card" id="pc-${c.id}"><div class="hd"><h2>${label}</h2><span class="desc">requested ${fmt(c.created_at)}</span></div><div class="bd">
@@ -2646,7 +2665,7 @@ async function approveChange(id,silent){
       applyDetail=detail;
     }else if(c.action_type==='pos_transaction'){
       const p=c.payload;
-      const {error,detail}=await applyPosTransaction(p.amount,p.charge,p.note,c.requested_by);
+      const {error,detail}=await applyPosTransaction(p.type,p.amount,p.charge,p.note,c.requested_by);
       if(error) throw error;
       applyDetail=detail;
     }

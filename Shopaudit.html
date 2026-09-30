@@ -94,6 +94,134 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
   box-shadow:0 10px 30px rgba(23,21,15,.3)}
 .tourCallout p{font-size:14px;color:var(--text);line-height:1.5;margin:6px 0 12px}
 
+
+
+/* Form Sections */
+.formSection{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:16px}
+.formSectionHead{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.formSectionHead h3{font-family:'Fraunces',serif;font-size:16px;font-weight:600;color:var(--ink);letter-spacing:-.01em}
+.formSectionHead .desc{font-size:12.5px;color:var(--muted);font-weight:400}
+
+/* Filter Chips */
+.chipRow{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px;-webkit-overflow-scrolling:touch}
+.chip{padding:7px 13px;border-radius:99px;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--muted);white-space:nowrap;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--green);color:var(--ink)}
+.chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* Category Headers */
+.catHead{display:flex;align-items:center;gap:8px;padding:10px 4px 8px;font-weight:700;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;border-bottom:1px solid var(--line);margin-bottom:8px}
+.catHead .catCount{font-weight:600;color:var(--muted);font-size:11px;background:#EFE8DA;padding:2px 7px;border-radius:99px;margin-left:auto}
+
+/* Enhanced Product Cards in POS */
+.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:10px;transition:all .15s ease;cursor:pointer;box-shadow:0 1px 2px rgba(23,21,15,.03)}
+.prod:hover{border-color:var(--green);box-shadow:0 4px 12px rgba(31,90,65,.08)}
+.prod.expanded{border-color:var(--green);box-shadow:0 0 0 2px rgba(31,90,65,.15)}
+.prod .phead{display:flex;align-items:flex-start;gap:10px}
+.prod .pIcon{width:36px;height:36px;flex:0 0 auto;border-radius:10px;background:#EFE8DA;color:var(--green-d);display:grid;place-items:center;font-weight:700;font-size:14px;font-family:'Fraunces',serif}
+.prod .pname{font-weight:700;font-size:14px;line-height:1.3;color:var(--ink)}
+.prod .pcat{font-size:11.5px;color:var(--muted)}
+.prod .pprice{font-family:'Fraunces',serif;font-weight:700;color:var(--green);font-size:15px;white-space:nowrap}
+.prod .modeTag{font-size:11px;font-weight:600;color:var(--gold);background:#F3E8D2;padding:2px 7px;border-radius:99px;display:inline-block;width:fit-content}
+.prod .opts{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px dashed var(--line);cursor:default}
+.prod .opt{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-weight:600;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer;transition:all .12s}
+.prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
+.prod .opt small{font-family:'Fraunces',serif;font-weight:700;color:var(--green);font-size:13.5px}
+.prod .opt .addBtn{font-size:11px;font-weight:700;background:var(--green);color:#fff;padding:3px 8px;border-radius:6px;margin-left:6px}
+
+/* Enhanced Cart Segment & Rows */
+.paySegment{display:flex;background:#EFE8DA;border-radius:11px;padding:4px;gap:4px;margin:0 16px 14px}
+.paySegment button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;font-weight:600;font-size:13px;color:var(--muted);transition:all .12s;cursor:pointer}
+.paySegment button.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(23,21,15,.08);font-weight:700}
+.cstep{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#FCFAF5}
+.cstep button{width:28px;height:30px;font-size:16px;font-weight:700;color:var(--green);display:grid;place-items:center;transition:background .1s}
+.cstep button:hover{background:#F0F5F1}
+.cstep span{min-width:28px;text-align:center;font-weight:700;font-size:13px}
+
+/* Customer CRM Avatar */
+.custAvatar{width:34px;height:34px;border-radius:10px;background:#EFE8DA;color:var(--green-d);display:grid;place-items:center;font-weight:700;font-size:13px;font-family:'Fraunces',serif;flex:0 0 auto}
+
+/* Categorized Overlay Menu */
+.navSectionTitle{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:14px 0 6px}
+.navSectionTitle:first-child{margin-top:0}
+.navItemBtn{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:10px;font-weight:600;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);text-align:left;transition:all .12s;cursor:pointer}
+.navItemBtn:hover{border-color:var(--green);background:#FBF8F1}
+.navItemBtn.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+
+/* ==================== PREMIUM DASHBOARD ==================== */
+.dashHeader{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.dashGreeting h1{font-family:'Fraunces',serif;font-size:26px;font-weight:700;letter-spacing:-.02em;color:var(--ink);line-height:1.2}
+.dashGreeting .dashDate{font-size:13px;color:var(--muted);font-weight:500;margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.dashActions{display:flex;gap:8px;flex-wrap:wrap}
+.dashActionBtn{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;font-weight:600;font-size:13.5px;background:var(--card);border:1px solid var(--line);color:var(--ink);box-shadow:0 1px 2px rgba(23,21,15,.04);transition:.15s;cursor:pointer}
+.dashActionBtn:hover{border-color:var(--green);background:#F6F3EB}
+.dashActionBtn.primary{background:var(--green);border-color:var(--green);color:#fff}
+.dashActionBtn.primary:hover{background:var(--green-d)}
+
+/* Hero Trading Pulse & Store Briefing */
+.dashHero{display:grid;grid-template-columns:1.35fr 1fr;gap:16px;margin-bottom:20px}
+@media(max-width:840px){.dashHero{grid-template-columns:1fr}}
+.heroCard{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px 24px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.heroCard::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,var(--green-d),var(--green),var(--gold))}
+.heroTop{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.heroLabel{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.heroPill{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.heroPill.up{background:#E6F0E9;color:var(--green)}
+.heroPill.down{background:#FBEFD8;color:var(--amber)}
+.heroPill.neutral{background:#EFE8DA;color:var(--muted)}
+.heroAmount{font-family:'Fraunces',serif;font-weight:700;font-size:36px;letter-spacing:-.03em;color:var(--ink);line-height:1.1;margin-bottom:10px}
+.heroMetaRow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.heroMetaTag{font-size:12.5px;color:var(--muted);font-weight:600}
+.heroMetaTag.good{color:var(--green)}
+.heroSplits{display:flex;gap:12px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--line)}
+.heroSplitItem{flex:1;min-width:85px}
+.heroSplitItem .splitLbl{font-size:11px;font-weight:600;text-transform:uppercase;color:var(--muted);letter-spacing:.04em;display:flex;align-items:center;gap:4px}
+.heroSplitItem .splitVal{font-weight:700;font-size:15px;color:var(--ink);margin-top:2px}
+.heroSplitItem .splitVal.bad{color:var(--red)}
+
+/* Executive Briefing Card */
+.briefingCard{background:#FCFAF5;border:1px solid var(--line);border-radius:18px;padding:20px 22px;box-shadow:var(--shadow);display:flex;flex-direction:column;justify-content:space-between}
+.briefingHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.briefingHead h3{font-family:'Fraunces',serif;font-size:16px;font-weight:600;letter-spacing:-.01em;display:flex;align-items:center;gap:6px;color:var(--ink)}
+.briefingLines{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.briefingItem{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;color:var(--ink);line-height:1.45}
+.briefingDot{width:6px;height:6px;border-radius:50%;background:var(--green);margin-top:7px;flex:0 0 auto}
+.briefingBtn{margin-top:auto;width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-weight:600;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--green-d);transition:all .15s;cursor:pointer}
+.briefingBtn:hover{border-color:var(--green);background:#F0F5F1}
+
+/* Secondary Stat Grid */
+.dashGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:22px}
+.dashStatCard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px 18px;box-shadow:var(--shadow);display:flex;flex-direction:column;transition:transform .12s ease,border-color .12s ease}
+.dashStatCard:hover{border-color:#D6CEBE}
+.dashStatCard.alert{border-color:#E8C9C5}
+.dashStatCard.warn{border-color:#F0DBB5}
+.dashStatHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.dashStatLabel{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.dashStatIcon{width:28px;height:28px;border-radius:8px;display:grid;place-items:center}
+.dashStatIcon.green{background:#E6F0E9;color:var(--green)}
+.dashStatIcon.amber{background:#FBEFD8;color:var(--amber)}
+.dashStatIcon.red{background:#F8E2E0;color:var(--red)}
+.dashStatIcon.blue{background:#EAEEF6;color:#2C4A78}
+.dashStatVal{font-family:'Fraunces',serif;font-size:24px;font-weight:700;letter-spacing:-.02em;color:var(--ink);line-height:1.2}
+.dashStatSub{font-size:12px;color:var(--muted);margin-top:4px;display:flex;align-items:center;justify-content:space-between}
+
+/* Actionable Alerts Section */
+.alertGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:22px}
+@media(max-width:680px){.alertGrid{grid-template-columns:1fr}}
+
+/* Segmented Control for Tables */
+.dashNavTabs{display:flex;background:#EFE8DA;border-radius:12px;padding:4px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.dashNavBtn{padding:8px 14px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted);white-space:nowrap;transition:all .15s;cursor:pointer}
+.dashNavBtn.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(23,21,15,.08)}
+.dashNavBtn:hover:not(.active){color:var(--ink)}
+
+/* Top item ranking row with progress bar */
+.rankRow{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
+.rankRow:last-child{border-bottom:none}
+.rankNum{font-family:'Fraunces',serif;font-size:16px;font-weight:700;color:var(--muted);width:22px;text-align:center}
+.rankInfo{flex:1;min-width:0}
+.rankBarWrap{width:100%;height:5px;border-radius:99px;background:#EFE8DA;margin-top:6px;overflow:hidden}
+.rankBar{height:100%;border-radius:99px;background:var(--green)}
+
 /* cards & grid */
 .view{padding:22px 0 80px}
 .row{display:flex;gap:14px;flex-wrap:wrap}
@@ -374,7 +502,12 @@ const ICON_PATHS = {
   barcode:'<rect x="3" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/><rect x="6.4" y="4" width="1" height="16" fill="currentColor" stroke="none"/><rect x="9" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/><rect x="12.2" y="4" width="1" height="16" fill="currentColor" stroke="none"/><rect x="14.7" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/><rect x="18" y="4" width="1" height="16" fill="currentColor" stroke="none"/><rect x="20.4" y="4" width="1.6" height="16" fill="currentColor" stroke="none"/>',
   printer:'<path d="M6 9V3h12v6"/><rect x="3.5" y="9" width="17" height="8" rx="1.5"/><rect x="7" y="14" width="10" height="7"/>',
   menu:'<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
-  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>',
+  trend_up:'<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>',
+  trend_down:'<polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>',
+  box:'<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+  receipt:'<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/>',
+  sparkle:'<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/>'
 };
 function icon(name,cls){ return `<svg class="ic${cls?' '+cls:''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name]||''}</svg>`; }
 // opens the payment page in the device's own browser, never embedded in-app —
@@ -767,23 +900,79 @@ function waNumber(phone){
 function buildNav(){
   $('#navToggleBtn').classList.remove('hidden'); $('#topSignoutBtn').classList.add('hidden');
   if(!planActive()){ $('#navCurrent').textContent='Upgrade required'; $('#navGrid').innerHTML=''; return; }
-  let tabs;
-  if(S.role==='admin'){
-    tabs=[['dashboard','Dashboard'],['sell','Sell'],['additem','Add item'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['reports','Reports'],['expenses','Expenses'],['members','Team'],['settings','Settings'],['audit','Audit log'],['approvals','Approvals'],['eod','End of day']];
-    // branch management lives on the root business only — a branch doesn't
-    // get to spawn its own sub-branches, keeps the structure flat
-    if(!S.biz.parent_business_id) tabs.splice(10,0,['branches','Branches']);
-  }else if(S.role==='manager'){
-    // no Reports (full business financials) and no cost/profit figures
-    // elsewhere — a manager is staff, promoted, not the owner
-    tabs=[['dashboard','Dashboard'],['sell','Sell'],['additem','Add item'],['items','Items'],['restock','Restock'],['customers','Customers'],['reconcile','Reconcile'],['till','Till'],['expenses','Expenses'],['eod','End of day']];
-  }else{
-    tabs=[['sell','Sell'],['customers','Customers'],['mysales','My sales'],['stocklist','Items']];
+  
+  const navCategories = [
+    {
+      title: 'Daily Operations',
+      items: [
+        ['dashboard', 'Dashboard', 'sparkle'],
+        ['sell', 'Point of Sale', 'cart'],
+        ['till', 'Till & Cash', 'bank'],
+        ['restock', 'Restock Stock', 'box'],
+        ['expenses', 'Store Expenses', 'receipt'],
+        ['eod', 'End of Day', 'clock']
+      ]
+    },
+    {
+      title: 'Inventory & Catalog',
+      items: [
+        ['items', 'All Items', 'box'],
+        ['additem', 'Add New Item', 'plus'],
+        ['reconcile', 'Reconcile Stock', 'check'],
+        ['stocklist', 'Items Catalog', 'box']
+      ]
+    },
+    {
+      title: 'Customers & Finance',
+      items: [
+        ['customers', 'Customers & Debt', 'user'],
+        ['reports', 'Financial Reports', 'trend_up'],
+        ['mysales', 'My Sales', 'cart']
+      ]
+    },
+    {
+      title: 'Store Administration',
+      items: [
+        ['members', 'Team & Staff', 'user'],
+        ['approvals', 'Approvals Queue', 'check'],
+        ['branches', 'Store Branches', 'bank'],
+        ['audit', 'Audit Activity Log', 'receipt'],
+        ['settings', 'Settings & WhatsApp', 'settings']
+      ]
+    }
+  ];
+
+  if(TERMINAL_ENABLED) {
+    navCategories[0].items.splice(2, 0, ['terminal', 'Card Terminal', 'card']);
   }
-  if(TERMINAL_ENABLED) tabs.splice(1,0,['terminal','Card terminal']);
-  const current=tabs.find(([k])=>k===S.tab);
-  $('#navCurrent').textContent=current?current[1]:'Menu';
-  $('#navGrid').innerHTML = tabs.map(([k,l])=>`<button class="${S.tab===k?'active':''}" onclick="go('${k}')">${l}</button>`).join('');
+
+  let allowedKeys = [];
+  if(S.role==='admin'){
+    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings'];
+    if(!S.biz.parent_business_id) allowedKeys.push('branches');
+  } else if(S.role==='manager'){
+    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers'];
+  } else {
+    allowedKeys = ['sell','customers','mysales','stocklist'];
+  }
+  if(TERMINAL_ENABLED) allowedKeys.push('terminal');
+
+  let currentLabel = 'Menu';
+  let html = '';
+  navCategories.forEach(cat => {
+    const activeItems = cat.items.filter(([k]) => allowedKeys.includes(k));
+    if(!activeItems.length) return;
+    html += `<div class="navSectionTitle">${cat.title}</div><div class="grid" style="margin-bottom:8px">`;
+    activeItems.forEach(([k, label, iconName]) => {
+      const isActive = S.tab === k;
+      if(isActive) currentLabel = label;
+      html += `<button class="navItemBtn ${isActive?'active':''}" onclick="go('${k}')">${icon(iconName)} <span>${label}</span></button>`;
+    });
+    html += `</div>`;
+  });
+
+  $('#navCurrent').textContent = currentLabel;
+  $('#navGrid').innerHTML = html;
 }
 function go(t){ S.tab=t; buildNav(); closeNavMenu(); render(); }
 function toggleNavMenu(){ $('#navMenu').classList.toggle('show'); }
@@ -1137,14 +1326,47 @@ async function joinBiz(){
 /* ============================================================
    ADMIN — DASHBOARD
    ============================================================ */
+let dashTab = 'sales'; // 'sales' | 'top' | 'stock'
+let dashStockQuery = '';
+
+function setDashTab(t){
+  dashTab = t;
+  document.querySelectorAll('.dashNavBtn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.dashTabPane').forEach(p => p.classList.toggle('hidden', p.id !== 'dashPane-' + t));
+}
+
+function quickRestock(itemId){
+  go('restock');
+  setTimeout(()=>{
+    const sel = $('#rItem');
+    if(sel){ sel.value = itemId; rModeOptions(); }
+  }, 50);
+}
+
+function filterDashStockTable(q){
+  dashStockQuery = q.trim().toLowerCase();
+  const tbody = $('#dashStockTableBody');
+  if(!tbody) return;
+  const list = S.items.filter(i => !dashStockQuery || i.name.toLowerCase().includes(dashStockQuery) || (i.category||'').toLowerCase().includes(dashStockQuery));
+  if(!list.length){
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">No matching items found.</td></tr>';
+    return;
+  }
+  const sold = S._dashSold || {};
+  tbody.innerHTML = list.map(i => {
+    const oh = onHand(i.id);
+    const b = oh <= 0 ? 'out' : oh <= i.low_stock_threshold ? 'low' : 'ok';
+    return `<tr>
+      <td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td>
+      <td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td>
+      <td class="r" data-label="Stock"><span class="badge ${b}">${stockShort(i)}</span></td>
+      <td class="r num" data-label="Sold (120d)">${breakdownQty(i, sold[i.id]||0)}</td>
+    </tr>`;
+  }).join('');
+}
+
 async function vDashboard(v){
   v.innerHTML='<div class="empty">Loading…</div>';
-  // bounded to a rolling window rather than fetching a business's entire sales
-  // history on every Dashboard load — that re-downloads more and more data
-  // forever as a shop's history grows, which is real bandwidth cost, not just
-  // a performance nicety. 120 days comfortably covers everything this page
-  // actually shows (today, this month, last 30 *active* days, a 7-day trailing
-  // average) with margin to spare; true all-time figures live in Reports.
   const windowStart=(()=>{const d=new Date();d.setDate(d.getDate()-120);return d.toISOString().slice(0,10);})();
   const [salesRes,expRes]=await Promise.all([
     sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',windowStart),
@@ -1161,10 +1383,12 @@ async function vDashboard(v){
   const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
   const stockValue=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
 
-  // day-by-day (net of that day's approved expenses)
-  // "items sold" is a plain count of sale line-items, not a sum of base_units —
-  // base_units mixes different items' pack sizes together into a meaningless
-  // decimal (e.g. 2 packs of rice + 5.5 packs of soda showing as "7.5")
+  // Payment breakdown today
+  const dayCash=sum(dayS.filter(s=>(s.payment_method||'cash')==='cash'), rev);
+  const dayTransfer=sum(dayS.filter(s=>s.payment_method==='transfer'), rev);
+  const dayCredit=sum(dayS.filter(s=>s.payment_method==='credit'), rev);
+
+  // Day-by-day (net of that day's approved expenses)
   const byDay={}; sales.forEach(s=>{ (byDay[s.entry_date]??=({c:0,r:0,p:0})); byDay[s.entry_date].c+=1; byDay[s.entry_date].r+=rev(s); byDay[s.entry_date].p+=prof(s); });
   const byDayExp={}; exps.forEach(e=>{ byDayExp[e.entry_date]=(byDayExp[e.entry_date]||0)+Number(e.amount); });
   Object.keys(byDayExp).forEach(d=>{ (byDay[d]??=({c:0,r:0,p:0})); });
@@ -1172,6 +1396,17 @@ async function vDashboard(v){
 
   // per-item sold + remaining (in base units)
   const sold={}; sales.forEach(s=>sold[s.item_id]=(sold[s.item_id]||0)+(s.base_units||s.quantity));
+  S._dashSold = sold;
+
+  // Top selling items (by revenue) in 120-day window
+  const itemRev={};
+  sales.forEach(s=> { itemRev[s.item_id] = (itemRev[s.item_id]||0) + rev(s); });
+  const topItemsRanked = Object.entries(itemRev)
+    .map(([id, r]) => ({ id, revenue: r, item: S.items.find(x => x.id === id), soldUnits: sold[id] || 0 }))
+    .filter(x => x.item)
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 10);
+  const maxTopRev = topItemsRanked.length ? topItemsRanked[0].revenue : 1;
 
   // today's customers, for the end-of-day thank-you round
   const todayCustIds=[...new Set(dayS.filter(s=>s.customer_id).map(s=>s.customer_id))];
@@ -1180,42 +1415,337 @@ async function vDashboard(v){
 
   const story=todayStory(sales);
   const isMgr=S.role==='manager';
-  v.innerHTML=`
-    <div class="card"><div class="hd"><h2>Today's story</h2><span class="desc">how the shop did today, in plain terms</span></div><div class="bd">
-      ${todayStoryLines(story,isMgr).map(l=>`<p style="margin-bottom:4px">${esc(l)}</p>`).join('')}
-    </div></div>
-    <div class="stats">
-      <div class="stat good"><div class="label">Today's revenue</div><div class="value num">${money(sum(dayS,rev))}</div><div class="sub num">${dayS.length} item(s) sold${isMgr?'':` · net profit ${money(sum(dayS,prof)-dayExp)}`}</div></div>
-      <div class="stat"><div class="label">This month's revenue</div><div class="value num">${money(sum(monS,rev))}</div><div class="sub num">${isMgr?`${monS.length} item(s) sold`:`net profit ${money(sum(monS,prof)-monExp)} · expenses ${money(monExp)}`}</div></div>
-      <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low / out of stock</div><div class="value num">${lowItems.length}</div><div class="sub">of ${S.items.length} items</div></div>
-      <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Outstanding credit</div><div class="value num">${money(totalOwed())}</div><div class="sub">owed by ${S.customers.filter(c=>balanceOf(c.id)>0).length} customer(s)</div></div>
-      ${isMgr?'':`<div class="stat"><div class="label">Stock value (at cost)</div><div class="value num">${money(stockValue)}</div><div class="sub">money sitting on shelves</div></div>`}
+
+  // Greeting & date
+  const nowHour = new Date().getHours();
+  const timeGreeting = nowHour < 12 ? 'Good morning' : nowHour < 17 ? 'Good afternoon' : 'Good evening';
+  const fullDateStr = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
+
+  // Today totals
+  const todayRevenue = sum(dayS, rev);
+  const todayNetProfit = sum(dayS, prof) - dayExp;
+  const monthRevenue = sum(monS, rev);
+  const monthNetProfit = sum(monS, prof) - monExp;
+  const creditOwingCusts = S.customers.filter(c => balanceOf(c.id) > 0);
+
+  // Story comparison badge
+  let trendBadgeHtml = '';
+  if (story.vsAvgPct !== null) {
+    if (story.vsAvgPct > 0) {
+      trendBadgeHtml = `<span class="heroPill up">${icon('trend_up')} +${story.vsAvgPct}% vs 7d avg</span>`;
+    } else if (story.vsAvgPct < 0) {
+      trendBadgeHtml = `<span class="heroPill down">${icon('trend_down')} ${story.vsAvgPct}% vs 7d avg</span>`;
+    } else {
+      trendBadgeHtml = `<span class="heroPill neutral">On pace with 7d avg</span>`;
+    }
+  } else if (dayS.length > 0) {
+    trendBadgeHtml = `<span class="heroPill up">${icon('check')} First sales recorded</span>`;
+  } else {
+    trendBadgeHtml = `<span class="heroPill neutral">Awaiting first sale today</span>`;
+  }
+
+  v.innerHTML = `
+    <!-- Top Command Center -->
+    <div class="dashHeader">
+      <div class="dashGreeting">
+        <h1>${esc(S.biz.name)}</h1>
+        <div class="dashDate">${timeGreeting} · ${fullDateStr} · <span class="rolepill ${isMgr ? 'mgr' : ''}">${isMgr ? 'Manager' : 'Administrator'}</span></div>
+      </div>
+      <div class="dashActions">
+        <button class="dashActionBtn primary" onclick="go('sell')">${icon('cart')} <span>New Sale</span></button>
+        <button class="dashActionBtn" onclick="go('restock')">${icon('box')} <span>Restock</span></button>
+        <button class="dashActionBtn" onclick="go('expenses')">${icon('receipt')} <span>Expense</span></button>
+        <button class="dashActionBtn" onclick="go('till')">${icon('bank')} <span>Till</span></button>
+        ${S.biz.wa_enabled ? `<button class="dashActionBtn" onclick="sendWhatsAppSummary()">${icon('chat')} <span>Daily Summary</span></button>` : ''}
+      </div>
     </div>
-    ${S.biz.wa_enabled?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px"><b>WhatsApp daily summary</b><div class="hint">Composes today's numbers and opens WhatsApp ready to send.</div></div>
-      <button class="btn primary" onclick="sendWhatsAppSummary()">Send today's summary</button>
-    </div></div>`:''}
-    ${todayCusts.length?`<div class="card"><div class="hd"><h2>Today's customers</h2><span class="desc">${todayCusts.filter(c=>c.phone).length} with phone · say thanks before you close up</span><div class="spacer"></div>
-      ${todayCusts.some(c=>c.phone)?`<button class="btn primary sm" onclick="openThanksRound()">Start thank-you round →</button>`:''}</div><div class="bd tight">
-      <table><tbody>${todayCusts.map(c=>`<tr>
-        <td class="itemname">${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:'<div class="cat">no phone saved</div>'}</td>
-        <td class="r">${c.phone?`<button class="btn ghost sm" onclick='waCustomer("${c.id}","thanks")'>${icon('chat')} Thank you</button>`:'<span class="hint">—</span>'}</td>
-      </tr>`).join('')}</tbody></table>
-    </div></div>`:''}
-    ${lowItems.length?`<div class="card"><div class="hd"><h2>${icon('alert')} Needs restocking</h2></div><div class="bd tight">
-      <table><tbody>${lowItems.sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i=>`<tr><td class="itemname">${esc(i.name)}</td><td class="r">${onHand(i.id)<=0?'<span class="badge out">Out</span>':`<span class="badge low">${stockShort(i)} left</span>`}</td><td class="r hint">reorder at ${esc(breakdownQty(i,i.low_stock_threshold))}</td></tr>`).join('')}</tbody></table>
-    </div></div>`:''}
+
+    <!-- Executive Pulse: Hero Trading Card + Today's Briefing -->
+    <div class="dashHero">
+      <!-- Left Hero Card: Trading Pulse -->
+      <div class="heroCard">
+        <div>
+          <div class="heroTop">
+            <span class="heroLabel">Today's Revenue</span>
+            ${trendBadgeHtml}
+          </div>
+          <div class="heroAmount num">${money(todayRevenue)}</div>
+          <div class="heroMetaRow">
+            <span class="heroMetaTag">${dayS.length} sale${dayS.length===1?'':'s'} made today</span>
+            ${!isMgr ? `<span class="heroMetaTag good">Net Profit: ${money(todayNetProfit)}${todayRevenue>0 ? ` (${Math.round((todayNetProfit/todayRevenue)*100)}%)` : ''}</span>` : ''}
+          </div>
+        </div>
+        <div class="heroSplits">
+          <div class="heroSplitItem">
+            <div class="splitLbl">${icon('cash')} Cash</div>
+            <div class="splitVal num">${money(dayCash)}</div>
+          </div>
+          <div class="heroSplitItem">
+            <div class="splitLbl">${icon('bank')} Transfer</div>
+            <div class="splitVal num">${money(dayTransfer)}</div>
+          </div>
+          <div class="heroSplitItem">
+            <div class="splitLbl">${icon('card')} Credit</div>
+            <div class="splitVal num ${dayCredit>0?'bad':''}">${money(dayCredit)}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Hero Card: Store Briefing -->
+      <div class="briefingCard">
+        <div>
+          <div class="briefingHead">
+            <h3>${icon('sparkle')} Today's Briefing</h3>
+            <span class="hint" style="font-size:12px">${dayS.length ? 'Live Activity' : 'Store Open'}</span>
+          </div>
+          <div class="briefingLines">
+            ${todayStoryLines(story, isMgr).map(line => `
+              <div class="briefingItem">
+                <span class="briefingDot"></span>
+                <span>${esc(line)}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        ${S.biz.wa_enabled ? `
+          <button class="briefingBtn" onclick="sendWhatsAppSummary()">
+            ${icon('chat')} Send WhatsApp Summary to Owner
+          </button>
+        ` : (todayCusts.some(c=>c.phone) ? `
+          <button class="briefingBtn" onclick="openThanksRound()">
+            ${icon('chat')} Start Customer Thank-You Round →
+          </button>
+        ` : `
+          <div class="hint" style="font-size:12.5px;text-align:center;padding:4px 0">All inventory and sales live-synced</div>
+        `)}
+      </div>
+    </div>
+
+    <!-- Secondary Metrics Grid -->
+    <div class="dashGrid">
+      <div class="dashStatCard">
+        <div class="dashStatHead">
+          <span class="dashStatLabel">This Month</span>
+          <span class="dashStatIcon green">${icon('trend_up')}</span>
+        </div>
+        <div class="dashStatVal num">${money(monthRevenue)}</div>
+        <div class="dashStatSub">
+          <span>${isMgr ? `${monS.length} item(s) sold` : `Profit: ${money(monthNetProfit)}`}</span>
+          ${!isMgr && monExp>0 ? `<span class="hint">Exp: ${money(monExp)}</span>` : ''}
+        </div>
+      </div>
+
+      <div class="dashStatCard">
+        <div class="dashStatHead">
+          <span class="dashStatLabel">Stock Valuation</span>
+          <span class="dashStatIcon blue">${icon('box')}</span>
+        </div>
+        <div class="dashStatVal num">${isMgr ? `${S.items.length} items` : money(stockValue)}</div>
+        <div class="dashStatSub">
+          <span>${isMgr ? 'active products' : 'Capital on shelves (cost)'}</span>
+          <a href="#" onclick="go('items');return false" class="hint">View all →</a>
+        </div>
+      </div>
+
+      <div class="dashStatCard ${totalOwed()>0 ? 'warn' : ''}">
+        <div class="dashStatHead">
+          <span class="dashStatLabel">Customer Credit</span>
+          <span class="dashStatIcon ${totalOwed()>0 ? 'red' : 'green'}">${icon('user')}</span>
+        </div>
+        <div class="dashStatVal num">${money(totalOwed())}</div>
+        <div class="dashStatSub">
+          <span>${creditOwingCusts.length} customer(s) owing</span>
+          <a href="#" onclick="go('customers');return false" class="hint">View list →</a>
+        </div>
+      </div>
+
+      <div class="dashStatCard ${lowItems.length>0 ? 'alert' : ''}">
+        <div class="dashStatHead">
+          <span class="dashStatLabel">Stock Watchlist</span>
+          <span class="dashStatIcon ${lowItems.length>0 ? 'amber' : 'green'}">${icon('alert')}</span>
+        </div>
+        <div class="dashStatVal num">${lowItems.length}</div>
+        <div class="dashStatSub">
+          <span>${lowItems.length>0 ? 'Require restock' : 'All items in stock'}</span>
+          <span class="hint">of ${S.items.length} items</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actionable Alerts Section -->
+    ${(lowItems.length > 0 || todayCusts.length > 0) ? `
+      <div class="alertGrid">
+        ${lowItems.length ? `
+          <div class="card" style="margin-bottom:0">
+            <div class="hd">
+              <h2>${icon('alert')} Needs Restocking</h2>
+              <span class="desc">${lowItems.length} item(s) low</span>
+              <div class="spacer"></div>
+              <button class="btn ghost sm" onclick="go('restock')">Restock all →</button>
+            </div>
+            <div class="bd tight">
+              <table><tbody>
+                ${lowItems.slice(0, 6).sort((a,b)=>onHand(a.id)-onHand(b.id)).map(i => `
+                  <tr>
+                    <td class="itemname">
+                      ${esc(i.name)}
+                      <div class="cat">Alert below ${esc(breakdownQty(i, i.low_stock_threshold))}</div>
+                    </td>
+                    <td class="r">
+                      ${onHand(i.id)<=0 ? '<span class="badge out">Out of stock</span>' : `<span class="badge low">${stockShort(i)} left</span>`}
+                    </td>
+                    <td class="r" style="width:90px">
+                      <button class="btn ghost sm" onclick="quickRestock('${i.id}')">Restock</button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody></table>
+            </div>
+          </div>
+        ` : ''}
+
+        ${todayCusts.length ? `
+          <div class="card" style="margin-bottom:0">
+            <div class="hd">
+              <h2>${icon('user')} Today's Customers</h2>
+              <span class="desc">${todayCusts.length} buyer${todayCusts.length===1?'':'s'} today</span>
+              <div class="spacer"></div>
+              ${todayCusts.some(c=>c.phone) ? `<button class="btn primary sm" onclick="openThanksRound()">Thank-you round →</button>` : ''}
+            </div>
+            <div class="bd tight">
+              <table><tbody>
+                ${todayCusts.slice(0, 6).map(c => `
+                  <tr>
+                    <td class="itemname">
+                      ${esc(c.name)}
+                      <div class="cat">${c.phone ? esc(c.phone) : 'No phone saved'}</div>
+                    </td>
+                    <td class="r">
+                      ${c.phone ? `<button class="btn ghost sm" onclick='waCustomer("${c.id}","thanks")'>${icon('chat')} Say Thanks</button>` : '<span class="hint">—</span>'}
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody></table>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    ` : ''}
+
     ${expiringSoonCard()}
-    <div class="card"><div class="hd"><h2>Day-by-day sales</h2><span class="desc">last 30 active days${isMgr?'':' · net of approved expenses'}</span></div><div class="bd tight rtable">
-      ${days.length?`<table><thead><tr><th>Date</th><th class="r">Items sold</th><th class="r">Revenue</th>${isMgr?'':'<th class="r">Expenses</th><th class="r">Net profit</th>'}</tr></thead>
-      <tbody>${days.map(([d,o])=>`<tr><td class="num">${d}</td><td class="r num" data-label="Items sold">${o.c}</td><td class="r num" data-label="Revenue">${money(o.r)}</td>${isMgr?'':`<td class="r num" data-label="Expenses">${byDayExp[d]?money(byDayExp[d]):'—'}</td><td class="r num" style="color:var(--green)" data-label="Net profit">${money(o.p-(byDayExp[d]||0))}</td>`}</tr>`).join('')}</tbody></table>`
-      :'<div class="empty">No sales recorded yet.</div>'}
-    </div></div>
-    <div class="card"><div class="hd"><h2>Stock & sales per item</h2><span class="desc">sold, last 120 days${isMgr?'':' · see Reports for all-time'}</span></div><div class="bd tight rtable">
-      <table><thead><tr><th>Item</th><th class="r">Remaining</th><th class="r">Sold (120d)</th></tr></thead>
-      <tbody>${S.items.map(i=>{const oh=onHand(i.id);const b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';return `<tr><td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td><td class="r" data-label="Remaining"><span class="badge ${b}">${stockShort(i)}</span></td><td class="r num" data-label="Sold (120d)">${breakdownQty(i,sold[i.id]||0)}</td></tr>`;}).join('')||'<tr><td colspan="3" class="empty">No items yet.</td></tr>'}</tbody></table>
-    </div></div>`;
+
+    <!-- Interactive Analytics & Performance Hub (Segmented Tabs) -->
+    <div class="card" style="margin-top:20px">
+      <div class="hd" style="flex-wrap:wrap;gap:12px">
+        <h2>Store Activity & Performance</h2>
+        <div class="spacer"></div>
+        <div class="dashNavTabs">
+          <button class="dashNavBtn ${dashTab==='sales'?'active':''}" data-tab="sales" onclick="setDashTab('sales')">Day-by-Day Sales</button>
+          <button class="dashNavBtn ${dashTab==='top'?'active':''}" data-tab="top" onclick="setDashTab('top')">Top Selling Items</button>
+          <button class="dashNavBtn ${dashTab==='stock'?'active':''}" data-tab="stock" onclick="setDashTab('stock')">Full Catalog Status</button>
+        </div>
+      </div>
+
+      <!-- Tab 1: Day-by-Day Sales (30 Days) -->
+      <div class="dashTabPane ${dashTab==='sales'?'':'hidden'}" id="dashPane-sales">
+        <div class="bd tight rtable">
+          ${days.length ? `
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th class="r">Items Sold</th>
+                  <th class="r">Revenue</th>
+                  ${isMgr ? '' : '<th class="r">Expenses</th><th class="r">Net Profit</th>'}
+                </tr>
+              </thead>
+              <tbody>
+                ${days.map(([d,o]) => `
+                  <tr>
+                    <td class="num">${d}</td>
+                    <td class="r num" data-label="Items sold">${o.c}</td>
+                    <td class="r num" data-label="Revenue">${money(o.r)}</td>
+                    ${isMgr ? '' : `
+                      <td class="r num" data-label="Expenses">${byDayExp[d] ? money(byDayExp[d]) : '—'}</td>
+                      <td class="r num" style="color:${(o.p-(byDayExp[d]||0))>=0?'var(--green)':'var(--red)'};font-weight:700" data-label="Net profit">
+                        ${money(o.p-(byDayExp[d]||0))}
+                      </td>
+                    `}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          ` : '<div class="empty">No sales recorded yet.</div>'}
+        </div>
+      </div>
+
+      <!-- Tab 2: Top Selling Items -->
+      <div class="dashTabPane ${dashTab==='top'?'':'hidden'}" id="dashPane-top">
+        <div class="bd tight">
+          ${topItemsRanked.length ? `
+            <div style="padding:6px 0">
+              ${topItemsRanked.map((tItem, idx) => {
+                const pctOfTop = Math.max(10, Math.round((tItem.revenue / maxTopRev) * 100));
+                return `
+                  <div class="rankRow">
+                    <span class="rankNum">#${idx+1}</span>
+                    <div class="rankInfo">
+                      <div style="display:flex;justify-content:space-between;align-items:baseline">
+                        <span class="itemname">${esc(tItem.item.name)} <span class="cat">${esc(tItem.item.category||'General')}</span></span>
+                        <span class="num" style="font-weight:700;color:var(--green)">${money(tItem.revenue)}</span>
+                      </div>
+                      <div class="rankBarWrap">
+                        <div class="rankBar" style="width:${pctOfTop}%"></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:11.5px;color:var(--muted)">
+                        <span>${breakdownQty(tItem.item, tItem.soldUnits)} sold</span>
+                        <span>Current stock: ${stockShort(tItem.item)}</span>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : '<div class="empty">No item sales recorded yet.</div>'}
+        </div>
+      </div>
+
+      <!-- Tab 3: Full Catalog Status -->
+      <div class="dashTabPane ${dashTab==='stock'?'':'hidden'}" id="dashPane-stock">
+        <div style="padding:14px 18px 8px">
+          <input class="custInput" placeholder="Search catalog items…" oninput="filterDashStockTable(this.value)">
+        </div>
+        <div class="bd tight rtable">
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th class="r">Pack Price</th>
+                <th class="r">Remaining Stock</th>
+                <th class="r">Sold (120d)</th>
+              </tr>
+            </thead>
+            <tbody id="dashStockTableBody">
+              ${S.items.map(i => {
+                const oh = onHand(i.id);
+                const b = oh <= 0 ? 'out' : oh <= i.low_stock_threshold ? 'low' : 'ok';
+                return `
+                  <tr>
+                    <td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td>
+                    <td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td>
+                    <td class="r" data-label="Stock"><span class="badge ${b}">${stockShort(i)}</span></td>
+                    <td class="r num" data-label="Sold (120d)">${breakdownQty(i, sold[i.id]||0)}</td>
+                  </tr>
+                `;
+              }).join('') || '<tr><td colspan="4" class="empty">No items yet.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
 }
+
 
 /* ============================================================
    ADMIN — ITEMS  (set prices, stock thresholds)
@@ -1335,68 +1865,151 @@ function vAddItem(v){
   const atCap=!isPaid && S.items.length>=FREE_ITEM_CAP;
   v.innerHTML=`
   ${inTrial?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div class="hint">Free trial: <b>${trialDaysLeft()} day${trialDaysLeft()===1?'':'s'}</b> left, unlimited items and team included</div>
-    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
+    <div class="hint">Free trial: <b>${trialDaysLeft()} day${trialDaysLeft()===1?'':'s'}</b> remaining, full inventory and features active</div>
+    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade Plan</button>
   </div></div>`:''}
   ${!isPaid&&!inTrial?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
     <div class="hint">Free plan: <b>${S.items.length}/${FREE_ITEM_CAP}</b> items used${atCap?', limit reached':''}</div>
-    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade</button>
+    <div class="spacer"></div><button class="btn ghost sm" onclick="openUpgrade()">Upgrade Plan</button>
   </div></div>`:''}
-  <div class="card"><div class="hd"><h2>Add item</h2><span class="desc">${isManager?'sent to the admin for approval':'every item has a pack price; add other ways to sell it below'}</span></div><div class="bd">
-    ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:12px">Free plan limit reached. <a href="#" onclick="openUpgrade();return false">Upgrade</a> to add more items.</p>':''}
-    <div class="frow">
-      <div class="field"><label>Item name</label><input id="iName" placeholder="What you call this item"></div>
-      <div class="field"><label>Category</label><input id="iCat" placeholder="e.g. Category" value="General"></div>
+  <div class="card">
+    <div class="hd">
+      <h2>Add New Product</h2>
+      <span class="desc">${isManager?'Submits to administrator for approval':'Define pricing, opening stock, and fractional selling modes'}</span>
     </div>
-    <div class="frow">
-      <div class="field"><label>Pack price: sell (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 45000"></div>
-      ${isManager?'':`<div class="field"><label>Pack price: cost (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="what you bought it for" oninput="renderDraftModes()"></div>`}
-    </div>
-    ${isManager?'<p class="hint" style="margin:-6px 0 12px">Cost price is set by the admin — ask them to fill it in on Edit after this is approved.</p>':''}
-    <div class="field">
-      <label>Barcode (optional)</label>
-      <div style="display:flex;gap:8px">
-        <input id="iBarcode" placeholder="Scan or type" style="flex:1">
-        <button class="btn ghost sm" type="button" onclick="scanInto('iBarcode')">${icon('barcode')} Scan</button>
+    <div class="bd">
+      ${atCap&&!isManager?'<p class="hint" style="color:var(--red);margin-bottom:14px">Free plan limit reached. <a href="#" onclick="openUpgrade();return false">Upgrade</a> to add more items.</p>':''}
+      
+      <!-- Section 1: Item Identity -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>1. Product Identification</h3>
+          <span class="desc">Name, category, unit, and barcode</span>
+        </div>
+        <div class="frow">
+          <div class="field"><label>Item Name</label><input id="iName" placeholder="e.g. Royal Stallion Rice 50kg"></div>
+          <div class="field"><label>Category</label><input id="iCat" placeholder="e.g. Foodstuff, Drinks, Toiletries" value="General"></div>
+        </div>
+        <div class="frow">
+          <div class="field">
+            <label>Pack Unit Name</label>
+            ${unitSelectHtml('iUnit','Pack')}
+          </div>
+          <div class="field">
+            <label>Barcode (optional)</label>
+            <div style="display:flex;gap:8px">
+              <input id="iBarcode" placeholder="Scan or type barcode" style="flex:1">
+              <button class="btn ghost sm" type="button" onclick="scanInto('iBarcode')">${icon('barcode')} Scan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Pricing & Alerts -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>2. Pricing & Alert Thresholds</h3>
+          <span class="desc">Base pack selling price and low-stock warning</span>
+        </div>
+        <div class="frow">
+          <div class="field"><label>Pack Selling Price (₦)</label><input id="iPack" type="number" min="0" step="1" placeholder="e.g. 45000"></div>
+          ${isManager?'':`<div class="field"><label>Pack Cost Price (₦, optional)</label><input id="iPackCost" type="number" min="0" step="1" placeholder="What you paid per pack" oninput="renderDraftModes()"></div>`}
+        </div>
+        ${isManager?'<p class="hint" style="margin:-6px 0 12px">Cost price is set by the admin — ask them to fill it in after approval.</p>':''}
+        <div class="frow">
+          <div class="field"><label>Low-Stock Alert Level</label><input id="iThr" type="number" min="0" step="any" value="2" oninput="iThrInfo()"></div>
+          <div class="field"><label>Alert In Unit</label><select id="iThrMode" onchange="iThrInfo()"></select></div>
+        </div>
+        <p class="hint" id="iThrInfo" style="margin:-4px 0 6px"></p>
+      </div>
+
+      <!-- Section 3: Shelf Stock -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>3. Opening Inventory</h3>
+          <span class="desc">What is currently in stock on your shelves</span>
+        </div>
+        <div class="frow">
+          <div class="field"><label>Opening Stock</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5" oninput="iOpenInfo()"></div>
+          <div class="field"><label>Counted In</label><select id="iOpenMode" onchange="iOpenInfo()"></select></div>
+        </div>
+        <p class="hint" id="iOpenInfo" style="margin:-4px 0 12px"></p>
+        <div class="field"><label>Batch Expiry Date (optional)</label><input id="iExpiry" type="date"></div>
+        <p class="hint" style="margin:-4px 0 6px">For perishable goods — alerts you on the dashboard before it expires.</p>
+      </div>
+
+      <!-- Section 4: Selling Modes -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>4. Alternate Ways to Sell (Optional)</h3>
+          <span class="desc">Portions smaller or larger than the pack (e.g. Half bag, Mudu, Bottle)</span>
+        </div>
+        <div id="draftModesBox"></div>
+        <button class="btn ghost sm" id="addModeBtn" type="button" onclick="addDraftMode()" style="margin-top:6px">+ Add a selling mode</button>
+      </div>
+
+      <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px">
+        <button class="btn ghost" onclick="go('items')">Cancel</button>
+        <button class="btn primary" id="addItemBtn" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for Approval →':'Save Product →'}</button>
       </div>
     </div>
-    <div class="field">
-      <label>Unit name</label>
-      ${unitSelectHtml('iUnit','Pack')}
-    </div>
-    <div class="frow">
-      <div class="field"><label>Opening stock</label><input id="iOpen" type="number" min="0" step="any" placeholder="e.g. 5" oninput="iOpenInfo()"></div>
-      <div class="field"><label>Counted as</label><select id="iOpenMode" onchange="iOpenInfo()"></select></div>
-    </div>
-    <p class="hint" id="iOpenInfo" style="margin:-4px 0 12px"></p>
-    <div class="frow">
-      <div class="field"><label>Low-stock alert</label><input id="iThr" type="number" min="0" step="any" value="2" oninput="iThrInfo()"></div>
-      <div class="field"><label>Alert in</label><select id="iThrMode" onchange="iThrInfo()"></select></div>
-    </div>
-    <p class="hint" id="iThrInfo" style="margin:-4px 0 12px"></p>
-    <div class="field"><label>Opening stock's expiry date (optional)</label><input id="iExpiry" type="date"></div>
-    <p class="hint" style="margin:-4px 0 12px">Only for items that expire. Leave blank if not relevant.</p>
-    <div class="field">
-      <label>Other ways to sell this (optional)</label>
-      <div id="draftModesBox"></div>
-      <button class="btn ghost sm" id="addModeBtn" type="button" onclick="addDraftMode()">+ Add a mode (e.g. Half bag, Dozen, Carton of 6)</button>
-    </div>
-    <button class="btn primary" id="addItemBtn" style="margin-top:8px" onclick="addItem()" ${atCap&&!isManager?'disabled':''}>${isManager?'Send for approval':'Add item'}</button>
-  </div></div>`;
+  </div>`;
   renderDraftModes();
   iOpenModeOptions();
   iThrModeOptions();
 }
+let itemsActiveCat = 'all';
+
+function setItemsCat(cat){
+  itemsActiveCat = cat;
+  document.querySelectorAll('.itemCatChip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+  $('#itemsTableBody').innerHTML = itemsTableRows();
+}
+
 function vItems(v){
   const isManager=S.role==='manager';
+  const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
+  const outItems=S.items.filter(i=>onHand(i.id)<=0);
+  const cats = ['all', ...new Set(S.items.map(i => i.category || 'General'))].sort((a,b)=>a==='all'?-1:b==='all'?1:a.localeCompare(b));
+  
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Items</h2><span class="desc">tap Edit to change prices, modes or stock${isManager?', changes go to the admin for approval':''}</span><div class="spacer"></div><button class="btn ghost sm" onclick="go('additem')">+ Add item</button></div><div class="bd tight rtable">
-    <div style="padding:0 18px 10px"><input class="custInput" id="itemsSearch" placeholder="Search items…" value="${esc(itemsListQuery)}" oninput="filterItemsTable(this.value)"></div>
-    <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th><th class="r">In stock</th><th></th></tr></thead>
-    <tbody id="itemsTableBody">${itemsTableRows()}</tbody></table>
-  </div></div>
+  <!-- Top Metrics -->
+  <div class="stats" style="margin-bottom:16px">
+    <div class="stat"><div class="label">Total Products</div><div class="value num">${S.items.length}</div><div class="sub">active in catalog</div></div>
+    <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low on Stock</div><div class="value num">${lowItems.length}</div><div class="sub">require restock</div></div>
+    <div class="stat ${outItems.length?'bad':''}"><div class="label">Out of Stock</div><div class="value num">${outItems.length}</div><div class="sub">0 remaining</div></div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Products Catalog</h2>
+      <span class="desc">Tap Edit on any product to update prices or modes${isManager?' (submits to admin)':''}</span>
+      <div class="spacer"></div>
+      <button class="btn primary sm" onclick="go('additem')">+ Add Product</button>
+    </div>
+    <div class="bd tight rtable">
+      <div style="padding:14px 18px 8px;display:flex;gap:8px;align-items:center">
+        <div style="position:relative;flex:1">${icon('search')}<input class="posSearch" id="itemsSearch" placeholder="Search catalog by name, category or barcode…" value="${esc(itemsListQuery)}" oninput="filterItemsTable(this.value)"></div>
+      </div>
+      <div class="chipRow" style="padding:0 18px 10px">
+        ${cats.map(c=>`<button class="chip itemCatChip ${itemsActiveCat===c?'active':''}" data-cat="${esc(c)}" onclick="setItemsCat('${esc(c)}')">${c==='all'?'All Categories':esc(c)}</button>`).join('')}
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th class="r">Pack Price</th>
+            <th class="r">Selling Modes</th>
+            <th class="r">On Hand</th>
+            <th class="r" style="width:80px">Action</th>
+          </tr>
+        </thead>
+        <tbody id="itemsTableBody">${itemsTableRows()}</tbody>
+      </table>
+    </div>
+  </div>
   ${expiringSoonCard()}
-  ${isManager?'<div class="card"><div class="hd"><h2>My submitted changes</h2></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
+  ${isManager?'<div class="card"><div class="hd"><h2>My Submitted Changes</h2><span class="desc">Waiting on admin review</span></div><div class="bd tight"><div id="myChangesList" class="empty">Loading…</div></div></div>':''}`;
   if(isManager) loadMyChanges();
 }
 async function loadMyChanges(){
@@ -1428,7 +2041,12 @@ function rowItem(i){
 let itemsListQuery='';
 function itemsTableRows(){
   const q=itemsListQuery.trim().toLowerCase();
-  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q));
+  const activeCat = typeof itemsActiveCat !== 'undefined' ? itemsActiveCat : 'all';
+  const list=S.items.filter(i=>{
+    const matchCat = (activeCat==='all') || (i.category||'General')===activeCat;
+    const matchQ = !q || i.name.toLowerCase().includes(q) || (i.category||'').toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
   if(!list.length) return `<tr><td colspan="5" class="empty">${S.items.length?'No match for that search.':'No items yet.'}</td></tr>`;
   const groups=groupItemsByCategory(list);
   if(q || groups.length<=1) return list.map(rowItem).join('');
@@ -1661,28 +2279,69 @@ async function delItem(id){
    ============================================================ */
 function vRestock(v){
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Record stock bought in</h2><span class="desc">increases available stock</span></div><div class="bd">
-    <div class="field"><label>Item</label>
-      <div style="display:flex;gap:8px">
-        <select id="rItem" onchange="rModeOptions()" style="flex:1">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (now ${stockShort(i)})</option>`).join('')}</select>
-        <button class="btn ghost sm" type="button" onclick="scanForRestock()">${icon('barcode')}</button>
+  <div class="card">
+    <div class="hd">
+      <h2>Inbound Restock</h2>
+      <span class="desc">Log new stock received to increase shelves and recalculate weighted average costs</span>
+    </div>
+    <div class="bd">
+      <!-- Step 1: Product -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>1. Select Product</h3>
+          <span class="desc">Pick from catalog or scan packaging barcode</span>
+        </div>
+        <div class="field">
+          <label>Product</label>
+          <div style="display:flex;gap:8px">
+            <select id="rItem" onchange="rModeOptions()" style="flex:1">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} · currently ${stockShort(i)}</option>`).join('')}</select>
+            <button class="btn ghost sm" type="button" onclick="scanForRestock()">${icon('barcode')} Scan</button>
+          </div>
+        </div>
       </div>
+
+      <!-- Step 2: Quantity -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>2. Units Received & Date</h3>
+          <span class="desc">Counted in whole packs or portions</span>
+        </div>
+        <div class="frow">
+          <div class="field"><label>Inbound Mode</label><select id="rMode" onchange="rPackInfo()"></select></div>
+          <div class="field"><label>Quantity Received</label><input id="rQty" type="number" min="0" step="any" placeholder="0" oninput="rPackInfo()"></div>
+          <div class="field"><label>Receipt Date</label><input id="rDate" type="date" value="${today()}"></div>
+        </div>
+        <p class="hint" id="rInfo" style="margin:-4px 0 6px;font-weight:600;color:var(--green)"></p>
+      </div>
+
+      <!-- Step 3: Cost Basis -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>3. Cost & Selling Price Strategy</h3>
+          <span class="desc">Blends into weighted average cost; optionally adjust retail price</span>
+        </div>
+        <div class="field"><label>Purchase Cost This Time (₦ per pack, optional)</label><input id="rNewCost" type="number" min="0" step="1" placeholder="Leave blank to preserve current cost basis" oninput="rPackInfo()"></div>
+        <p class="hint" id="rCostInfo" style="margin:-4px 0 12px;color:var(--ink);font-weight:500"></p>
+        <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:12px;cursor:pointer"><input id="rUpdatePrice" type="checkbox" style="width:auto" onchange="toggleRestockPriceUpdate()"> Also update retail selling price for all stock</label>
+        <div id="rPriceFields" class="hidden"></div>
+      </div>
+
+      <!-- Step 4: Batch Expiry -->
+      <div class="formSection">
+        <div class="formSectionHead">
+          <h3>4. Batch Expiry Date (Optional)</h3>
+          <span class="desc">For perishable or dated stock</span>
+        </div>
+        <div class="field"><label>Expiry Date</label><input id="rExpiry" type="date"></div>
+        <p class="hint" style="margin:-4px 0 4px">Batches nearing expiry appear as alert cards on the dashboard.</p>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>${icon('box')} Add to Stock →</button>
+      </div>
+      ${S.items.length?'':'<p class="hint" style="margin-top:10px">No products available. Add items first under the Items tab.</p>'}
     </div>
-    <div class="frow">
-      <div class="field"><label>Buying as</label><select id="rMode" onchange="rPackInfo()"></select></div>
-      <div class="field"><label>Quantity bought</label><input id="rQty" type="number" min="0" step="any" placeholder="0" oninput="rPackInfo()"></div>
-      <div class="field"><label>Date</label><input id="rDate" type="date" value="${today()}"></div>
-    </div>
-    <p class="hint" id="rInfo" style="margin:-4px 0 12px"></p>
-    <div class="field"><label>Cost price this time (₦ per pack, optional)</label><input id="rNewCost" type="number" min="0" step="1" placeholder="leave blank to keep current cost" oninput="rPackInfo()"></div>
-    <p class="hint" id="rCostInfo" style="margin:-4px 0 12px"></p>
-    <label style="display:flex;align-items:center;gap:8px;font-weight:600;margin-bottom:10px"><input id="rUpdatePrice" type="checkbox" style="width:auto" onchange="toggleRestockPriceUpdate()"> Also update selling price</label>
-    <div id="rPriceFields" class="hidden"></div>
-    <div class="field"><label>This batch's expiry date (optional)</label><input id="rExpiry" type="date"></div>
-    <p class="hint" style="margin:-4px 0 12px">Only for items that expire. Leave blank if not relevant.</p>
-    <button class="btn primary" onclick="addPurchase()" ${S.items.length?'':'disabled'}>Add to stock</button>
-    ${S.items.length?'':'<p class="hint" style="margin-top:10px">Add items first under the Items tab.</p>'}
-  </div></div>
+  </div>
   ${expiringSoonCard()}`;
   rModeOptions();
 }
@@ -3004,39 +3663,51 @@ function cartUnits(){ const t={}; S.cart.forEach(l=>{ t[l.itemId]=(t[l.itemId]||
 function cartTotal(){ return S.cart.reduce((a,l)=>a+l.price*l.qty,0); }
 function cartCount(){ return S.cart.reduce((a,l)=>a+l.qty,0); }
 
+let posActiveCat = 'all';
+
+function setPosCat(cat){
+  posActiveCat = cat;
+  document.querySelectorAll('.posCatChip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+  $('#prodGrid').innerHTML = productCards();
+}
+
 function vSell(v){
+  const cats = ['all', ...new Set(S.items.map(i => i.category || 'General'))].sort((a,b)=>a==='all'?-1:b==='all'?1:a.localeCompare(b));
   v.innerHTML=`
   ${expiringSoonCard()}
   <div class="pos">
     <div>
-      <div class="searchWrap" style="display:flex;gap:8px;align-items:center">
-        <div style="position:relative;flex:1">${icon('search')}<input class="posSearch" id="posSearch" placeholder="Search or scan barcode…" value="${esc(posQuery)}" oninput="posFilter(this.value)" onkeydown="if(event.key==='Enter')posEnter()"></div>
-        <button class="btn ghost sm" type="button" onclick="scanForSell()" style="height:46px">${icon('barcode')}</button>
+      <div class="searchWrap" style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <div style="position:relative;flex:1">${icon('search')}<input class="posSearch" id="posSearch" placeholder="Search product or barcode…" value="${esc(posQuery)}" oninput="posFilter(this.value)" onkeydown="if(event.key==='Enter')posEnter()"></div>
+        <button class="btn ghost sm" type="button" onclick="scanForSell()" style="height:46px;padding:0 14px" title="Scan barcode">${icon('barcode')} Scan</button>
+      </div>
+      <div class="chipRow">
+        ${cats.map(c=>`<button class="chip posCatChip ${posActiveCat===c?'active':''}" data-cat="${esc(c)}" onclick="setPosCat('${esc(c)}')">${c==='all'?'All Products':esc(c)}</button>`).join('')}
       </div>
       <div class="prodgrid" id="prodGrid">${productCards()}</div>
     </div>
     <div class="cart" id="cartBox">
-      <div class="chd"><h2>${icon('cart','lg')} Current sale</h2><div class="spacer"></div>
+      <div class="chd"><h2>${icon('cart','lg')} Active Sale</h2><div class="spacer"></div>
         <button class="btn ghost sm" onclick="clearCart()" id="clearBtn" style="${S.cart.length?'':'display:none'}">Clear</button></div>
-      <div class="modeRow">
-        <label><input type="radio" name="payMode" value="cash" checked onchange="setPayMode('cash')"> Cash</label>
-        <label><input type="radio" name="payMode" value="transfer" onchange="setPayMode('transfer')"> Transfer</label>
-        <label><input type="radio" name="payMode" value="credit" onchange="setPayMode('credit')"> Credit</label>
+      <div class="paySegment">
+        <button type="button" id="paySeg-cash" class="${S.payMode==='cash'?'active':''}" onclick="setPayMode('cash')">${icon('cash')} Cash</button>
+        <button type="button" id="paySeg-transfer" class="${S.payMode==='transfer'?'active':''}" onclick="setPayMode('transfer')">${icon('bank')} Transfer</button>
+        <button type="button" id="paySeg-credit" class="${S.payMode==='credit'?'active':''}" onclick="setPayMode('credit')">${icon('card')} Credit</button>
       </div>
       <div class="custBox">
         <div id="custChosen" class="custChosen hidden"></div>
         <div id="custPick">
-          <input id="custSearch" class="custInput" placeholder="Customer name (type to search)…" autocomplete="off" oninput="custSuggest(this.value)">
+          <input id="custSearch" class="custInput" placeholder="Attach customer name (optional)…" autocomplete="off" oninput="custSuggest(this.value)">
           <div id="custResults" class="custResults"></div>
-          <input id="custPhone" class="custInput" placeholder="Phone (optional, for WhatsApp)" inputmode="tel" style="margin-top:6px">
-          <p class="hint" id="custNote" style="margin-top:6px;display:none">Credit sale: a customer is required so the balance is tracked.</p>
+          <input id="custPhone" class="custInput" placeholder="Phone number (for WhatsApp receipt)" inputmode="tel" style="margin-top:6px">
+          <p class="hint" id="custNote" style="margin-top:6px;color:var(--amber);font-weight:600;display:${S.payMode==='credit'?'block':'none'}">⚠️ Credit sale: customer name is required to track debt.</p>
         </div>
       </div>
       <div class="citems" id="cartItems">${cartRows()}</div>
       <div class="cfoot">
-        <div class="total"><span class="lbl">Total to pay</span><span class="amt num" id="cartTotal">${money(cartTotal())}</span></div>
+        <div class="total"><span class="lbl">Total to Pay</span><span class="amt num" id="cartTotal">${money(cartTotal())}</span></div>
         <div class="ccount" id="cartCount">${cartCount()} item(s) in this sale</div>
-        <button class="btn primary" style="width:100%;font-size:16px;padding:14px" id="checkoutBtn" onclick="checkout()" ${S.cart.length?'':'disabled'}>Complete sale</button>
+        <button class="btn primary" style="width:100%;font-size:16px;padding:14px" id="checkoutBtn" onclick="checkout()" ${S.cart.length?'':'disabled'}>Complete Sale →</button>
       </div>
     </div>
   </div>
@@ -3073,7 +3744,12 @@ let expandedProductId=null;
 function productCards(){
   if(!S.items.length) return '<div class="empty" style="grid-column:1/-1">No items available yet. Ask the admin to add some.</div>';
   const q=posQuery.trim().toLowerCase();
-  const list=S.items.filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q)||(i.barcode||'').toLowerCase().includes(q));
+  const activeCat = typeof posActiveCat !== 'undefined' ? posActiveCat : 'all';
+  const list=S.items.filter(i=>{
+    const matchCat = (activeCat==='all') || (i.category||'General')===activeCat;
+    const matchQ = !q || i.name.toLowerCase().includes(q) || (i.category||'').toLowerCase().includes(q) || (i.barcode||'').toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
   if(!list.length) return '<div class="empty" style="grid-column:1/-1">No match for that search.</div>';
   const groups=groupItemsByCategory(list);
   // while actively searching, or when there's really only one category,
@@ -3091,16 +3767,38 @@ function productCards(){
 function productCard(i,showCat){
   const oh=onHand(i.id), out=oh<=0, modes=itemModes(i);
   const expanded=expandedProductId===i.id;
+  const b=out?'out':oh<=i.low_stock_threshold?'low':'ok';
   return `<div class="prod ${out?'disabled':''} ${expanded?'expanded':''}" onclick="${out?'':`toggleProduct('${i.id}')`}">
     <div class="phead">
       <div class="pIcon">${esc(i.name.charAt(0).toUpperCase())}</div>
-      <div><div class="pname">${esc(i.name)}</div>${showCat?`<div class="pcat">${esc(i.category||'General')}</div>`:''}</div>
+      <div style="flex:1;min-width:0">
+        <div class="pname">${esc(i.name)}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          ${showCat?`<span class="pcat">${esc(i.category||'General')}</span>`:''}
+          <span class="badge ${b}" style="font-size:10px;padding:1px 6px">${stockShort(i)}</span>
+        </div>
+      </div>
+      <div class="pprice num">${money(fullPackPrice(i))}</div>
     </div>
+    ${!expanded && modes.length ? `<div class="modeTag">+${modes.length} mode${modes.length===1?'':'s'} available</div>` : ''}
     ${expanded?`
-      <div class="pmeta">${out?'<span style="color:var(--red);font-weight:700">Out of stock</span>':packBreakdown(i)+' left'}</div>
       <div class="opts" onclick="event.stopPropagation()">
-        <button class="opt" onclick='addToCart("${i.id}",-1)'>${esc(i.unit_name||'Pack')}<small>${money(fullPackPrice(i))}</small></button>
-        ${modes.map((m,mi)=>`<button class="opt" onclick='addToCart("${i.id}",${mi})'>${esc(m.name)}<small>${money(m.price)}</small></button>`).join('')}
+        <button class="opt" onclick='addToCart("${i.id}",-1)'>
+          <span>${esc(i.unit_name||'Pack')}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            <small>${money(fullPackPrice(i))}</small>
+            <span class="addBtn">+ Add</span>
+          </div>
+        </button>
+        ${modes.map((m,mi)=>`
+          <button class="opt" onclick='addToCart("${i.id}",${mi})'>
+            <span>${esc(m.name)}</span>
+            <div style="display:flex;align-items:center;gap:6px">
+              <small>${money(m.price)}</small>
+              <span class="addBtn">+ Add</span>
+            </div>
+          </button>
+        `).join('')}
       </div>`:''}
   </div>`;
 }
@@ -3115,7 +3813,14 @@ function selectScannedItem(code){
 }
 function posEnter(){ const code=$('#posSearch').value.trim(); if(code) selectScannedItem(code); }
 function scanForSell(){ scanBarcode(code=>selectScannedItem(code)); }
-function setPayMode(m){ S.payMode=m; $('#custNote').style.display=(m==='credit')?'block':'none'; }
+function setPayMode(m){
+  S.payMode=m;
+  const cn = $('#custNote'); if(cn) cn.style.display=(m==='credit')?'block':'none';
+  ['cash','transfer','credit'].forEach(k=>{
+    const btn = $('#paySeg-'+k);
+    if(btn) btn.classList.toggle('active', k===m);
+  });
+}
 
 // modeIdx: -1 = the built-in Pack button, >=0 = index into itemModes(i) — see
 // the same note on termAdd() for why this isn't per_pack anymore
@@ -3444,45 +4149,64 @@ function filterStockTable(q){ stockListQuery=q; $('#stockTableBody').innerHTML=s
    CUSTOMERS — credit / owing  (admin + receptionist)
    ============================================================ */
 async function vCustomers(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  // total spend per customer (revenue across all their sales)
-  const {data:sales}=await sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id);
-  // a single checkout inserts one sales row per cart line item, so raw row
-  // count isn't "visits" — a customer buying 7 different items in one trip
-  // isn't 7 visits. Count distinct days they bought something instead,
-  // since there's no separate checkout/transaction id to group rows by.
-  S._spend={}; S._visits={}; S._last={};
-  const visitDays={};
-  (sales||[]).forEach(s=>{ if(!s.customer_id) return;
-    S._spend[s.customer_id]=(S._spend[s.customer_id]||0)+s.quantity*Number(s.unit_price);
-    (visitDays[s.customer_id]=visitDays[s.customer_id]||new Set()).add(s.entry_date);
-    if(!S._last[s.customer_id]||s.entry_date>S._last[s.customer_id]) S._last[s.customer_id]=s.entry_date;
-  });
-  Object.keys(visitDays).forEach(id=>S._visits[id]=visitDays[id].size);
-  S._custSort=S._custSort||'spend'; S._custQ=S._custQ||'';
-  v.innerHTML=`
-  <div class="stats">
-    <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Total outstanding</div><div class="value num">${money(totalOwed())}</div><div class="sub">${S.customers.filter(c=>balanceOf(c.id)>0).length} owing of ${S.customers.length}</div></div>
-    <div class="stat"><div class="label">Customers</div><div class="value num">${S.customers.length}</div></div>
-  </div>
-  <div class="card"><div class="hd"><h2>Add customer</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Name</label><input id="newCustName" placeholder="e.g. Mr. Bello"></div>
-      <div class="field"><label>Phone (optional)</label><input id="newCustPhone" placeholder="0803..."></div>
+  v.innerHTML='<div class="empty">Loading customer records…</div>';
+  sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id).then(({data:sales})=>{
+    S._spend={}; S._visits={}; S._last={};
+    const visitDays={};
+    (sales||[]).forEach(s=>{ if(!s.customer_id) return;
+      S._spend[s.customer_id]=(S._spend[s.customer_id]||0)+s.quantity*Number(s.unit_price);
+      (visitDays[s.customer_id]=visitDays[s.customer_id]||new Set()).add(s.entry_date);
+      if(!S._last[s.customer_id]||s.entry_date>S._last[s.customer_id]) S._last[s.customer_id]=s.entry_date;
+    });
+    Object.keys(visitDays).forEach(id=>S._visits[id]=visitDays[id].size);
+    S._custSort=S._custSort||'owing'; S._custQ=S._custQ||'';
+    const owingList = S.customers.filter(c=>balanceOf(c.id)>0);
+
+    v.innerHTML=`
+    <div class="stats" style="margin-bottom:16px">
+      <div class="stat ${totalOwed()>0?'bad':''}"><div class="label">Total Credit Owed</div><div class="value num">${money(totalOwed())}</div><div class="sub">${owingList.length} customer(s) owing</div></div>
+      <div class="stat"><div class="label">Total Customers</div><div class="value num">${S.customers.length}</div><div class="sub">registered on file</div></div>
+      <div class="stat good"><div class="label">Settled Accounts</div><div class="value num">${S.customers.length - owingList.length}</div><div class="sub">zero balance</div></div>
     </div>
-    <button class="btn primary" onclick="addCustomer()">Add customer</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Customers</h2><div class="spacer"></div>
-    <select class="biz" style="max-width:170px" onchange="setCustSort(this.value)">
-      <option value="spend" ${S._custSort==='spend'?'selected':''}>Top spenders</option>
-      <option value="visits" ${S._custSort==='visits'?'selected':''}>Most visits</option>
-      <option value="owing" ${S._custSort==='owing'?'selected':''}>Owing most</option>
-      <option value="recent" ${S._custSort==='recent'?'selected':''}>Most recent</option>
-      <option value="name" ${S._custSort==='name'?'selected':''}>Name (A–Z)</option>
-    </select></div>
-    <div class="bd" style="padding-bottom:6px"><input class="custInput" id="custFilter" placeholder="Search name or phone…" value="${esc(S._custQ)}" oninput="setCustQ(this.value)"></div>
-    <div class="bd tight" id="custTableWrap">${customerTable()}</div>
-  </div>`;
+
+    <!-- Quick Add Customer Card -->
+    <div class="card" style="margin-bottom:18px">
+      <div class="hd">
+        <h2>Register New Customer</h2>
+        <span class="desc">Save customer details for debt ledger and WhatsApp reminders</span>
+      </div>
+      <div class="bd">
+        <div class="frow">
+          <div class="field"><label>Customer Full Name</label><input id="newCustName" placeholder="e.g. Alhaji Musa, Mrs. Chidinma"></div>
+          <div class="field"><label>WhatsApp / Phone (optional)</label><input id="newCustPhone" placeholder="08031234567" inputmode="tel"></div>
+          <div class="field" style="display:flex;align-items:flex-end">
+            <button class="btn primary" onclick="addCustomer()" style="width:100%">${icon('plus')} Add Customer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Customer CRM Directory -->
+    <div class="card">
+      <div class="hd" style="flex-wrap:wrap;gap:10px">
+        <h2>Customer Ledger</h2>
+        <div class="spacer"></div>
+        <select class="biz" style="max-width:180px" onchange="setCustSort(this.value)">
+          <option value="owing" ${S._custSort==='owing'?'selected':''}>Owing Most Debt</option>
+          <option value="spend" ${S._custSort==='spend'?'selected':''}>Top Spenders</option>
+          <option value="visits" ${S._custSort==='visits'?'selected':''}>Most Visits</option>
+          <option value="recent" ${S._custSort==='recent'?'selected':''}>Most Recent</option>
+          <option value="name" ${S._custSort==='name'?'selected':''}>Name (A–Z)</option>
+        </select>
+      </div>
+      <div class="bd tight rtable">
+        <div style="padding:14px 18px 8px">
+          <div style="position:relative">${icon('search')}<input class="posSearch" id="custFilter" placeholder="Search customer name or phone number…" value="${esc(S._custQ)}" oninput="setCustQ(this.value)"></div>
+        </div>
+        <div id="custTableWrap">${customerTable()}</div>
+      </div>
+    </div>`;
+  });
 }
 function customerTable(){
   const sp=id=>S._spend[id]||0, vs=id=>S._visits[id]||0;
@@ -3494,17 +4218,36 @@ function customerTable(){
     owing:(a,b)=>balanceOf(b.id)-balanceOf(a.id), name:(a,b)=>a.name.localeCompare(b.name),
     recent:(a,b)=>String(S._last[b.id]||'').localeCompare(String(S._last[a.id]||''))
   };
-  list.sort(sorters[S._custSort]||sorters.spend);
-  if(!list.length) return '<div class="empty">No customers match.</div>';
-  return `<table><thead><tr><th>Customer</th><th class="r">Spent</th><th class="r">Visits</th><th class="r">Balance</th><th class="r"></th></tr></thead>
-    <tbody>${list.map((c,i)=>{const bal=balanceOf(c.id);const rank=(S._custSort==='spend'&&!q&&i<3)?`<span style="color:var(--gold);font-weight:800;margin-right:4px">#${i+1}</span>`:'';return `<tr>
-      <td class="itemname" style="cursor:pointer" onclick="openCustomer('${c.id}')">${rank}${esc(c.name)}${c.phone?`<div class="cat">${esc(c.phone)}</div>`:''}</td>
-      <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')">${money(sp(c.id))}</td>
-      <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')">${vs(c.id)}</td>
-      <td class="r" style="cursor:pointer" onclick="openCustomer('${c.id}')">${bal>0?`<span class="badge neg">${money(bal)}</span>`:'<span class="badge ok">clear</span>'}</td>
-      <td class="r">${c.phone?`<button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","thanks")'>Thanks</button>
-        ${bal>0?`<button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","reminder")'>Remind</button>`:''}`:''}</td>
-    </tr>`;}).join('')}</tbody></table>`;
+  list.sort(sorters[S._custSort]||sorters.owing);
+  if(!list.length) return '<div class="empty">No customers found.</div>';
+  return `<table><thead><tr><th>Customer</th><th class="r">Total Spent</th><th class="r">Visits</th><th class="r">Debt Balance</th><th class="r" style="width:140px">WhatsApp</th></tr></thead>
+    <tbody>${list.map((c,i)=>{
+      const bal=balanceOf(c.id);
+      const initial = (c.name||'C').charAt(0).toUpperCase();
+      const rank=(S._custSort==='spend'&&!q&&i<3)?`<span style="color:var(--gold);font-weight:800;margin-right:4px">#${i+1}</span>`:'';
+      return `<tr>
+        <td class="itemname" style="cursor:pointer" onclick="openCustomer('${c.id}')">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="custAvatar">${initial}</div>
+            <div>
+              <div>${rank}${esc(c.name)}</div>
+              <div class="cat">${c.phone?esc(c.phone):'No phone saved'}</div>
+            </div>
+          </div>
+        </td>
+        <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')" data-label="Total Spent">${money(sp(c.id))}</td>
+        <td class="r num" style="cursor:pointer" onclick="openCustomer('${c.id}')" data-label="Visits">${vs(c.id)}</td>
+        <td class="r" style="cursor:pointer" onclick="openCustomer('${c.id}')" data-label="Debt Balance">${bal>0?`<span class="badge neg">owes ${money(bal)}</span>`:'<span class="badge ok">settled</span>'}</td>
+        <td class="r">
+          <div style="display:flex;gap:4px;justify-content:flex-end">
+            ${c.phone?`
+              <button class="btn ghost sm" onclick='event.stopPropagation();waCustomer("${c.id}","thanks")' title="Send thank-you">${icon('chat')} Thanks</button>
+              ${bal>0?`<button class="btn ghost sm" style="color:var(--red);border-color:#E8C9C5" onclick='event.stopPropagation();waCustomer("${c.id}","reminder")' title="Send reminder">Remind</button>`:''}
+            `:'<span class="hint">—</span>'}
+          </div>
+        </td>
+      </tr>`;
+    }).join('')}</tbody></table>`;
 }
 function setCustSort(s){ S._custSort=s; $('#custTableWrap').innerHTML=customerTable(); }
 function setCustQ(q){ S._custQ=q; $('#custTableWrap').innerHTML=customerTable(); }
@@ -3936,5 +4679,6 @@ async function sendWhatsAppSummary(){
   window.open(url,'waSend');
 }
 </script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"a1ec090c546840f7936ee948131f1fe8","r":1,"spa":2}' crossorigin="anonymous"></script>
 </body>
 </html>

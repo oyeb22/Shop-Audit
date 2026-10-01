@@ -194,11 +194,16 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .alertGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:22px}
 @media(max-width:680px){.alertGrid{grid-template-columns:1fr}}
 
-/* Segmented Control for Tables */
-.dashNavTabs{display:flex;background:#EFE8DA;border-radius:12px;padding:4px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;flex:1 1 100%}
-.dashNavBtn{padding:8px 14px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted);white-space:nowrap;transition:all .15s;cursor:pointer}
+/* Segmented Control for Tables — a fixed 3-column grid (not a scrolling
+   flex row) so all three options are always fully visible on any screen
+   width, never clipped and never dependent on a hidden/undiscoverable
+   horizontal scroll. Labels wrap onto a second line rather than being cut
+   off or squeezed into each other if they don't fit on one. */
+.dashNavTabs{display:grid;grid-template-columns:repeat(3,1fr);background:#EFE8DA;border-radius:12px;padding:4px;gap:4px;width:100%}
+.dashNavBtn{padding:8px 6px;border-radius:9px;font-weight:600;font-size:12px;color:var(--muted);white-space:normal;text-align:center;line-height:1.25;transition:all .15s;cursor:pointer}
 .dashNavBtn.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(23,21,15,.08)}
 .dashNavBtn:hover:not(.active){color:var(--ink)}
+@media(min-width:480px){.dashNavBtn{font-size:13.5px;padding:8px 14px}}
 
 /* Top item ranking row with progress bar */
 .rankRow{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line)}
@@ -1649,9 +1654,9 @@ async function vDashboard(v){
         <h2>Store Activity & Performance</h2>
         <div class="spacer"></div>
         <div class="dashNavTabs">
-          <button class="dashNavBtn ${dashTab==='sales'?'active':''}" data-tab="sales" onclick="setDashTab('sales')">Day-by-Day Sales</button>
-          <button class="dashNavBtn ${dashTab==='top'?'active':''}" data-tab="top" onclick="setDashTab('top')">Top Selling Items</button>
-          <button class="dashNavBtn ${dashTab==='stock'?'active':''}" data-tab="stock" onclick="setDashTab('stock')">Full Catalog Status</button>
+          <button class="dashNavBtn ${dashTab==='sales'?'active':''}" data-tab="sales" onclick="setDashTab('sales')">Daily Sales</button>
+          <button class="dashNavBtn ${dashTab==='top'?'active':''}" data-tab="top" onclick="setDashTab('top')">Top Items</button>
+          <button class="dashNavBtn ${dashTab==='stock'?'active':''}" data-tab="stock" onclick="setDashTab('stock')">Full Catalog</button>
         </div>
       </div>
 

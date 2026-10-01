@@ -112,22 +112,6 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .catHead{display:flex;align-items:center;gap:8px;padding:10px 4px 8px;font-weight:700;font-size:12.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;cursor:pointer;border-bottom:1px solid var(--line);margin-bottom:8px}
 .catHead .catCount{font-weight:600;color:var(--muted);font-size:11px;background:#EFE8DA;padding:2px 7px;border-radius:99px;margin-left:auto}
 
-/* Enhanced Product Cards in POS */
-.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:left;display:flex;flex-direction:column;gap:10px;transition:all .15s ease;cursor:pointer;box-shadow:0 1px 2px rgba(23,21,15,.03)}
-.prod:hover{border-color:var(--green);box-shadow:0 4px 12px rgba(31,90,65,.08)}
-.prod.expanded{border-color:var(--green);box-shadow:0 0 0 2px rgba(31,90,65,.15)}
-.prod .phead{display:flex;align-items:flex-start;gap:10px}
-.prod .pIcon{width:36px;height:36px;flex:0 0 auto;border-radius:10px;background:#EFE8DA;color:var(--green-d);display:grid;place-items:center;font-weight:700;font-size:14px;font-family:'Fraunces',serif}
-.prod .pname{font-weight:700;font-size:14px;line-height:1.3;color:var(--ink)}
-.prod .pcat{font-size:11.5px;color:var(--muted)}
-.prod .pprice{font-family:'Fraunces',serif;font-weight:700;color:var(--green);font-size:15px;white-space:nowrap}
-.prod .modeTag{font-size:11px;font-weight:600;color:var(--gold);background:#F3E8D2;padding:2px 7px;border-radius:99px;display:inline-block;width:fit-content}
-.prod .opts{display:flex;flex-direction:column;gap:6px;padding-top:8px;border-top:1px dashed var(--line);cursor:default}
-.prod .opt{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:9px;padding:9px 11px;font-weight:600;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer;transition:all .12s}
-.prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
-.prod .opt small{font-family:'Fraunces',serif;font-weight:700;color:var(--green);font-size:13.5px}
-.prod .opt .addBtn{font-size:11px;font-weight:700;background:var(--green);color:#fff;padding:3px 8px;border-radius:6px;margin-left:6px}
-
 /* Enhanced Cart Segment & Rows */
 .paySegment{display:flex;background:#EFE8DA;border-radius:11px;padding:4px;gap:4px;margin:0 16px 14px}
 .paySegment button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px;border-radius:8px;font-weight:600;font-size:13px;color:var(--muted);transition:all .12s;cursor:pointer}
@@ -135,6 +119,8 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 .cstep{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#FCFAF5}
 .cstep button{width:28px;height:30px;font-size:16px;font-weight:700;color:var(--green);display:grid;place-items:center;transition:background .1s}
 .cstep button:hover{background:#F0F5F1}
+.cstep .cqty{width:40px;height:30px;text-align:center;border:none;border-left:1px solid var(--line);border-right:1px solid var(--line);background:transparent;font-size:14px;font-weight:700;color:var(--ink);padding:0}
+.cstep .cqty::-webkit-inner-spin-button,.cstep .cqty::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .cstep span{min-width:28px;text-align:center;font-weight:700;font-size:13px}
 
 /* Customer CRM Avatar */
@@ -209,7 +195,7 @@ select.biz{background:var(--card);border:1px solid var(--line);border-radius:9px
 @media(max-width:680px){.alertGrid{grid-template-columns:1fr}}
 
 /* Segmented Control for Tables */
-.dashNavTabs{display:flex;background:#EFE8DA;border-radius:12px;padding:4px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.dashNavTabs{display:flex;background:#EFE8DA;border-radius:12px;padding:4px;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;min-width:0;flex:1 1 100%}
 .dashNavBtn{padding:8px 14px;border-radius:9px;font-weight:600;font-size:13.5px;color:var(--muted);white-space:nowrap;transition:all .15s;cursor:pointer}
 .dashNavBtn.active{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(23,21,15,.08)}
 .dashNavBtn:hover:not(.active){color:var(--ink)}
@@ -248,6 +234,11 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .itemname{font-weight:600}
 .cat{font-size:12px;color:var(--muted)}
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+/* a capsule shape only reads well for short single-line content (e.g. "+5");
+   a multi-part breakdown like "-2 Crates + 1 Half Crate + 12 Single" needs
+   this instead — plain rounded rectangle, left-aligned, lets text wrap
+   normally rather than stretching into a tall narrow oval */
+.badge.wrap{border-radius:10px;text-align:left;white-space:normal;line-height:1.45;max-width:170px}
 .badge.low{background:#FBEFD8;color:var(--amber)} .badge.ok{background:#E6F0E9;color:var(--green)} .badge.out{background:#F8E2E0;color:var(--red)}
 .badge.pos{background:#E6F0E9;color:var(--green)} .badge.neg{background:#F8E2E0;color:var(--red)} .badge.zero{background:#EFEBE0;color:var(--muted)}
 .badge.gold{background:#F3E8D2;color:#8A5A12} .badge.blue{background:#EAEEF6;color:#2C4A78}
@@ -290,25 +281,41 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .posSearch{width:100%;padding:13px 15px 13px 40px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-size:16px}
 .posSearch:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
 .prodgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-items:start}
-.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:8px;transition:.12s;cursor:pointer}
+.prod{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:11px;text-align:left;display:flex;flex-direction:column;gap:7px;transition:.12s;cursor:pointer}
 .prod:hover{border-color:var(--green)}
 .prod.expanded{border-color:var(--green);box-shadow:0 0 0 2px rgba(31,90,65,.1)}
-.prod .phead{display:flex;align-items:center;gap:9px}
-.prod .pIcon{width:34px;height:34px;flex:0 0 auto;border-radius:9px;background:#EFE8DA;color:var(--green-d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
-.prod .pname{font-weight:700;font-size:14px;line-height:1.25}
+.prod .phead{display:flex;align-items:center;gap:8px}
+.prod .pIcon{width:30px;height:30px;flex:0 0 auto;border-radius:8px;background:#EFE8DA;color:var(--green-d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+.prod .pname{flex:1;min-width:0;font-weight:700;font-size:13.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prod .pmeta{font-size:12px;color:var(--muted)}
-.prod .pprice{font-weight:700;color:var(--green);font-size:14px}
+.prod .pricerow{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
+.prod .pprice{font-weight:700;color:var(--green);font-size:14px;white-space:nowrap}
 .prod.disabled{opacity:.45;pointer-events:none}
 .prod .opts{display:flex;flex-direction:column;gap:6px;cursor:default}
-.prod .opt{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer}
+.prod .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer}
 .prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
+.prod .opt .optName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prod .opt .optPrice{flex:0 0 auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
 .prod .opt small{font-weight:600;color:var(--green)}
+.prod .opt .addBtn{font-size:11px;font-weight:700;background:var(--green);color:#fff;padding:3px 8px;border-radius:6px}
 .prod .pcat{font-size:11px;color:var(--muted);margin-top:1px}
+.prod .pbadges{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .catHead{display:flex;align-items:center;gap:8px;padding:10px 2px 8px;font-weight:700;font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;border-bottom:1px solid var(--line);margin-bottom:2px}
 .catHead .catCount{font-weight:600;color:var(--muted);text-transform:none;letter-spacing:0;margin-left:auto}
 .catChevron{display:inline-block;width:12px}
 /* cart */
 .cart{position:sticky;top:78px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100vh - 96px)}
+/* multiple concurrent in-progress sales — a cashier can start a new
+   customer's order without losing one that's mid-payment */
+.saleTabs{display:flex;gap:6px;padding:10px 12px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;flex:0 0 auto;min-width:0}
+.saleTab{display:flex;align-items:center;gap:6px;padding:7px 10px;border-radius:9px;font-size:12.5px;font-weight:600;color:var(--muted);background:#F3EFE3;white-space:nowrap;flex:0 0 auto;cursor:pointer;border:1px solid transparent}
+.saleTab.active{background:var(--green);color:#fff}
+.saleTab .saleTabCount{background:rgba(0,0,0,.15);color:inherit;font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px}
+.saleTab.active .saleTabCount{background:rgba(255,255,255,.25)}
+.saleTab .saleTabClose{font-size:14px;line-height:1;opacity:.7}
+.saleTab .saleTabClose:hover{opacity:1}
+.saleTab.saleTabAdd{padding:7px;color:var(--green);background:transparent;border:1px dashed var(--line)}
+.saleTab.saleTabAdd .ic{width:14px;height:14px}
 .cart .chd{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
 .cart .chd h2{font-size:17px}
 .cart .citems{overflow-y:auto;flex:1;min-height:60px}
@@ -1049,6 +1056,8 @@ const TOUR_STEPS={
       "Needs restocking and Expiring soon cards only show up when something actually needs your attention."]},
     {tab:'sell',title:'Sell',points:[
       'Tap an item to open it, choose how it\'s being sold (full pack, half bag, by the cup — whatever modes you set up), then add to cart.',
+      'Buying a lot of one thing? Tap the number in the cart to type the quantity directly instead of tapping + repeatedly.',
+      'A customer stuck figuring out payment doesn\'t block anyone else — tap "+" above the cart to start another sale in a new tab, and switch back whenever they\'re ready.',
       'Pick Cash, Transfer, or Credit (attach a customer) before you checkout.',
       'After checkout you get a receipt you can print to a Bluetooth thermal printer, or send straight to WhatsApp instead.']},
     {tab:'additem',title:'Add item',points:[
@@ -2590,7 +2599,9 @@ async function loadRecon(){
     const it=item(r.item_id), nm=it?it.name:'(deleted)';
     const fmt=v=>it?breakdownQty(it,Math.abs(v)):fmtPacks(Math.abs(v));
     const b=r.variance<0?'neg':r.variance>0?'pos':'zero';
-    return `<tr><td class="num">${r.entry_date}</td><td class="itemname">${esc(nm)}${r.note?`<div class="cat">${esc(r.note)}</div>`:''}</td><td class="r num">${fmt(r.expected_qty)}</td><td class="r num">${fmt(r.counted_qty)}</td><td class="r"><span class="badge ${b}">${r.variance>0?'+':r.variance<0?'-':''}${fmt(r.variance)}</span></td></tr>`;
+    const varText=`${r.variance>0?'+':r.variance<0?'-':''}${fmt(r.variance)}`;
+    const wrap=varText.includes('+')&&varText.indexOf('+')!==0 ? ' wrap' : (varText.length>8 ? ' wrap' : '');
+    return `<tr><td class="num">${r.entry_date}</td><td class="itemname">${esc(nm)}${r.note?`<div class="cat">${esc(r.note)}</div>`:''}</td><td class="r num">${fmt(r.expected_qty)}</td><td class="r num">${fmt(r.counted_qty)}</td><td class="r"><span class="badge ${b}${wrap}">${esc(varText)}</span></td></tr>`;
   }).join('')}</tbody></table>`:'<div class="empty">No counts yet.</div>'}</div>`;
 }
 
@@ -2822,10 +2833,11 @@ let eodRows=[], eodQuery='';
 function vEndOfDay(v){
   v.innerHTML=`
   <div class="card"><div class="hd"><h2>End of day stock</h2><span class="desc">what was on the shelf at the end of a given day</span></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Date</label><input id="eodDate" type="date" value="${today()}" onchange="loadEndOfDay()"></div>
-      <div class="field" style="display:flex;align-items:flex-end;gap:8px"><button class="btn ghost sm" onclick="$('#eodDate').value=today();loadEndOfDay()">Today</button>
-      <button class="btn ghost sm" onclick="eodShift(-1)">◂ Prev day</button><button class="btn ghost sm" onclick="eodShift(1)">Next day ▸</button></div>
+    <div class="field"><label>Date</label><input id="eodDate" type="date" value="${today()}" onchange="loadEndOfDay()"></div>
+    <div class="row" style="gap:6px">
+      <button class="btn ghost sm" onclick="$('#eodDate').value=today();loadEndOfDay()">Today</button>
+      <button class="btn ghost sm" onclick="eodShift(-1)">◂ Prev day</button>
+      <button class="btn ghost sm" onclick="eodShift(1)">Next day ▸</button>
     </div>
   </div></div>
   <div class="card"><div class="hd"><h2>Stock as at <span id="eodDesc"></span></h2></div><div class="bd tight rtable">
@@ -3672,6 +3684,7 @@ function setPosCat(cat){
 }
 
 function vSell(v){
+  ensureSaleTabs();
   const cats = ['all', ...new Set(S.items.map(i => i.category || 'General'))].sort((a,b)=>a==='all'?-1:b==='all'?1:a.localeCompare(b));
   v.innerHTML=`
   ${expiringSoonCard()}
@@ -3687,6 +3700,7 @@ function vSell(v){
       <div class="prodgrid" id="prodGrid">${productCards()}</div>
     </div>
     <div class="cart" id="cartBox">
+      <div class="saleTabs" id="saleTabsRow">${saleTabsHtml()}</div>
       <div class="chd"><h2>${icon('cart','lg')} Active Sale</h2><div class="spacer"></div>
         <button class="btn ghost sm" onclick="clearCart()" id="clearBtn" style="${S.cart.length?'':'display:none'}">Clear</button></div>
       <div class="paySegment">
@@ -3712,7 +3726,68 @@ function vSell(v){
     </div>
   </div>
   <button class="fab ${S.cart.length?'show':''}" id="cartFab" onclick="document.getElementById('cartBox').scrollIntoView({behavior:'smooth'})">${icon('cart')} ${money(cartTotal())} · ${cartCount()}</button>`;
-  S.saleCustId=null; renderChosen();
+  renderChosen();
+  const activeTab=S.saleTabs[S.activeSaleIdx];
+  const cs=$('#custSearch'); if(cs) cs.value=activeTab.custName||'';
+  const cp=$('#custPhone'); if(cp) cp.value=activeTab.custPhone||'';
+}
+// ---- multiple concurrent in-progress sales ("Sale 1", "Sale 2"...) so a
+// cashier isn't stuck on one customer who's still fumbling for payment —
+// they can switch tabs and ring up someone else without losing either cart.
+// S.cart/S.payMode/S.saleCustId are always the ACTIVE tab's live working
+// state (every existing cart function keeps using them untouched); S.saleTabs
+// holds every tab's data, synced in/out on each switch — not kept as a
+// live shared reference, since clearCart()/checkout() both reassign
+// S.cart=[] rather than mutate the array in place.
+function newSaleTab(label){ return {label,cart:[],payMode:'cash',custId:null,custName:'',custPhone:''}; }
+function ensureSaleTabs(){
+  if(S.saleTabs) return;
+  S.saleTabs=[{label:'Sale 1',cart:S.cart||[],payMode:S.payMode||'cash',custId:S.saleCustId||null,custName:'',custPhone:''}];
+  S.activeSaleIdx=0; S.saleTabCounter=1;
+}
+function saveActiveSaleTab(){
+  const t=S.saleTabs[S.activeSaleIdx]; if(!t) return;
+  t.cart=S.cart; t.payMode=S.payMode; t.custId=S.saleCustId;
+  t.custName=$('#custSearch')?.value||''; t.custPhone=$('#custPhone')?.value||'';
+}
+function loadActiveSaleTab(){
+  const t=S.saleTabs[S.activeSaleIdx];
+  S.cart=t.cart; S.payMode=t.payMode; S.saleCustId=t.custId;
+}
+function saleTabsHtml(){
+  const tabs=S.saleTabs.map((t,idx)=>{
+    const count=t.cart.reduce((a,l)=>a+l.qty,0);
+    const active=idx===S.activeSaleIdx;
+    return `<button class="saleTab ${active?'active':''}" onclick="switchSaleTab(${idx})">
+      <span>${esc(t.label)}</span>${count?`<span class="saleTabCount">${count}</span>`:''}
+      ${S.saleTabs.length>1?`<span class="saleTabClose" onclick="closeSaleTab(${idx},event)" title="Close this sale">×</span>`:''}
+    </button>`;
+  }).join('');
+  return tabs+`<button class="saleTab saleTabAdd" onclick="addSaleTab()" title="Start another sale">${icon('plus')}</button>`;
+}
+function switchSaleTab(idx){
+  if(idx===S.activeSaleIdx) return;
+  saveActiveSaleTab();
+  S.activeSaleIdx=idx;
+  loadActiveSaleTab();
+  vSell($('#view'));
+}
+function addSaleTab(){
+  saveActiveSaleTab();
+  S.saleTabCounter++;
+  S.saleTabs.push(newSaleTab(`Sale ${S.saleTabCounter}`));
+  S.activeSaleIdx=S.saleTabs.length-1;
+  loadActiveSaleTab();
+  vSell($('#view'));
+}
+function closeSaleTab(idx,ev){
+  if(ev) ev.stopPropagation();
+  if(S.saleTabs.length<=1) return;
+  if(S.saleTabs[idx].cart.length && !confirm(`"${S.saleTabs[idx].label}" still has items in it. Close anyway?`)) return;
+  S.saleTabs.splice(idx,1);
+  if(idx===S.activeSaleIdx || idx<S.activeSaleIdx) S.activeSaleIdx=Math.max(0,S.activeSaleIdx-1);
+  loadActiveSaleTab();
+  vSell($('#view'));
 }
 // ---- customer picker on the sell page ----
 function custSuggest(q){
@@ -3771,12 +3846,12 @@ function productCard(i,showCat){
   return `<div class="prod ${out?'disabled':''} ${expanded?'expanded':''}" onclick="${out?'':`toggleProduct('${i.id}')`}">
     <div class="phead">
       <div class="pIcon">${esc(i.name.charAt(0).toUpperCase())}</div>
-      <div style="flex:1;min-width:0">
-        <div class="pname">${esc(i.name)}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-          ${showCat?`<span class="pcat">${esc(i.category||'General')}</span>`:''}
-          <span class="badge ${b}" style="font-size:10px;padding:1px 6px">${stockShort(i)}</span>
-        </div>
+      <div class="pname">${esc(i.name)}</div>
+    </div>
+    <div class="pricerow">
+      <div class="pbadges">
+        ${showCat?`<span class="pcat">${esc(i.category||'General')}</span>`:''}
+        <span class="badge ${b}" style="font-size:10px;padding:1px 6px">${stockShort(i)}</span>
       </div>
       <div class="pprice num">${money(fullPackPrice(i))}</div>
     </div>
@@ -3784,19 +3859,13 @@ function productCard(i,showCat){
     ${expanded?`
       <div class="opts" onclick="event.stopPropagation()">
         <button class="opt" onclick='addToCart("${i.id}",-1)'>
-          <span>${esc(i.unit_name||'Pack')}</span>
-          <div style="display:flex;align-items:center;gap:6px">
-            <small>${money(fullPackPrice(i))}</small>
-            <span class="addBtn">+ Add</span>
-          </div>
+          <span class="optName">${esc(i.unit_name||'Pack')}</span>
+          <span class="optPrice"><small>${money(fullPackPrice(i))}</small><span class="addBtn">+ Add</span></span>
         </button>
         ${modes.map((m,mi)=>`
           <button class="opt" onclick='addToCart("${i.id}",${mi})'>
-            <span>${esc(m.name)}</span>
-            <div style="display:flex;align-items:center;gap:6px">
-              <small>${money(m.price)}</small>
-              <span class="addBtn">+ Add</span>
-            </div>
+            <span class="optName">${esc(m.name)}</span>
+            <span class="optPrice"><small>${money(m.price)}</small><span class="addBtn">+ Add</span></span>
           </button>
         `).join('')}
       </div>`:''}
@@ -3844,7 +3913,7 @@ function cartRows(){
   if(!S.cart.length) return '<div class="cartEmpty">Tap items on the left to add them here. The running total updates automatically.</div>';
   return S.cart.map((l,idx)=>`<div class="citem">
     <div class="ci-n">${esc(l.name)}<small>${esc(l.mode)} · ${money(l.price)} each</small></div>
-    <span class="cstep"><button onclick="cartStep(${idx},-1)">−</button><span class="num">${l.qty}</span><button onclick="cartStep(${idx},1)">+</button></span>
+    <span class="cstep"><button onclick="cartStep(${idx},-1)">−</button><input class="cqty" type="number" min="1" step="1" inputmode="numeric" value="${l.qty}" onclick="event.stopPropagation()" onchange="cartSetQty(${idx},this.value)"><button onclick="cartStep(${idx},1)">+</button></span>
     <span class="ci-t num">${money(l.price*l.qty)}</span>
     <button class="x" onclick="cartRemove(${idx})" title="Remove">×</button>
   </div>`).join('');
@@ -3854,6 +3923,18 @@ function cartStep(idx,d){
   if(!Number.isFinite(l.qty)) l.qty=1;
   if(d>0){ const inCart=cartUnits()[l.itemId]||0; if(inCart+l.baseUnits>onHand(l.itemId)+1e-9) return toast('Not enough stock',true); }
   l.qty+=d; if(l.qty<=0) S.cart.splice(idx,1); refreshCart();
+}
+// typed quantity instead of tapping +/- repeatedly for a big order — clamps
+// to whatever stock this line can still have after what the cart's OTHER
+// lines of the same item already committed
+function cartSetQty(idx,val){
+  const l=S.cart[idx]; if(!l) return;
+  let qty=Math.floor(+val||0);
+  if(qty<=0){ S.cart.splice(idx,1); refreshCart(); return; }
+  const othersUnits=(cartUnits()[l.itemId]||0)-l.qty*l.baseUnits;
+  const maxQty=Math.floor((onHand(l.itemId)-othersUnits)/l.baseUnits+1e-9);
+  if(qty>maxQty){ qty=Math.max(maxQty,1); toast(`Only ${packBreakdown(S.items.find(i=>i.id===l.itemId))} of ${l.name} in stock`,true); }
+  l.qty=qty; refreshCart();
 }
 function cartRemove(idx){ S.cart.splice(idx,1); refreshCart(); }
 function clearCart(){ S.cart=[]; refreshCart(); }
@@ -3866,6 +3947,8 @@ function refreshCart(){
   $('#clearBtn').style.display=S.cart.length?'':'none';
   const fab=$('#cartFab'); if(fab){ fab.classList.toggle('show',S.cart.length>0); fab.innerHTML=`${icon('cart')} ${money(cartTotal())} · ${cartCount()}`; }
   $('#prodGrid').innerHTML=productCards(); // reflect remaining stock live
+  // keep this tab's own item-count badge live, not just on the next tab switch
+  if(S.saleTabs){ S.saleTabs[S.activeSaleIdx].cart=S.cart; const tabsEl=$('#saleTabsRow'); if(tabsEl) tabsEl.innerHTML=saleTabsHtml(); }
 }
 async function checkout(){
   if(!S.cart.length) return;
@@ -3927,6 +4010,7 @@ async function checkout(){
     const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,isPack:l.isPack,qty:l.qty,price:l.price})),
       total,custName:shownName,method:onCredit?'credit':S.payMode};
     S.cart=[]; S.saleCustId=null;
+    if(S.saleTabs){ const t=S.saleTabs[S.activeSaleIdx]; t.cart=S.cart; t.custId=null; t.custName=''; t.custPhone=''; }
     if(!auditErr) toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
     await loadData(); render();
     showReceipt(receiptSnap);

@@ -793,7 +793,7 @@ async function doRealtimeRefresh(){
 }
 async function loadData(){
   if(!S.biz) return;
-  const [it,stk,cu,cb,aps,rs,exp]=await Promise.all([
+  const [it,stk,cu,cb,aps,rs,exp,pp]=await Promise.all([
     sb.from('items').select('*').eq('business_id',S.biz.id).order('name'),
     sb.from('item_stock').select('item_id,on_hand').eq('business_id',S.biz.id),
     sb.from('customers').select('*').eq('business_id',S.biz.id).order('name'),
@@ -805,7 +805,11 @@ async function loadData(){
     // filters to 180 days itself; expiryBadge() below needs the full list
     // so an item's expiry is always visible somewhere regardless of how
     // far off it is, not just when it's imminent
-    sb.rpc('items_expiring_soon',{p_business_id:S.biz.id,p_within_days:3650})
+    sb.rpc('items_expiring_soon',{p_business_id:S.biz.id,p_within_days:3650}),
+    // read live so the Settings upgrade teaser never goes stale again when
+    // prices change — pricing_plans is the single source of truth, same
+    // table index.html/pay.html/super-admin.html already read from
+    sb.from('pricing_plans').select('id,price')
   ]);
   if(exp.error) console.error('items_expiring_soon failed:',exp.error);
   S.expiringSoon = exp.error ? [] : (exp.data||[]);
@@ -815,6 +819,7 @@ async function loadData(){
   // no row yet = every action requires approval (matches the DB default in needs_approval())
   S.approvalSettings=aps.data||{items:true,restock:true,reconcile:true,till:true};
   S.referralSettings=rs.data||{enabled:false,bonus_amount:0};
+  S.pricingPlans={}; (pp.data||[]).forEach(p=>S.pricingPlans[p.id]=p);
   S.stock={};
   if(stk.error){
     // the stock view couldn't be read — compute it directly so stock isn't wrongly 0
@@ -1996,6 +2001,10 @@ function vItems(v){
     <div class="stat ${lowItems.length?'warn':''}"><div class="label">Low on Stock</div><div class="value num">${lowItems.length}</div><div class="sub">require restock</div></div>
     <div class="stat ${outItems.length?'bad':''}"><div class="label">Out of Stock</div><div class="value num">${outItems.length}</div><div class="sub">0 remaining</div></div>
   </div>
+
+  ${(S.biz.parent_business_id && S.role==='admin') ? `<div class="card"><div class="hd"><h2>Copy items from main shop</h2><span class="desc">same price, cost & modes carried over — stock starts at zero here, you restock it separately</span></div><div class="bd">
+    <button class="btn ghost sm" onclick="openBranchCopyPicker()">Choose items to copy →</button>
+  </div></div>` : ''}
 
   <div class="card">
     <div class="hd">
@@ -3496,6 +3505,93 @@ async function loadBranchBreakdown(list){
   </tr>`).join('')}</tbody>`;
 }
 
+/* ---------- branch item copy: pick items already set up on the main shop
+   and bulk-add them to this branch's own catalog in one go — same price,
+   cost and modes, but never the quantity (each branch's physical stock is
+   its own, counted and restocked separately). Items the branch already has
+   (matched by name) are excluded from the list rather than offered again,
+   so re-running this later only ever shows what's actually new. ---------- */
+async function openBranchCopyPicker(){
+  const rootId=S.biz.parent_business_id; if(!rootId) return;
+  const [rootRes,mineRes]=await Promise.all([
+    sb.from('items').select('*').eq('business_id',rootId).order('name'),
+    sb.from('items').select('name').eq('business_id',S.biz.id)
+  ]);
+  if(rootRes.error) return err(rootRes.error);
+  S._branchCopySource=rootRes.data||[];
+  S._branchCopyExisting=new Set((mineRes.data||[]).map(i=>i.name.trim().toLowerCase()));
+  S._branchCopySelected=new Set();
+  S._branchCopyQuery='';
+  document.getElementById('branchCopyCard')?.remove();
+  const skipped=S._branchCopySource.filter(i=>S._branchCopyExisting.has(i.name.trim().toLowerCase())).length;
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="branchCopyCard"><div class="hd">
+    <h2>Copy items from main shop</h2><span class="desc">same price, cost & modes — stock starts at zero here</span>
+    <div class="spacer"></div><button class="btn ghost sm" onclick="closeBranchCopyPicker()">Close</button>
+  </div><div class="bd tight rtable">
+    <div style="padding:14px 18px 0"><input class="custInput" id="branchCopySearch" placeholder="Search items…" oninput="filterBranchCopyItems(this.value)"></div>
+    ${skipped?`<p class="hint" style="padding:8px 18px 0">${skipped} item${skipped===1?'':'s'} already in this branch's catalog, not shown.</p>`:''}
+    <div style="padding:10px 18px"><label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer">
+      <input type="checkbox" id="branchCopyAllChk" style="width:auto" onchange="toggleBranchCopyAll(this.checked)"> Select all</label>
+    </div>
+    <table><thead><tr><th style="width:36px"></th><th>Item</th><th class="r">Pack price</th><th class="r">Modes</th></tr></thead>
+    <tbody id="branchCopyTableBody"></tbody></table>
+  </div>
+  <div class="cfoot" style="display:flex;align-items:center;gap:10px">
+    <div class="hint" id="branchCopyCount">0 items selected</div>
+    <div class="spacer"></div>
+    <button class="btn primary" id="branchCopyBtn" onclick="confirmBranchCopyItems()" disabled>Add selected</button>
+  </div></div>`);
+  renderBranchCopyRows();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function branchCopyEligible(){
+  const q=(S._branchCopyQuery||'').trim().toLowerCase();
+  return (S._branchCopySource||[]).filter(i=>!S._branchCopyExisting.has(i.name.trim().toLowerCase()))
+    .filter(i=>!q||i.name.toLowerCase().includes(q)||(i.category||'').toLowerCase().includes(q));
+}
+function renderBranchCopyRows(){
+  const body=$('#branchCopyTableBody'); if(!body) return;
+  const list=branchCopyEligible(), sel=S._branchCopySelected;
+  body.innerHTML = list.length ? list.map(i=>`<tr>
+    <td><input type="checkbox" style="width:auto" ${sel.has(i.id)?'checked':''} onchange="toggleBranchCopyItem('${i.id}')"></td>
+    <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'General')}</div></td>
+    <td class="r num">${money(Number(i.pack_price)||0)}</td>
+    <td class="r">${(i.modes||[]).length||'—'}</td>
+  </tr>`).join('') : `<tr><td colspan="4" class="empty">${(S._branchCopySource||[]).length?"Nothing left to copy — everything's already here, or no match for that search.":'No items in the main shop yet.'}</td></tr>`;
+  const allChk=$('#branchCopyAllChk'); if(allChk) allChk.checked = list.length>0 && list.every(i=>sel.has(i.id));
+  const count=$('#branchCopyCount'); if(count) count.textContent = `${sel.size} item${sel.size===1?'':'s'} selected`;
+  const btn=$('#branchCopyBtn'); if(btn){ btn.disabled=!sel.size; btn.textContent=sel.size?`Add ${sel.size} item${sel.size===1?'':'s'} to this branch`:'Add selected'; }
+}
+function toggleBranchCopyItem(id){
+  if(S._branchCopySelected.has(id)) S._branchCopySelected.delete(id); else S._branchCopySelected.add(id);
+  renderBranchCopyRows();
+}
+function toggleBranchCopyAll(checked){
+  branchCopyEligible().forEach(i=>{ if(checked) S._branchCopySelected.add(i.id); else S._branchCopySelected.delete(i.id); });
+  renderBranchCopyRows();
+}
+function filterBranchCopyItems(q){ S._branchCopyQuery=q; renderBranchCopyRows(); }
+function closeBranchCopyPicker(){ document.getElementById('branchCopyCard')?.remove(); }
+async function confirmBranchCopyItems(){
+  const ids=[...S._branchCopySelected]; if(!ids.length) return;
+  const btn=$('#branchCopyBtn'); if(btn){ btn.disabled=true; btn.textContent='Adding…'; }
+  const items=(S._branchCopySource||[]).filter(i=>ids.includes(i.id));
+  let ok=0, fail=0;
+  for(const i of items){
+    const rec={business_id:S.biz.id, name:i.name, category:i.category||'General',
+      pack_price:i.pack_price, cost_price:i.cost_price, modes:i.modes||[],
+      low_stock_threshold:i.low_stock_threshold||0, unit_name:i.unit_name||'Pack',
+      barcode:i.barcode||null};
+    const {error}=await sb.from('items').insert(rec);
+    if(error){ fail++; console.error('branch copy failed for',i.name,error); } else ok++;
+  }
+  if(ok) await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'item_added',detail:`${ok} item(s) copied from main shop catalog`});
+  toast(`${ok} item${ok===1?'':'s'} added${fail?`, ${fail} failed (check your item limit/plan)`:''}`, fail>0 && ok===0);
+  closeBranchCopyPicker();
+  await loadData();
+  vItems($('#view'));
+}
+
 /* ============================================================
    CARD TERMINAL — quick-capture + reconciliation queue
    Hidden behind TERMINAL_ENABLED (see CONFIG). Log the amount a card
@@ -4582,7 +4678,7 @@ function vSettings(v){
     <div style="flex:1;min-width:200px">You have full access during your trial: unlimited items and team members. Upgrade any time to keep it after the trial ends.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
   </div></div>`;
-    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">From ₦3,000/month</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">From ${money(S.pricingPlans?.monthly?.price||0)}/month</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div style="flex:1;min-width:200px">Your free trial has ended. Free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits — pick monthly, 6 months, or a year.</div>
     <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
   </div></div>`;

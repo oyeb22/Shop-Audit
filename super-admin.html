@@ -256,7 +256,7 @@ function renderBusinesses(rows){
   </tr></thead><tbody>${rows.map(b=>{
     const s=bizStatus(b);
     return `<tr>
-    <td>${esc(b.business_name)}</td>
+    <td>${b.parent_business_id?'↳ ':''}${esc(b.business_name)}${b.parent_business_id?`<div class="hint">Branch of ${esc(b.parent_business_name||'—')}</div>`:''}</td>
     <td>${esc(b.admin_name||b.admin_email||'')}</td>
     <td><span class="badge ${s.cls}">${s.label}</span>${s.detail?`<div class="hint">${esc(s.detail)}</div>`:''}</td>
     <td>${fmtD(b.created_at)}</td>
@@ -275,8 +275,11 @@ async function loadPricingPlans(){
 }
 function openActivate(bizId){
   const b=BIZ_ROWS.find(x=>x.business_id===bizId); if(!b) return;
-  $('#activateBizName').textContent=b.business_name;
-  $('#activatePlan').innerHTML=PLANS.map(p=>`<option value="${esc(p.id)}">${esc(p.label)} — ₦${Number(p.price).toLocaleString('en-NG')}</option>`).join('');
+  $('#activateBizName').textContent=b.business_name+(b.parent_business_id?` (branch of ${b.parent_business_name||'—'})`:'');
+  // a branch only ever gets the branch_annual plan — the 3 main plans are
+  // for a root business, same split pay.html already enforces for real payments
+  const plans=PLANS.filter(p=>b.parent_business_id ? p.id==='branch_annual' : p.id!=='branch_annual');
+  $('#activatePlan').innerHTML=plans.map(p=>`<option value="${esc(p.id)}">${esc(p.label)} — ₦${Number(p.price).toLocaleString('en-NG')}</option>`).join('');
   $('#activatePlan').dataset.bizId=bizId;
   $('#activateNote').value='';
   $('#activateCard').classList.remove('hidden');

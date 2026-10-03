@@ -398,6 +398,91 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
   .noprint{display:none!important}
   @page{size:80mm auto;margin:4mm}
 }
+
+/* ===== PREMIUM THEMONISHOP SUITE & ENHANCED MOBILE RESPONSIVENESS ===== */
+.pageHero{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.pageHero .phTitle{font-family:'Fraunces',serif;font-size:24px;font-weight:700;letter-spacing:-.02em;display:flex;align-items:center;gap:10px;color:var(--ink)}
+.pageHero .phSubtitle{font-size:13.5px;color:var(--muted);margin-top:3px;max-width:560px;line-height:1.45}
+.pageHero .phActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+.formGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.formSection{background:#FAF7F0;border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(23,21,15,.02)}
+.formSection .fsTitle{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+
+.presetRow{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.presetRow::-webkit-scrollbar{display:none}
+.presetBtn{padding:7px 13px;border-radius:9px;border:1px solid var(--line);background:var(--card);font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;cursor:pointer;transition:all .15s;flex-shrink:0}
+.presetBtn:hover{border-color:var(--green);color:var(--green)}
+.presetBtn.active{background:var(--green-d);color:#fff;border-color:var(--green-d)}
+
+.splitBar{display:flex;height:10px;border-radius:99px;overflow:hidden;background:#EFE8DA;margin:14px 0 10px}
+.splitBar>div{height:100%;transition:width .3s}
+
+.diffBox{background:#FAF7F0;border:1px dashed var(--line);border-radius:12px;padding:12px 14px;font-size:13.5px;margin:10px 0}
+.diffBefore{color:var(--red);text-decoration:line-through;margin-right:8px}
+.diffAfter{color:var(--green);font-weight:700}
+
+.approvalCard{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);padding:18px;margin-bottom:16px;transition:border-color .2s}
+.approvalCard:hover{border-color:var(--gold)}
+.approvalHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.approvalType{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:4px 10px;border-radius:99px}
+.approvalActions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+.timelineItem{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid var(--line)}
+.timelineItem:last-child{border-bottom:none}
+.timelineDot{width:10px;height:10px;border-radius:50%;background:var(--green);margin-top:6px;flex:0 0 auto}
+
+.tableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;border-radius:inherit}
+
+/* Touch-optimized form fields */
+input,select{min-height:44px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(31,90,65,.12)}
+
+/* Mobile fine-tuning */
+@media(max-width:768px){
+  .wrap{padding:0 12px}
+  .topbar .barrow{height:56px}
+  .brand{font-size:18px}
+  .pageHero{margin-bottom:14px}
+  .pageHero .phTitle{font-size:20px}
+  .stats{grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat{padding:12px 14px;border-radius:12px}
+  .stat .value{font-size:20px}
+  .stat .label{font-size:11px}
+  .card{border-radius:14px;margin-bottom:14px}
+  .card .hd{padding:12px 14px}
+  .card .hd h2{font-size:16px}
+  .card .bd{padding:14px}
+  .card .bd.tight{padding:0}
+  .formSection{padding:12px 14px}
+  .formGrid{grid-template-columns:1fr}
+  .frow{flex-direction:column;gap:10px}
+  .frow>.field{width:100%}
+  input,select,button.btn{min-height:44px;font-size:15px}
+  .split>*{min-width:100%}
+  .navMenu .panel{max-height:85vh;padding:12px 14px}
+}
+
+@media(max-width:640px){
+  .rtable table,.rtable thead,.rtable tbody,.rtable th,.rtable td,.rtable tr{display:block}
+  .rtable thead{display:none}
+  .rtable tr{padding:12px 14px;border-bottom:1px solid var(--line);background:var(--card)}
+  .rtable tr:last-child{border-bottom:none}
+  .rtable td{border:none;padding:5px 0;display:flex;justify-content:space-between;align-items:center;text-align:right;font-size:13.5px}
+  .rtable td[data-label]::before{content:attr(data-label);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;flex:0 0 auto;margin-right:12px}
+  .rtable td.itemname{display:block;text-align:left;padding-bottom:6px;font-size:15px;border-bottom:1px dashed var(--line);margin-bottom:6px}
+  .rtable td.itemname::before{display:none}
+  .rtable td.r{justify-content:space-between}
+  .rtable td .badge{margin-left:auto}
+  .paySegment{grid-template-columns:1fr 1fr}
+}
+
+@media(max-width:420px){
+  .stats{grid-template-columns:1fr}
+  .topbar .bizsel select.biz{max-width:120px;font-size:12.5px}
+  .topbar .rolepill{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -2525,19 +2610,82 @@ async function addPurchase(){
    ============================================================ */
 function vReconcile(v){
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Stock reconciliation</h2><span class="desc">catch shrinkage: count the shelf, compare to the system</span></div><div class="bd">
-    <div class="field"><label>Item</label><select id="cItem" onchange="cExpected()">${S.items.map(i=>`<option value="${i.id}">${esc(i.name)}</option>`).join('')}</select></div>
-    <div class="field"><label>System says you should have</label><input id="cExp" readonly style="background:#F0EADC;font-weight:700"></div>
-    <div class="frow">
-      <div class="field"><label>Counted as</label><select id="cMode" onchange="cVar()"></select></div>
-      <div class="field"><label>Quantity counted</label><input id="cCount" type="number" min="0" step="any" oninput="cVar()" placeholder="0"></div>
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('sparkle','lg')} Stock Reconciliation</div>
+      <div class="phSubtitle">Audit physical shelf count against system records to eliminate shrinkage and maintain accurate inventory valuation.</div>
     </div>
-    <div class="field"><label>Variance</label><input id="cVarF" readonly style="font-weight:700"></div>
-    <div class="field"><label>Note (optional)</label><input id="cNote" placeholder="e.g. 2 broken bottles, end-of-day count"></div>
-    <label class="hint" style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><input id="cApply" type="checkbox" checked style="width:auto"> Correct the system stock to match my count</label>
-    <button class="btn primary" onclick="saveRecon()" ${S.items.length?'':'disabled'}>Record count</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Recent counts</h2></div><div class="bd tight"><div id="recList" class="empty">Loading…</div></div></div>`;
+  </div>
+  
+  <div class="card">
+    <div class="hd">
+      <h2>Record Shelf Count</h2>
+      <span class="desc">Compare physical count to system balance</span>
+    </div>
+    <div class="bd">
+      <div class="formSection">
+        <div class="fsTitle">${icon('box')} 1. Select Inventory Item</div>
+        <div class="formGrid">
+          <div class="field">
+            <label>Product to Audit</label>
+            <select id="cItem" onchange="cExpected()">
+              ${S.items.map(i=>`<option value="${i.id}">${esc(i.name)} (${i.category||'General'})</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label>System Expected Stock</label>
+            <input id="cExp" readonly style="background:#FAF7F0;font-weight:700;color:var(--green-d)">
+          </div>
+        </div>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">${icon('sparkle')} 2. Physical Count & Variance</div>
+        <div class="formGrid">
+          <div class="field">
+            <label>Counting Unit / Mode</label>
+            <select id="cMode" onchange="cVar()"></select>
+          </div>
+          <div class="field">
+            <label>Physical Quantity Counted</label>
+            <input id="cCount" type="number" min="0" step="any" oninput="cVar()" placeholder="Enter counted quantity">
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label>Audit Variance</label>
+          <input id="cVarF" readonly style="font-weight:700;font-size:16px;background:#FAF7F0">
+        </div>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">${icon('file_text')} 3. Audit Notes & Correction</div>
+        <div class="field">
+          <label>Audit Reason / Note (optional)</label>
+          <input id="cNote" placeholder="e.g. Broken packaging, end of month audit, supplier bonus">
+        </div>
+        <label class="hint" style="display:flex;align-items:center;gap:10px;margin-top:12px;cursor:pointer;font-weight:600">
+          <input id="cApply" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--green-d)">
+          <span>Automatically adjust system stock to match this count</span>
+        </label>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
+        <button class="btn primary" onclick="saveRecon()" ${S.items.length?'':'disabled'} style="padding:11px 22px;font-size:15px">
+          ${icon('check')} Save Audit Count
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Recent Audit History</h2>
+      <span class="desc">Latest stock checks & shrinkage records</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="recList" class="empty">Loading audit history…</div>
+    </div>
+  </div>`;
   cExpected(); loadRecon();
 }
 // counting is always spelled out in real units (e.g. "9 Bags + 1 Mudu"),
@@ -2611,15 +2759,23 @@ async function loadRecon(){
   const {data,error}=await sb.from('reconciliations').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
   if(error) return;
   const item=id=>S.items.find(x=>x.id===id);
-  $('#recList').outerHTML=`<div id="recList">${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th class="r">Expected</th><th class="r">Counted</th><th class="r">Variance</th></tr></thead>
+  $('#recList').outerHTML=`<div id="recList">${data.length?`<table class="rtable"><thead><tr><th>Date</th><th>Product</th><th class="r">Expected</th><th class="r">Counted</th><th class="r">Variance</th></tr></thead>
   <tbody>${data.map(r=>{
-    const it=item(r.item_id), nm=it?it.name:'(deleted)';
+    const it=item(r.item_id), nm=it?it.name:'(deleted item)';
     const fmt=v=>it?breakdownQty(it,Math.abs(v)):fmtPacks(Math.abs(v));
     const b=r.variance<0?'neg':r.variance>0?'pos':'zero';
-    const varText=`${r.variance>0?'+':r.variance<0?'-':''}${fmt(r.variance)}`;
-    const wrap=varText.includes('+')&&varText.indexOf('+')!==0 ? ' wrap' : (varText.length>8 ? ' wrap' : '');
-    return `<tr><td class="num">${r.entry_date}</td><td class="itemname">${esc(nm)}${r.note?`<div class="cat">${esc(r.note)}</div>`:''}</td><td class="r num">${fmt(r.expected_qty)}</td><td class="r num">${fmt(r.counted_qty)}</td><td class="r"><span class="badge ${b}${wrap}">${esc(varText)}</span></td></tr>`;
-  }).join('')}</tbody></table>`:'<div class="empty">No counts yet.</div>'}</div>`;
+    const varText=`${r.variance>0?'+':r.variance<0?'-':''}${fmt(r.variance)}${r.variance<0?' short':r.variance>0?' extra':' exact'}`;
+    return `<tr>
+      <td class="num hint" data-label="Date">${r.entry_date}</td>
+      <td class="itemname" data-label="Product">
+        ${esc(nm)}
+        ${r.note?`<div class="cat" style="color:var(--muted)">📝 ${esc(r.note)}</div>`:''}
+      </td>
+      <td class="r num" data-label="Expected">${fmt(r.expected_qty)}</td>
+      <td class="r num" data-label="Counted">${fmt(r.counted_qty)}</td>
+      <td class="r" data-label="Variance"><span class="badge ${b}">${esc(varText)}</span></td>
+    </tr>`;
+  }).join('')}</tbody></table>`:'<div class="empty">No audit counts recorded yet.</div>'}</div>`;
 }
 
 /* ============================================================
@@ -2627,36 +2783,132 @@ async function loadRecon(){
    ============================================================ */
 async function vTill(v){
   v.innerHTML=`
-  <div class="stats" id="tillStats">
-    <div class="stat"><div class="label">Cash in till</div><div class="value num">…</div></div>
-    <div class="stat"><div class="label">Transfer in till</div><div class="value num">…</div></div>
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('wallet','lg')} Till & Cash Management</div>
+      <div class="phSubtitle">Monitor active cash in drawer, POS agency banking transactions, and staff custody balances.</div>
+    </div>
   </div>
-  <div class="card"><div class="hd"><h2>By team member</h2><span class="desc">who's holding what, since the till was last cleared</span></div><div class="bd tight" id="tillByStaff"><div class="empty">Loading…</div></div></div>
-  <div class="card"><div class="hd"><h2>POS transaction</h2><span class="desc">agency banking — cash for transfer, either direction</span></div><div class="bd">
-    <div class="field"><label>Direction</label>
-      <select id="pType" onchange="posInfo()">
-        <option value="cash_out">Customer transfers/pays by card → you give them cash</option>
-        <option value="cash_in">Customer gives you cash → you send them a transfer</option>
-      </select>
+
+  <div class="stats" id="tillStats" style="margin-bottom:18px">
+    <div class="stat good">
+      <div class="label">${icon('cash')} Cash in Till</div>
+      <div class="value num" id="tillCashVal">…</div>
+      <div class="sub">physical cash in drawer</div>
     </div>
-    <div class="frow">
-      <div class="field"><label id="pAmtLabel">Cash given to customer (₦)</label><input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5000" oninput="posInfo()"></div>
-      <div class="field"><label>Charge kept (₦, optional)</label><input id="pCharge" type="number" min="0" step="1" placeholder="e.g. 100" oninput="posInfo()"></div>
+    <div class="stat">
+      <div class="label">${icon('bank')} Transfer in Till</div>
+      <div class="value num" id="tillBankVal">…</div>
+      <div class="sub">bank / card balance</div>
     </div>
-    <p class="hint" id="pInfo" style="margin:-4px 0 12px"></p>
-    <div class="field"><label>Note (optional)</label><input id="pNote" placeholder="e.g. customer's name"></div>
-    <button class="btn primary" onclick="recordPosTransaction()">Record</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Recent POS transactions</h2></div><div class="bd tight rtable"><div id="posList" class="empty">Loading…</div></div></div>
-  <div class="card"><div class="hd"><h2>Clear the till</h2><span class="desc">log money you've physically removed from the business</span></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Method</label><select id="tMethod"><option value="cash">Cash</option><option value="transfer">Transfer</option></select></div>
-      <div class="field"><label>Amount (₦)</label><input id="tAmt" type="number" min="1" step="1" placeholder="0"></div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Staff Cash Holdings</h2>
+      <span class="desc">Money held by team members since last drawer clearing</span>
     </div>
-    <div class="field"><label>Note (optional)</label><input id="tNote" placeholder="e.g. bank deposit, restock cash"></div>
-    <button class="btn primary" onclick="clearTill()">Record clearing</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Recent clearings</h2></div><div class="bd tight rtable"><div id="tillList" class="empty">Loading…</div></div></div>`;
+    <div class="bd tight tableWrap" id="tillByStaff">
+      <div class="empty">Calculating staff balances…</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Agency Banking / POS Transaction</h2>
+      <span class="desc">Exchange cash for transfer or vice-versa with commission</span>
+    </div>
+    <div class="bd">
+      <div class="formSection">
+        <div class="fsTitle">${icon('refresh')} Transaction Direction</div>
+        <div class="field">
+          <label>Select Operation</label>
+          <select id="pType" onchange="posInfo()">
+            <option value="cash_out">Cash Out: Customer transfers/cards you → You dispense Cash</option>
+            <option value="cash_in">Cash In: Customer gives you Cash → You send Transfer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">${icon('cash')} Amounts & Commission</div>
+        <div class="formGrid">
+          <div class="field">
+            <label id="pAmtLabel">Cash Amount (₦)</label>
+            <input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5,000" oninput="posInfo()">
+          </div>
+          <div class="field">
+            <label>Service Fee / Commission Kept (₦)</label>
+            <input id="pCharge" type="number" min="0" step="1" placeholder="e.g. 100" oninput="posInfo()">
+          </div>
+        </div>
+        <div id="pInfo" class="diffBox" style="display:none"></div>
+      </div>
+
+      <div class="field">
+        <label>Customer Reference / Note (optional)</label>
+        <input id="pNote" placeholder="e.g. Emeka POS withdrawal, Ref #1234">
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn primary" onclick="recordPosTransaction()" style="padding:11px 22px">
+          ${icon('check')} Record POS Transaction
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Recent Agency POS Transactions</h2>
+      <span class="desc">Cash-in & cash-out log</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="posList" class="empty">Loading transactions…</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Clear the Till (Withdraw / Bank)</h2>
+      <span class="desc">Log funds physically removed from the register or shop</span>
+    </div>
+    <div class="bd">
+      <div class="formGrid">
+        <div class="field">
+          <label>Payment Channel</label>
+          <select id="tMethod">
+            <option value="cash">Cash (Physical Register)</option>
+            <option value="transfer">Bank / Transfer Account</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Amount Cleared (₦)</label>
+          <input id="tAmt" type="number" min="1" step="1" placeholder="e.g. 50,000">
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px">
+        <label>Reason / Destination (optional)</label>
+        <input id="tNote" placeholder="e.g. Bank deposit, Restock trip, Owner withdrawal">
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn primary" onclick="clearTill()" style="padding:11px 22px">
+          ${icon('check')} Confirm Till Clearing
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Recent Till Clearings</h2>
+      <span class="desc">Register withdrawal history</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="tillList" class="empty">Loading clearing history…</div>
+    </div>
+  </div>`;
+  
   loadTillSummary(); loadTillClearings(); loadTillByStaff(); loadPosTransactions();
 }
 function posInfo(){
@@ -2760,21 +3012,44 @@ async function loadTillClearings(){
    ============================================================ */
 function vReports(v){
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Sales report</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>From</label><input id="repFrom" type="date" value="${monthStart()}"></div>
-      <div class="field"><label>To</label><input id="repTo" type="date" value="${today()}"></div>
-      <div class="field" style="display:flex;align-items:flex-end;gap:8px"><button class="btn primary" onclick="runReport()">Run</button></div>
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('trend_up','lg')} Financial & Sales Analytics</div>
+      <div class="phSubtitle">Comprehensive revenue, gross & net profit margins, expense deductions, and warehouse valuation.</div>
     </div>
-    <div class="row" style="gap:6px">
-      <button class="btn ghost sm" onclick="repRange('today')">Today</button>
-      <button class="btn ghost sm" onclick="repRange('week')">Last 7 days</button>
-      <button class="btn ghost sm" onclick="repRange('month')">This month</button>
-      <button class="btn ghost sm" onclick="repRange('lastmonth')">Last month</button>
-      <button class="btn ghost sm" onclick="repRange('year')">This year</button>
-      <button class="btn ghost sm" onclick="repRange('all')">All time</button>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Select Reporting Window</h2>
+      <span class="desc">Filter analytics by standard accounting periods or custom dates</span>
     </div>
-  </div></div>
+    <div class="bd">
+      <div class="presetRow" style="margin-bottom:14px">
+        <button class="presetBtn" id="rpBtn-today" onclick="repRange('today')">Today</button>
+        <button class="presetBtn" id="rpBtn-week" onclick="repRange('week')">Last 7 Days</button>
+        <button class="presetBtn active" id="rpBtn-month" onclick="repRange('month')">This Month</button>
+        <button class="presetBtn" id="rpBtn-lastmonth" onclick="repRange('lastmonth')">Last Month</button>
+        <button class="presetBtn" id="rpBtn-year" onclick="repRange('year')">This Year</button>
+        <button class="presetBtn" id="rpBtn-all" onclick="repRange('all')">All Time</button>
+      </div>
+      <div class="frow" style="align-items:flex-end">
+        <div class="field" style="flex:2">
+          <label>From Date</label>
+          <input id="repFrom" type="date" value="${monthStart()}">
+        </div>
+        <div class="field" style="flex:2">
+          <label>To Date</label>
+          <input id="repTo" type="date" value="${today()}">
+        </div>
+        <div class="field" style="flex:1">
+          <button class="btn primary" onclick="runReport()" style="width:100%;height:44px">
+            ${icon('refresh')} Generate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div id="repOut"></div>`;
   runReport();
 }
@@ -2815,30 +3090,131 @@ async function runReport(){
   const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
   const stockLow=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).low,0);
   const stockHigh=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).high,0);
+  const profitMargin = totR > 0 ? Math.round((netProfit / totR) * 100) : 0;
+  const cashPct = totR > 0 ? Math.round((byMethod.cash / totR) * 100) : 0;
+  const bankPct = totR > 0 ? Math.round((byMethod.transfer / totR) * 100) : 0;
+  const credPct = totR > 0 ? Math.round((byMethod.credit / totR) * 100) : 0;
+  const cardPct = totR > 0 ? Math.round(((byMethod.card || 0) / totR) * 100) : 0;
+
   $('#repOut').innerHTML=`
-    <div class="stats">
-      <div class="stat good"><div class="label">Total revenue</div><div class="value num">${money(totR)}</div><div class="sub num">gross profit ${money(totP)}</div></div>
-      <div class="stat bad"><div class="label">Spent on stock</div><div class="value num">${money(totSpent)}</div><div class="sub">restocking, this range</div></div>
-      <div class="stat bad"><div class="label">Expenses</div><div class="value num">${money(totExp)}</div><div class="sub">approved, this range</div></div>
-      ${totPos>0?`<div class="stat good"><div class="label">POS commission</div><div class="value num">${money(totPos)}</div><div class="sub">kept from POS transactions</div></div>`:''}
-      <div class="stat ${netProfit>=0?'good':'bad'}"><div class="label">Net profit</div><div class="value num">${money(netProfit)}</div><div class="sub">revenue − cost − expenses + POS commission</div></div>
-      <div class="stat"><div class="label">${icon('cash')} Cash</div><div class="value num">${money(byMethod.cash)}</div></div>
-      <div class="stat"><div class="label">${icon('bank')} Transfer</div><div class="value num">${money(byMethod.transfer)}</div></div>
-      <div class="stat ${byMethod.credit>0?'warn':''}"><div class="label">Credit (unpaid)</div><div class="value num">${money(byMethod.credit)}</div></div>
-      ${byMethod.card?`<div class="stat"><div class="label">${icon('card')} Card (terminal)</div><div class="value num">${money(byMethod.card)}</div></div>`:''}
-    </div>
-    <div class="card"><div class="hd"><h2>By item</h2><span class="desc">${from} → ${to}</span><div class="spacer"></div><button class="btn ghost sm" onclick="exportCSV()">⬇ Export CSV</button></div><div class="bd tight rtable">
-      ${rows.length?`<table><thead><tr><th>Item</th><th class="r">Sold</th><th class="r">Revenue</th><th class="r">Profit</th></tr></thead>
-      <tbody>${rows.map(([id,o])=>{const it=S.items.find(x=>x.id===id);return `<tr><td class="itemname">${esc(nm(id))}</td><td class="r" data-label="Sold">${it?breakdownQty(it,o.u):fmtPacks(o.u)}</td><td class="r num" data-label="Revenue">${money(o.r)}</td><td class="r num" style="color:var(--green)" data-label="Profit">${money(o.p)}</td></tr>`;}).join('')}</tbody></table>`
-      :'<div class="empty">No sales in this range.</div>'}
-    </div></div>
-    <div class="card"><div class="hd"><h2>Stock on hand</h2><span class="desc">right now, not tied to the date range above</span></div><div class="bd">
-      <div class="stats" style="margin-bottom:0">
-        <div class="stat"><div class="label">At cost</div><div class="value num">${money(stockCost)}</div><div class="sub">what you paid for what's on the shelves</div></div>
-        <div class="stat"><div class="label">Lower estimate</div><div class="value num">${money(stockLow)}</div><div class="sub">if everything sold at its cheapest price</div></div>
-        <div class="stat good"><div class="label">Higher estimate</div><div class="value num">${money(stockHigh)}</div><div class="sub">if everything sold at its priciest price</div></div>
+    <div class="stats" style="margin-bottom:18px">
+      <div class="stat good">
+        <div class="label">${icon('trend_up')} Total Revenue</div>
+        <div class="value num">${money(totR)}</div>
+        <div class="sub num">Gross Margin: ${money(totP)}</div>
       </div>
-    </div></div>`;
+      <div class="stat ${netProfit>=0?'good':'bad'}">
+        <div class="label">${icon('sparkle')} Net Profit</div>
+        <div class="value num">${money(netProfit)}</div>
+        <div class="sub num">${profitMargin}% profit margin</div>
+      </div>
+      <div class="stat">
+        <div class="label">${icon('box')} Stock Purchases</div>
+        <div class="value num">${money(totSpent)}</div>
+        <div class="sub">inventory restocking</div>
+      </div>
+      <div class="stat ${totExp>0?'bad':''}">
+        <div class="label">${icon('wallet')} Operating Expenses</div>
+        <div class="value num">${money(totExp)}</div>
+        <div class="sub">approved expenses</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Payment Channels Breakdown</h2>
+        <span class="desc">Settlement distribution for this period</span>
+      </div>
+      <div class="bd">
+        <div class="splitBar">
+          <div style="width:${cashPct}%;background:var(--green)"></div>
+          <div style="width:${bankPct}%;background:var(--gold)"></div>
+          <div style="width:${cardPct}%;background:#2C4A78"></div>
+          <div style="width:${credPct}%;background:var(--red)"></div>
+        </div>
+        <div class="stats" style="margin-bottom:0">
+          <div class="stat">
+            <div class="label">${icon('cash')} Cash (${cashPct}%)</div>
+            <div class="value num">${money(byMethod.cash)}</div>
+          </div>
+          <div class="stat">
+            <div class="label">${icon('bank')} Bank Transfer (${bankPct}%)</div>
+            <div class="value num">${money(byMethod.transfer)}</div>
+          </div>
+          ${byMethod.card ? `
+          <div class="stat">
+            <div class="label">${icon('card')} POS Card (${cardPct}%)</div>
+            <div class="value num">${money(byMethod.card)}</div>
+          </div>` : ''}
+          <div class="stat ${byMethod.credit>0?'warn':''}">
+            <div class="label">Credit / Unpaid (${credPct}%)</div>
+            <div class="value num">${money(byMethod.credit)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Product Sales & Profit Contribution</h2>
+        <span class="desc">${from} → ${to}</span>
+        <div class="spacer"></div>
+        <button class="btn ghost sm" onclick="exportCSV()" style="display:inline-flex;align-items:center;gap:6px">
+          ${icon('download')} Export CSV
+        </button>
+      </div>
+      <div class="bd tight tableWrap">
+        ${rows.length ? `
+        <table class="rtable">
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th class="r">Units Sold</th>
+              <th class="r">Total Revenue</th>
+              <th class="r">Net Contribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(([id,o])=>{
+              const it=S.items.find(x=>x.id===id);
+              return `<tr>
+                <td class="itemname" data-label="Product">${esc(nm(id))}</td>
+                <td class="r" data-label="Sold">${it?breakdownQty(it,o.u):fmtPacks(o.u)}</td>
+                <td class="r num" data-label="Revenue">${money(o.r)}</td>
+                <td class="r num" style="color:var(--green);font-weight:700" data-label="Profit">${money(o.p)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`
+        : '<div class="empty">No sales recorded during this date window.</div>'}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Live Warehouse Inventory Valuation</h2>
+        <span class="desc">Current total value of stock currently on your shelves</span>
+      </div>
+      <div class="bd">
+        <div class="stats" style="margin-bottom:0">
+          <div class="stat">
+            <div class="label">At Purchase Cost</div>
+            <div class="value num">${money(stockCost)}</div>
+            <div class="sub">capital tied up in stock</div>
+          </div>
+          <div class="stat">
+            <div class="label">Conservative Retail Value</div>
+            <div class="value num">${money(stockLow)}</div>
+            <div class="sub">if sold at lowest tier mode</div>
+          </div>
+          <div class="stat good">
+            <div class="label">Max Potential Realization</div>
+            <div class="value num">${money(stockHigh)}</div>
+            <div class="sub">if sold at single unit retail</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
 }
 /* ============================================================
    END OF DAY STOCK — what was on the shelf as at a given date,
@@ -2849,18 +3225,60 @@ async function runReport(){
 let eodRows=[], eodQuery='';
 function vEndOfDay(v){
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>End of day stock</h2><span class="desc">what was on the shelf at the end of a given day</span></div><div class="bd">
-    <div class="field"><label>Date</label><input id="eodDate" type="date" value="${today()}" onchange="loadEndOfDay()"></div>
-    <div class="row" style="gap:6px">
-      <button class="btn ghost sm" onclick="$('#eodDate').value=today();loadEndOfDay()">Today</button>
-      <button class="btn ghost sm" onclick="eodShift(-1)">◂ Prev day</button>
-      <button class="btn ghost sm" onclick="eodShift(1)">Next day ▸</button>
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('calendar','lg')} End of Day Stock Snapshot</div>
+      <div class="phSubtitle">Historical inventory balances computed exactly as they were at the close of any past date.</div>
     </div>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Stock as at <span id="eodDesc"></span></h2></div><div class="bd tight rtable">
-    <div style="padding:0 18px 10px"><input class="custInput" id="eodSearch" placeholder="Search items…" oninput="filterEodTable(this.value)"></div>
-    <table><thead><tr><th>Item</th><th class="r">Stock</th></tr></thead><tbody id="eodTableBody"><tr><td colspan="2" class="empty">Loading…</td></tr></tbody></table>
-  </div></div>`;
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Select Snapshot Date</h2>
+      <span class="desc">Jump to any day to view ending shelf count</span>
+    </div>
+    <div class="bd">
+      <div class="frow" style="align-items:flex-end">
+        <div class="field" style="flex:2">
+          <label>Target Date</label>
+          <input id="eodDate" type="date" value="${today()}" onchange="loadEndOfDay()">
+        </div>
+        <div class="field" style="flex:3">
+          <div class="presetRow" style="padding-top:4px">
+            <button class="presetBtn active" id="eodBtnToday" onclick="$('#eodDate').value=today();loadEndOfDay()">Today</button>
+            <button class="presetBtn" onclick="eodShift(-1)">◂ Prev Day</button>
+            <button class="presetBtn" onclick="eodShift(1)">Next Day ▸</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Closing Inventory: <span id="eodDesc" style="color:var(--green-d)"></span></h2>
+      <span class="desc">Shelf stock computed from purchase, sales & adjustment history</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div style="padding:10px 18px 14px">
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">${icon('search')}</span>
+          <input class="custInput" id="eodSearch" placeholder="Search snapshot items by name or category…" style="padding-left:38px" oninput="filterEodTable(this.value)">
+        </div>
+      </div>
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>Product Name</th>
+            <th class="r">Closing Stock</th>
+          </tr>
+        </thead>
+        <tbody id="eodTableBody">
+          <tr><td colspan="2" class="empty">Calculating closing balances…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>`;
   loadEndOfDay();
 }
 function eodShift(days){
@@ -2976,39 +3394,120 @@ async function exportCSV(){
    and need admin approval (enforced at the RLS layer too, not just here).
    ============================================================ */
 async function vExpenses(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
+  v.innerHTML='<div class="empty">Loading operating expenses…</div>';
   const isManager=S.role==='manager';
-  const {data,error}=await sb.from('expenditures').select('*').eq('business_id',S.biz.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false});
-  if(error) return err(error);
-  S._exp=data||[];
-  S._expFrom=S._expFrom||monthStart(); S._expTo=S._expTo||today();
-  const pending=S._exp.filter(e=>e.status==='pending');
-  v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Record an expense</h2><span class="desc">${isManager?'sent to the admin for approval':'rent, transport, repairs, anything outside stock purchases'}</span></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>Amount (₦)</label><input id="exAmt" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
-      <div class="field"><label>Category (optional)</label><input id="exCat" placeholder="e.g. Transport, Rent, Repairs"></div>
-      <div class="field"><label>Date</label><input id="exDate" type="date" value="${today()}"></div>
+  sb.from('expenditures').select('*').eq('business_id',S.biz.id).order('entry_date',{ascending:false}).order('created_at',{ascending:false}).then(({data,error})=>{
+    if(error) return err(error);
+    S._exp=data||[];
+    S._expFrom=S._expFrom||monthStart(); S._expTo=S._expTo||today();
+    const pending=S._exp.filter(e=>e.status==='pending');
+
+    v.innerHTML=`
+    <div class="pageHero">
+      <div>
+        <div class="phTitle">${icon('wallet','lg')} Operating Expenses</div>
+        <div class="phSubtitle">Track shop overheads, utilities, transport, repairs, and store running costs separate from stock purchases.</div>
+      </div>
     </div>
-    <div class="field"><label>Note</label><input id="exNote" placeholder="What was this for?"></div>
-    <button class="btn primary" onclick="addExpenditure()">${isManager?'Send for approval':'Record expense'}</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Overview</h2></div><div class="bd">
-    <div class="frow">
-      <div class="field"><label>From</label><input id="exFrom" type="date" value="${S._expFrom}"></div>
-      <div class="field"><label>To</label><input id="exTo" type="date" value="${S._expTo}"></div>
-      <div class="field" style="display:flex;align-items:flex-end"><button class="btn primary" onclick="runExpReport()">Run</button></div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Record Store Expense</h2>
+        <span class="desc">${isManager?'Submitted to owner for approval':'Deducted directly from store operating profit'}</span>
+      </div>
+      <div class="bd">
+        <div class="formGrid">
+          <div class="field">
+            <label>Expense Amount (₦)</label>
+            <input id="exAmt" type="number" min="1" step="1" placeholder="e.g. 10,000">
+          </div>
+          <div class="field">
+            <label>Expense Category</label>
+            <input id="exCat" placeholder="e.g. Transport, Rent, Electricity, Packaging">
+          </div>
+          <div class="field">
+            <label>Date Incurred</label>
+            <input id="exDate" type="date" value="${today()}">
+          </div>
+        </div>
+        <div class="field" style="margin-top:10px">
+          <label>Expense Description / Justification</label>
+          <input id="exNote" placeholder="What was this expenditure for? (e.g. Diesel for generator)">
+        </div>
+        <div style="display:flex;justify-content:flex-end;margin-top:12px">
+          <button class="btn primary" onclick="addExpenditure()" style="padding:11px 22px">
+            ${icon('plus')} ${isManager?'Submit for Owner Approval':'Save Expense Record'}
+          </button>
+        </div>
+      </div>
     </div>
-    <div class="row" style="gap:6px">
-      <button class="btn ghost sm" onclick="expRange('today')">Today</button>
-      <button class="btn ghost sm" onclick="expRange('week')">Last 7 days</button>
-      <button class="btn ghost sm" onclick="expRange('month')">This month</button>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Expense Analytics & Window</h2>
+        <span class="desc">Filter expense totals by time window</span>
+      </div>
+      <div class="bd">
+        <div class="presetRow" style="margin-bottom:14px">
+          <button class="presetBtn" onclick="expRange('today')">Today</button>
+          <button class="presetBtn" onclick="expRange('week')">Last 7 Days</button>
+          <button class="presetBtn active" onclick="expRange('month')">This Month</button>
+          <button class="presetBtn" onclick="expRange('lastmonth')">Last Month</button>
+          <button class="presetBtn" onclick="expRange('year')">This Year</button>
+          <button class="presetBtn" onclick="expRange('all')">All Time</button>
+        </div>
+        <div class="frow" style="align-items:flex-end">
+          <div class="field" style="flex:2">
+            <label>From</label>
+            <input id="exFrom" type="date" value="${S._expFrom}">
+          </div>
+          <div class="field" style="flex:2">
+            <label>To</label>
+            <input id="exTo" type="date" value="${S._expTo}">
+          </div>
+          <div class="field" style="flex:1">
+            <button class="btn primary" onclick="runExpReport()" style="width:100%;height:44px">
+              ${icon('refresh')} Filter
+            </button>
+          </div>
+        </div>
+        <div class="stats" style="margin-top:16px;margin-bottom:0">
+          <div class="stat bad">
+            <div class="label">${icon('wallet')} Approved Expenses</div>
+            <div class="value num" id="exTot">…</div>
+            <div class="sub">deducted from profit</div>
+          </div>
+          <div class="stat warn">
+            <div class="label">${icon('alert')} Pending Approvals</div>
+            <div class="value num" id="exPendTot">…</div>
+            <div class="sub">awaiting sign-off</div>
+          </div>
+        </div>
+      </div>
     </div>
-  </div></div>
-  <div id="expOut"></div>
-  ${pending.length?`<div class="card"><div class="hd"><h2>Awaiting approval</h2><span class="desc">${pending.length} pending</span></div><div class="bd tight">${renderExpPending(pending)}</div></div>`:''}
-  <div class="card"><div class="hd"><h2>All expenses</h2></div><div class="bd tight">${renderExpList(S._exp)}</div></div>`;
-  runExpReport();
+
+    ${pending.length ? `
+    <div class="card">
+      <div class="hd">
+        <h2>Pending Expense Requests (${pending.length})</h2>
+        <span class="desc">Staff submissions requiring verification</span>
+      </div>
+      <div class="bd tight tableWrap" id="expPending">
+        ${renderExpPending(pending)}
+      </div>
+    </div>` : ''}
+
+    <div class="card">
+      <div class="hd">
+        <h2>Expense Journal</h2>
+        <span class="desc">Detailed log of store disbursements</span>
+      </div>
+      <div class="bd tight tableWrap">
+        <div id="expList">${renderExpList()}</div>
+      </div>
+    </div>`;
+    runExpReport();
+  });
 }
 function expRange(which){
   const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
@@ -3083,25 +3582,92 @@ async function rejectExpenditure(id){
 async function vMembers(v){
   const isPaid=planActive();
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Invite a receptionist</h2></div><div class="bd">
-    ${!isPaid?'<p class="hint" style="color:var(--red);margin-bottom:10px">Free plan is limited to just the owner. <a href="#" onclick="openUpgrade();return false">Upgrade</a> to approve team members.</p>':''}
-    <p class="hint" style="margin-bottom:10px">Share this code. They create an account, choose <b>Join a business</b>, and enter it. You'll need to approve them below before they get access.</p>
-    <div class="row" style="align-items:center"><span class="code" style="font-size:20px">${esc(S.biz.invite_code)}</span>
-    <button class="btn ghost sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Code copied'))">Copy</button></div>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Join requests</h2><span class="desc">approve before they get access</span></div><div class="bd tight"><div id="joinReqList" class="empty">Loading…</div></div></div>
-  <div class="card"><div class="hd"><h2>Team</h2></div><div class="bd tight"><div id="memList" class="empty">Loading…</div></div></div>`;
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('users','lg')} Team & Access Governance</div>
+      <div class="phSubtitle">Manage cashiers, managers, role permissions, and store access keys.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Staff Invitation Passcode</h2>
+      <span class="desc">Share this code with employees to join your shop</span>
+    </div>
+    <div class="bd">
+      ${!isPaid ? `
+      <div class="diffBox" style="background:#FDF2F2;border-color:#F5C6CB;color:var(--red);margin-bottom:14px">
+        ⚠️ <b>Single-User Free Plan:</b> Multi-user team management requires an active Pro plan. 
+        <a href="#" onclick="openUpgrade();return false" style="text-decoration:underline;font-weight:700">Upgrade your shop</a> to approve team members.
+      </div>` : ''}
+      
+      <p class="hint" style="margin-bottom:14px">Employees should register an account on TheMonishop, choose <b>Join a Business</b>, and enter this passcode.</p>
+      
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="code" style="font-size:22px;letter-spacing:.12em;padding:8px 18px;background:#FAF7F0;border:1px solid var(--line);border-radius:10px">
+          ${esc(S.biz.invite_code)}
+        </div>
+        <button class="btn primary sm" onclick="navigator.clipboard.writeText('${S.biz.invite_code}').then(()=>toast('Invite code copied to clipboard'))" style="display:inline-flex;align-items:center;gap:6px">
+          ${icon('check')} Copy Passcode
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Pending Join Requests</h2>
+      <span class="desc">Staff waiting for owner access grant</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="joinReqList" class="empty">Checking join requests…</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Active Team Roster</h2>
+      <span class="desc">Current employees with shop access</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="memList" class="empty">Loading team members…</div>
+    </div>
+  </div>`;
+
   loadJoinRequests();
-  const {data,error}=await sb.rpc('list_members',{b:S.biz.id});
-  if(error) return err(error);
-  $('#memList').outerHTML=`<div id="memList"><table><tbody>${data.map(m=>`<tr>
-    <td class="itemname">${esc(m.full_name||'(no name)')}${m.is_owner?' <span class="cat">owner</span>':''}</td>
-    <td><span class="rolepill ${m.role==='receptionist'?'recept':m.role==='manager'?'mgr':''}">${m.role}</span></td>
-    <td class="r">${m.is_owner?'':`
-      ${m.role==='receptionist'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","manager")'>Promote to Manager</button>`:''}
-      ${m.role==='manager'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","receptionist")'>Demote to Receptionist</button>`:''}
-      <button class="btn danger sm" onclick='removeMember("${m.user_id}")'>Remove</button>`}</td>
-  </tr>`).join('')}</tbody></table></div>`;
+  
+  sb.rpc('list_members',{b:S.biz.id}).then(({data,error})=>{
+    if(error) return err(error);
+    $('#memList').outerHTML=`<div id="memList"><table class="rtable">
+      <thead>
+        <tr>
+          <th>Team Member</th>
+          <th>System Role</th>
+          <th class="r">Actions</th>
+        </tr>
+      </thead>
+      <tbody>${(data||[]).map(m=>`<tr>
+      <td class="itemname" data-label="Member">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="custAvatar">${(m.full_name||'U').slice(0,2).toUpperCase()}</div>
+          <div>
+            <b>${esc(m.full_name||'(Unnamed Staff)')}</b>
+            ${m.is_owner?'<span class="badge gold" style="margin-left:6px">Owner</span>':''}
+          </div>
+        </div>
+      </td>
+      <td data-label="Role">
+        <span class="rolepill ${m.role==='receptionist'?'recept':m.role==='manager'?'mgr':''}">${m.role}</span>
+      </td>
+      <td class="r" data-label="Actions">${m.is_owner?'<span class="hint">Primary Admin</span>':`
+        <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+          ${m.role==='receptionist'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","manager")'>Promote to Manager</button>`:''}
+          ${m.role==='manager'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","receptionist")'>Set as Cashier</button>`:''}
+          <button class="btn danger sm" onclick='removeMember("${m.user_id}","${esc(m.full_name||'this member')}")'>Revoke Access</button>
+        </div>`}
+      </td>
+    </tr>`).join('')}</tbody></table></div>`;
+  });
 }
 async function setMemberRole(uid,role){
   const {error}=await sb.rpc('set_member_role',{b:S.biz.id,target_user:uid,new_role:role});
@@ -3172,12 +3738,48 @@ const AUDIT_META={
 };
 function auditMeta(action){ return AUDIT_META[action] || {label:(action||'').replace(/_/g,' '), cls:'zero'}; }
 async function vAudit(v){
-  v.innerHTML='<div class="card"><div class="hd"><h2>Audit log</h2><span class="desc">every important change, automatically recorded</span></div><div class="bd tight"><div id="auList" class="empty">Loading…</div></div></div>';
-  const {data,error}=await sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200);
-  if(error) return err(error);
-  const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  $('#auList').outerHTML=`<div id="auList">${data.length?`<table><thead><tr><th>When</th><th>Action</th><th>Detail</th></tr></thead>
-  <tbody>${data.map(a=>{const m=auditMeta(a.action);return `<tr><td class="num hint">${fmt(a.created_at)}</td><td><span class="badge lg ${m.cls}">${esc(m.label)}</span></td><td>${esc(a.detail||'')}</td></tr>`;}).join('')}</tbody></table>`:'<div class="empty">No activity yet.</div>'}</div>`;
+  v.innerHTML=`
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('shield','lg')} Security & Audit Trail</div>
+      <div class="phSubtitle">Immutable chronological ledger of price changes, stock reconciliations, till clearings, and staff actions.</div>
+    </div>
+  </div>
+  
+  <div class="card">
+    <div class="hd">
+      <h2>Activity Journal</h2>
+      <span class="desc">Real-time tamper-proof event logs</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="auList" class="empty">Loading security logs…</div>
+    </div>
+  </div>`;
+
+  sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200).then(({data,error})=>{
+    if(error) return err(error);
+    const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    $('#auList').outerHTML=`<div id="auList">${data.length?`
+    <table class="rtable">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>Action Type</th>
+          <th>Event Detail</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(a=>{
+          const m=auditMeta(a.action);
+          return `<tr>
+            <td class="num hint" data-label="Timestamp">${fmt(a.created_at)}</td>
+            <td data-label="Action"><span class="badge ${m.cls}">${esc(m.label)}</span></td>
+            <td data-label="Detail" style="font-size:13.5px;color:var(--ink)">${esc(a.detail||'')}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`:'<div class="empty">No security events recorded yet.</div>'}</div>`;
+  });
 }
 
 /* ============================================================
@@ -3215,22 +3817,58 @@ function pendingChangeText(c){
   return c.action_type;
 }
 async function vApprovals(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const [{data,error},{data:history,error:histErr},{data:members}]=await Promise.all([
+  v.innerHTML='<div class="empty">Loading pending changes…</div>';
+  Promise.all([
     sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('status','pending').order('created_at',{ascending:true}),
     sb.from('pending_changes').select('*').eq('business_id',S.biz.id).in('status',['approved','rejected']).order('reviewed_at',{ascending:false}).limit(50),
     sb.rpc('list_members',{b:S.biz.id})
-  ]);
-  if(error) return err(error);
-  const nameOf=uid=>(members||[]).find(m=>m.user_id===uid)?.full_name||'(unknown)';
-  const pendingHtml=data.length?(data.length>1?`<div class="card"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="hint">${data.length} pending requests</div><div class="spacer"></div>
-      <button class="btn primary sm" id="approveAllBtn" onclick="approveAllChanges()">Approve all</button>
-    </div></div>`:'')+data.map(renderApprovalCard).join(''):'<div class="card"><div class="bd"><div class="empty">No pending approvals.</div></div></div>';
-  const historyHtml=(!histErr&&history?.length)?`<div class="card"><div class="hd"><h2>History</h2><span class="desc">recently approved and rejected</span></div><div class="bd tight">
-    <table><tbody>${history.map(c=>renderApprovalHistoryRow(c,nameOf)).join('')}</tbody></table>
-  </div></div>`:'';
-  v.innerHTML=pendingHtml+historyHtml;
+  ]).then(([{data,error},{data:history,error:histErr},{data:members}])=>{
+    if(error) return err(error);
+    const nameOf=uid=>(members||[]).find(m=>m.user_id===uid)?.full_name||'(staff member)';
+    
+    const pendingHtml=data.length ? `
+      ${data.length > 1 ? `
+      <div class="card" style="background:#FAF7F0">
+        <div class="bd" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div><b>${data.length} Requests Awaiting Your Sign-Off</b></div>
+          <button class="btn primary sm" id="approveAllBtn" onclick="approveAllChanges()" style="display:inline-flex;align-items:center;gap:6px">
+            ${icon('check')} Approve All (${data.length})
+          </button>
+        </div>
+      </div>` : ''}
+      ${data.map(renderApprovalCard).join('')}
+    ` : '<div class="card"><div class="bd"><div class="empty">🎉 All caught up! No pending approval requests.</div></div></div>';
+
+    const historyHtml=(!histErr && history?.length) ? `
+    <div class="card">
+      <div class="hd">
+        <h2>Decision History</h2>
+        <span class="desc">Recently approved and declined staff submissions</span>
+      </div>
+      <div class="bd tight tableWrap">
+        <table class="rtable">
+          <thead>
+            <tr>
+              <th>Requested Action</th>
+              <th>Staff & Timing</th>
+              <th class="r">Decision</th>
+            </tr>
+          </thead>
+          <tbody>${history.map(c=>renderApprovalHistoryRow(c,nameOf)).join('')}</tbody>
+        </table>
+      </div>
+    </div>` : '';
+
+    v.innerHTML=`
+    <div class="pageHero">
+      <div>
+        <div class="phTitle">${icon('shield','lg')} Change Approvals & Authorization</div>
+        <div class="phSubtitle">Review and verify manager requests for price adjustments, deletions, and reconciliations.</div>
+      </div>
+    </div>
+    ${pendingHtml}
+    ${historyHtml}`;
+  });
 }
 function renderApprovalHistoryRow(c,nameOf){
   const label={add_item:'New item',edit_item:'Edit item',delete_item:'Delete item',restock:'Restock',reconcile:'Reconciliation',till_clear:'Till clearing',pos_transaction:'POS transaction'}[c.action_type]||c.action_type;
@@ -3414,27 +4052,99 @@ function bizOptionLabel(b){ return (b.parent_business_id?'↳ ':'')+b.name; }
 async function vBranches(v){
   const branches=branchList();
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Add a branch</h2><span class="desc">${S.biz.branches_free?'Free for your account — no charge to add stores.':'₦10,000/year per additional store.'}</span></div><div class="bd">
-    <div class="field"><label>Store name</label><input id="branchName" placeholder="e.g. Ikeja Branch"></div>
-    <button class="btn primary" id="branchCreateBtn" onclick="createBranch()">Add branch</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Overview</h2><span class="desc">combined across every store</span></div><div class="bd">
-    <div class="stats" id="branchStats"><div class="empty">Loading…</div></div>
-  </div></div>
-  <div class="card"><div class="hd"><h2>By store</h2><span class="desc">how each one is doing on its own</span></div><div class="bd tight rtable">
-    <table><thead><tr><th>Store</th><th class="r">Today</th><th class="r">This month</th><th class="r">Stock value</th><th class="r">Low stock</th><th class="r">Credit owed</th></tr></thead>
-    <tbody id="branchBreakdown"><tr><td colspan="6" class="empty">Loading…</td></tr></tbody></table>
-  </div></div>
-  ${branches.length?`<div class="card"><div class="hd"><h2>Branches</h2><span class="desc">${branches.length} store${branches.length===1?'':'s'} — share a branch's invite code to add staff to it specifically, exactly like your main shop's Team tab</span></div><div class="bd tight rtable">
-    <table><thead><tr><th>Name</th><th>Status</th><th>Invite code</th><th class="r"></th></tr></thead>
-    <tbody>${branches.map(b=>`<tr>
-      <td class="itemname">${esc(b.name)}</td>
-      <td>${branchStatusBadge(b)}</td>
-      <td><span class="code">${esc(b.invite_code||'—')}</span></td>
-      <td class="r"><button class="btn ghost sm" onclick='switchToBranch("${b.id}")'>Open</button></td>
-    </tr>`).join('')}</tbody></table>
-  </div></div>`:'<div class="card"><div class="bd"><p class="hint">No branches yet — add one above to get started.</p></div></div>'}`;
-  loadBranchBreakdown([S.biz,...branches]);
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('building','lg')} Multi-Store & Branch Network</div>
+      <div class="phSubtitle">Manage multiple shop locations, compare branch revenues, and clone product catalogs across outlets.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Add New Shop Branch</h2>
+      <span class="desc">${S.biz.branches_free?'Free for your account — unlimited stores enabled.':'₦10,000/year per additional branch store.'}</span>
+    </div>
+    <div class="bd">
+      <div class="formGrid">
+        <div class="field">
+          <label>New Branch Location / Name</label>
+          <input id="branchName" placeholder="e.g. Ikeja Mall Branch, Abuja Warehouse">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn primary" id="branchCreateBtn" onclick="createBranch()" style="padding:11px 22px">
+          ${icon('plus')} Create Branch
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Combined Network Performance</h2>
+      <span class="desc">Aggregated sales and inventory across all outlets</span>
+    </div>
+    <div class="bd">
+      <div class="stats" id="branchStats"><div class="empty">Aggregating store metrics…</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Store by Store Comparison</h2>
+      <span class="desc">Individual location sales, inventory and outstanding credit</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>Store Outlet</th>
+            <th class="r">Sales Today</th>
+            <th class="r">Sales This Month</th>
+            <th class="r">Inventory Value</th>
+            <th class="r">Low Stock</th>
+            <th class="r">Credit Owed</th>
+          </tr>
+        </thead>
+        <tbody id="branchBreakdown"><tr><td colspan="6" class="empty">Loading store data…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  ${branches.length ? `
+  <div class="card">
+    <div class="hd">
+      <h2>Store Branches (${branches.length})</h2>
+      <span class="desc">Switch active store context or clone products</span>
+    </div>
+    <div class="bd tight tableWrap">
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>Outlet Name</th>
+            <th>Staff Passcode</th>
+            <th>Account Status</th>
+            <th class="r">Actions</th>
+          </tr>
+        </thead>
+        <tbody>${branches.map(b=>`<tr>
+          <td class="itemname" data-label="Branch">
+            <b>${esc(b.name)}</b>
+            ${b.id===S.biz.id?'<span class="badge ok" style="margin-left:6px">Active Now</span>':''}
+          </td>
+          <td data-label="Passcode"><span class="code">${esc(b.invite_code)}</span></td>
+          <td data-label="Status">${branchStatusBadge(b)}</td>
+          <td class="r" data-label="Actions">
+            <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
+              ${b.id===S.biz.id?'<span class="hint">Currently Selected</span>':`<button class="btn primary sm" onclick='switchToBranch("${b.id}")'>Switch to Store</button>`}
+              <button class="btn ghost sm" onclick='openBranchCopyPicker("${b.id}","${esc(b.name)}")'>Copy Items</button>
+            </div>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    </div>
+  </div>`:''}`;
+  loadBranchBreakdown();
 }
 function switchToBranch(id){ const sel=$('#bizSelect'); if(sel) sel.value=id; switchBiz(id); }
 async function createBranch(){
@@ -3599,22 +4309,64 @@ async function confirmBranchCopyItems(){
    and customer — turns into a normal sale with payment_method:'card'.
    ============================================================ */
 async function vTerminal(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
+  v.innerHTML='<div class="empty">Loading POS terminal records…</div>';
   const {data,error}=await sb.from('terminal_transactions').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(100);
   if(error) return err(error);
   S._termTxns=data||[];
   const pending=S._termTxns.filter(t=>t.status==='pending');
   const done=S._termTxns.filter(t=>t.status!=='pending').slice(0,30);
+  
   v.innerHTML=`
-  <div class="card"><div class="hd"><h2>Log a card terminal sale</h2><span class="desc">amount now, details later</span></div><div class="bd">
-    <div class="frow" style="align-items:flex-end">
-      <div class="field"><label>Amount (₦)</label><input id="ttAmt" type="number" min="1" step="1" placeholder="e.g. 5000"></div>
-      <div class="field"><label>Note (optional)</label><input id="ttNote" placeholder="e.g. terminal receipt #"></div>
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('card','lg')} Card Terminal Reconciliation</div>
+      <div class="phSubtitle">Log POS swipe payments immediately at checkout, then match item details when time permits.</div>
     </div>
-    <button class="btn primary" onclick="logTerminalTxn()">Save</button>
-  </div></div>
-  <div class="card"><div class="hd"><h2>Needs details</h2><span class="desc">${pending.length} pending</span></div><div class="bd tight" id="ttPending">${renderTermPending(pending)}</div></div>
-  <div class="card"><div class="hd"><h2>Recently completed</h2></div><div class="bd tight">${renderTermDone(done)}</div></div>`;
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Quick-Log Card Terminal Sale</h2>
+      <span class="desc">Capture amount now, assign line items later</span>
+    </div>
+    <div class="bd">
+      <div class="formGrid">
+        <div class="field">
+          <label>Amount Swiped / Paid (₦)</label>
+          <input id="ttAmt" type="number" min="1" step="1" placeholder="e.g. 5,000">
+        </div>
+        <div class="field">
+          <label>POS Receipt # / Terminal Ref</label>
+          <input id="ttNote" placeholder="e.g. Moniepoint STAN #0042">
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn primary" onclick="logTerminalTxn()" style="padding:10px 20px">
+          ${icon('plus')} Log Card Payment
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Awaiting Product Breakdown (${pending.length})</h2>
+      <span class="desc">Card payments requiring cart item reconciliation</span>
+    </div>
+    <div class="bd tight tableWrap" id="ttPending">
+      ${renderTermPending(pending)}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Recently Reconciled</h2>
+      <span class="desc">Completed card terminal sales</span>
+    </div>
+    <div class="bd tight tableWrap">
+      ${renderTermDone(done)}
+    </div>
+  </div>`;
 }
 function renderTermPending(list){
   if(!list.length) return '<div class="empty">Nothing waiting.</div>';
@@ -4258,25 +5010,75 @@ async function printReceiptBluetooth(){
    RECEPTIONIST — MY SALES
    ============================================================ */
 async function vMySales(v){
-  v.innerHTML='<div class="empty">Loading…</div>';
-  const {data,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).eq('created_by',S.user.id).order('created_at',{ascending:false});
-  if(error) return err(error);
-  const t=today(), m=monthStart(), rev=s=>s.quantity*Number(s.unit_price);
-  const dT=data.filter(s=>s.entry_date===t), dM=data.filter(s=>s.entry_date>=m);
-  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(item)';};
-  const cn=id=>{const c=S.customers.find(x=>x.id===id);return c?c.name:'';};
-  v.innerHTML=`
-    <div class="stats">
-      <div class="stat good"><div class="label">Today</div><div class="value num">${money(dT.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dT.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
-      <div class="stat"><div class="label">This month</div><div class="value num">${money(dM.reduce((a,s)=>a+rev(s),0))}</div><div class="sub num">${dM.reduce((a,s)=>a+s.quantity,0)} sold</div></div>
+  v.innerHTML='<div class="empty">Loading your personal sales log…</div>';
+  sb.from('sales').select('*').eq('business_id',S.biz.id).eq('created_by',S.user.id).order('created_at',{ascending:false}).then(({data,error})=>{
+    if(error) return err(error);
+    const t=today(), m=monthStart(), rev=s=>s.quantity*Number(s.unit_price);
+    const dT=(data||[]).filter(s=>s.entry_date===t), dM=(data||[]).filter(s=>s.entry_date>=m);
+    const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(item)';};
+    const cn=id=>{const c=S.customers.find(x=>x.id===id);return c?c.name:'';};
+
+    const todayTotal = dT.reduce((a,s)=>a+rev(s),0);
+    const todayUnits = dT.reduce((a,s)=>a+s.quantity,0);
+    const monthTotal = dM.reduce((a,s)=>a+rev(s),0);
+    const monthUnits = dM.reduce((a,s)=>a+s.quantity,0);
+
+    v.innerHTML=`
+    <div class="pageHero">
+      <div>
+        <div class="phTitle">${icon('sparkle','lg')} My Sales & Shift Log</div>
+        <div class="phSubtitle">Personal checkout performance, custody balance, and receipts.</div>
+      </div>
     </div>
-    <div class="card"><div class="hd"><h2>With you right now</h2><span class="desc">from your own sales, since the till was last cleared</span></div><div class="bd tight" id="myTillShare"><div class="empty">Loading…</div></div></div>
-    <div class="card"><div class="hd"><h2>My recent sales</h2><span class="desc">items with the same shade were bought in one transaction</span></div><div class="bd tight">
-      ${data.length?`<table><thead><tr><th>Date</th><th>Item</th><th>Customer</th><th class="r">Qty</th><th class="r">Amount</th></tr></thead>
-      <tbody>${mySalesRows(data.slice(0,80),nm,cn,rev)}</tbody></table>`
-      :'<div class="empty">No sales recorded by you yet.</div>'}
-    </div></div>`;
-  loadMyTillShare();
+
+    <div class="stats" style="margin-bottom:18px">
+      <div class="stat good">
+        <div class="label">${icon('trend_up')} My Sales Today</div>
+        <div class="value num">${money(todayTotal)}</div>
+        <div class="sub num">${todayUnits} items sold today</div>
+      </div>
+      <div class="stat">
+        <div class="label">${icon('calendar')} My Sales This Month</div>
+        <div class="value num">${money(monthTotal)}</div>
+        <div class="sub num">${monthUnits} items sold this month</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Cash In Your Custody</h2>
+        <span class="desc">Money collected from your sales since the register was last cleared</span>
+      </div>
+      <div class="bd tight tableWrap" id="myTillShare">
+        <div class="empty">Calculating custody share…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="hd">
+        <h2>Recent Sales Transactions</h2>
+        <span class="desc">Grouped by customer order & receipt</span>
+      </div>
+      <div class="bd tight tableWrap">
+        ${(data||[]).length ? `
+        <table class="rtable">
+          <thead>
+            <tr>
+              <th>Time & Date</th>
+              <th>Product</th>
+              <th>Customer</th>
+              <th class="r">Qty</th>
+              <th class="r">Amount</th>
+              <th class="r">Receipt</th>
+            </tr>
+          </thead>
+          <tbody>${mySalesRows(data.slice(0,100),nm,cn)}</tbody>
+        </table>`
+        : '<div class="empty">You have not recorded any sales yet.</div>'}
+      </div>
+    </div>`;
+    loadMyTillShare();
+  });
 }
 // every row from one checkout shares the exact same created_at (inserted
 // together in a single INSERT, so they get the same transaction-time
@@ -4303,13 +5105,61 @@ async function loadMyTillShare(){
    RECEPTIONIST — ITEM LIST (read only)
    ============================================================ */
 function vStockList(v){
-  v.innerHTML=`${expiringSoonCard()}
-  <div class="card"><div class="hd"><h2>Available items</h2></div><div class="bd tight">
-    ${S.items.length?`<div style="padding:0 18px 10px"><input class="custInput" id="stockSearch" placeholder="Search items…" value="${esc(stockListQuery)}" oninput="filterStockTable(this.value)"></div>
-    <table><thead><tr><th>Item</th><th class="r">Pack price</th><th class="r">Remaining</th></tr></thead>
-    <tbody id="stockTableBody">${stockTableRows()}</tbody></table>`
-    :'<div class="empty">No items yet.</div>'}
-  </div></div>`;
+  const totalItems = S.items.length;
+  const lowCount = S.items.filter(i => { const oh = onHand(i.id); return oh > 0 && oh <= i.low_stock_threshold; }).length;
+  const outCount = S.items.filter(i => onHand(i.id) <= 0).length;
+
+  v.innerHTML=`
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('box','lg')} Store Inventory Catalog</div>
+      <div class="phSubtitle">Live stock levels, mode prices, and shelf counts across the store.</div>
+    </div>
+  </div>
+
+  <div class="stats" style="margin-bottom:16px">
+    <div class="stat">
+      <div class="label">${icon('box')} Total Products</div>
+      <div class="value num">${totalItems}</div>
+    </div>
+    <div class="stat ${lowCount>0?'warn':''}">
+      <div class="label">${icon('alert')} Low Stock</div>
+      <div class="value num">${lowCount}</div>
+    </div>
+    <div class="stat ${outCount>0?'bad':''}">
+      <div class="label">${icon('x')} Out of Stock</div>
+      <div class="value num">${outCount}</div>
+    </div>
+  </div>
+
+  ${expiringSoonCard()}
+
+  <div class="card">
+    <div class="hd">
+      <h2>Available Items & Pricing</h2>
+      <span class="desc">Real-time stock balance and sell rates</span>
+    </div>
+    <div class="bd tight tableWrap">
+      ${S.items.length ? `
+      <div style="padding:10px 18px 14px">
+        <div style="position:relative">
+          <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none">${icon('search')}</span>
+          <input class="custInput" id="stockSearch" placeholder="Search catalog by name or category…" value="${esc(stockListQuery)}" style="padding-left:38px" oninput="filterStockTable(this.value)">
+        </div>
+      </div>
+      <table class="rtable">
+        <thead>
+          <tr>
+            <th>Product & Selling Modes</th>
+            <th class="r">Pack Price</th>
+            <th class="r">Stock Remaining</th>
+          </tr>
+        </thead>
+        <tbody id="stockTableBody">${stockTableRows()}</tbody>
+      </table>`
+      : '<div class="empty">No inventory items found.</div>'}
+    </div>
+  </div>`;
 }
 function stockRow(i){
   const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
@@ -4674,25 +5524,63 @@ function closeThanksRound(){ document.getElementById('thanksCard')?.remove(); }
 function vSettings(v){
   const fmtD=t=>new Date(t).toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
   const planCard=(()=>{
-    if(trialActive()) return `<div class="card"><div class="hd"><h2>Free trial</h2><span class="desc">${trialDaysLeft()} day${trialDaysLeft()===1?'':'s'} left</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">You have full access during your trial: unlimited items and team members. Upgrade any time to keep it after the trial ends.</div>
-    <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
-  </div></div>`;
-    if(!S.biz.is_paid) return `<div class="card"><div class="hd"><h2>Upgrade</h2><span class="desc">From ${money(S.pricingPlans?.monthly?.price||0)}/month</span></div><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px">Your free trial has ended. Free plan: ${FREE_ITEM_CAP} items max, owner only (no team). Upgrading removes both limits — pick monthly, 6 months, or a year.</div>
-    <button class="btn primary" onclick="openUpgrade()">Upgrade</button>
-  </div></div>`;
-    if(!S.biz.paid_until) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div><b>Paid plan</b><div class="hint">Unlimited items and team members.</div></div>
-  </div></div>`;
-    if(planActive()) return `<div class="card"><div class="bd" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-    <div><b>Paid plan</b><div class="hint">Unlimited items and team members. Paid until ${fmtD(S.biz.paid_until)}.</div></div>
-  </div></div>`;
+    if(trialActive()) return `
+    <div class="card" style="background:linear-gradient(135deg,rgba(31,90,65,.04),rgba(169,119,46,.06));border-color:var(--gold)">
+      <div class="hd">
+        <h2>${icon('sparkle')} Pro Trial Active</h2>
+        <span class="badge gold">${trialDaysLeft()} day${trialDaysLeft()===1?'':'s'} remaining</span>
+      </div>
+      <div class="bd" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          You have full unlimited access: unlimited inventory items, receipt printing, multi-user cashiers, and analytics.
+        </div>
+        <button class="btn primary" onclick="openUpgrade()" style="padding:11px 22px">
+          ${icon('sparkle')} Upgrade Plan
+        </button>
+      </div>
+    </div>`;
+    if(!S.biz.is_paid) return `
+    <div class="card" style="border-color:var(--gold)">
+      <div class="hd">
+        <h2>Upgrade to TheMonishop Pro</h2>
+        <span class="desc">From ${money(S.pricingPlans?.monthly?.price||0)}/month</span>
+      </div>
+      <div class="bd" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          Free plan limit: ${FREE_ITEM_CAP} items max, single-user only. Upgrading unlocks unlimited products, multi-cashier management, and automated WhatsApp tools.
+        </div>
+        <button class="btn primary" onclick="openUpgrade()" style="padding:11px 22px">
+          ${icon('sparkle')} Upgrade Now
+        </button>
+      </div>
+    </div>`;
+    if(!S.biz.paid_until) return `
+    <div class="card" style="background:rgba(31,90,65,.03)">
+      <div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div style="flex:1"><b>TheMonishop Pro (Active)</b><div class="hint">Unlimited products, multi-user cashiers, and continuous cloud backup.</div></div>
+      </div>
+    </div>`;
+    if(planActive()) return `
+    <div class="card" style="background:rgba(31,90,65,.03)">
+      <div class="bd" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1">
+          <b>TheMonishop Pro Plan</b>
+          <div class="hint">Unlimited items and team members. Active until ${fmtD(S.biz.paid_until)}.</div>
+        </div>
+        <button class="btn ghost sm" onclick="openUpgrade()">Extend Subscription</button>
+      </div>
+    </div>`;
     const daysLeft=Math.max(0,Math.ceil(GRACE_DAYS-(Date.now()-new Date(S.biz.paid_until).getTime())/86400000));
-    return `<div class="card" style="border-color:var(--red)"><div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <div style="flex:1;min-width:200px"><b style="color:var(--red)">Plan expired</b><div class="hint">Your plan expired on ${fmtD(S.biz.paid_until)}. Renew within ${daysLeft} day${daysLeft===1?'':'s'} to keep unlimited items and team members. After that, this business reverts to the free plan.</div></div>
-    <button class="btn primary" onclick="openUpgrade()">Renew</button>
-  </div></div>`;
+    return `
+    <div class="card" style="border-color:var(--red);background:#FDF2F2">
+      <div class="bd" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <b style="color:var(--red)">Subscription Expired</b>
+          <div class="hint">Your plan expired on ${fmtD(S.biz.paid_until)}. Renew within ${daysLeft} day${daysLeft===1?'':'s'} to keep unlimited features.</div>
+        </div>
+        <button class="btn primary" onclick="openUpgrade()" style="background:var(--red);border-color:var(--red)">Renew Now</button>
+      </div>
+    </div>`;
   })();
   v.innerHTML=`
   ${planCard}

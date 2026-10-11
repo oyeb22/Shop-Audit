@@ -484,34 +484,8 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 }
 
 
-
-/* ===== REFACTORED AUDIT ACTIVITY LOG MULTI-COLUMN STYLES ===== */
-.auditTableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.auditTable{width:100%;border-collapse:collapse;font-size:13px}
-.auditTable th{background:var(--card);color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-.auditTable td{padding:14px;border-bottom:1px solid var(--line);vertical-align:top;background:var(--card)}
-.auditTable tr:hover td{background:#FAF7F0}
-.auditTimeCol{white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--muted)}
-.auditStaffCol{white-space:nowrap;font-weight:600;color:var(--ink)}
-.auditActionBadge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
-.auditActionBadge.sale{background:#E6F4EA;color:#137333;border:1px solid #CEEAD6}
-.auditActionBadge.restock{background:#E8F0FE;color:#1A73E8;border:1px solid #D2E3FC}
-.auditActionBadge.adjust{background:#FEF7E0;color:#B06000;border:1px solid #FEEFC3}
-.auditActionBadge.expense{background:#FCE8E6;color:#C5221F;border:1px solid #FAD2CF}
-.auditActionBadge.neutral{background:#F1F3F4;color:#3C4043;border:1px solid #DADCE0}
-.auditItemsList{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
-.auditItemTag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
-.auditItemBullet{color:var(--muted);font-size:9px}
-.auditStockCol{background:rgba(230,244,234,.35)!important;border-left:2px solid #34A853;padding:10px 14px!important}
-.auditStockList{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
-.auditStockBadge{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#0D652D;font-size:12.5px;background:#FFFFFF;border:1px solid #A8DAB5;padding:3px 8px;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-.auditStockShort{color:#D93025;background:#FCE8E6;border-color:#F5C2C7}
-.auditFinCol{font-size:12.5px;color:var(--ink);display:flex;flex-direction:column;gap:3px}
-.auditFinHighlight{font-weight:700;color:var(--ink)}
-.auditFinTill{font-size:11.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
-
 /* ===== SANDBOX TRAINING PROFILE & CERTIFICATE STYLES ===== */
-.sandboxTopBanner{position:relative;z-index:10;background:linear-gradient(90deg,#16432F,#1F5A41);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);margin-bottom:16px;border-radius:12px}
+.sandboxTopBanner{position:sticky;top:62px;z-index:38;background:linear-gradient(90deg,#16432F,#1F5A41);color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);flex-wrap:wrap}
 .sandboxTopBanner .sbLeft{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sandboxTopBanner .sbBadge{background:#E9B949;color:#17150F;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px}
 .sandboxTopBanner .sbText{font-size:13px;font-weight:600;color:#FBF8F1}
@@ -525,11 +499,7 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 .sandboxPillBtn{background:#FAF7F0;border:1px solid var(--gold);color:var(--gold);font-weight:700;font-size:12.5px;padding:6px 12px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
 .sandboxPillBtn:hover{background:var(--gold);color:#fff}
 
-.sandboxTaskHud{position:fixed;bottom:16px;right:16px;z-index:90;width:min(360px,calc(100vw - 32px));background:var(--card);border:2px solid var(--gold);border-radius:16px;box-shadow:0 8px 30px rgba(23,21,15,.22);overflow:hidden;transition:all .2s ease}
-.sandboxTaskHud.minimized{width:auto;border-radius:99px;box-shadow:0 4px 16px rgba(0,0,0,.25)}
-.sandboxTaskHud.minimized .hudHeader{padding:8px 14px;background:#FAF7F0;border-bottom:none}
-.sandboxTaskHud.minimized .hudProgressText{display:none}
-.sandboxTaskHud.minimized .hudToggleIcon{transform:rotate(180deg)}
+.sandboxTaskHud{position:fixed;bottom:20px;right:20px;z-index:90;width:min(380px,calc(100vw - 32px));background:var(--card);border:2px solid var(--gold);border-radius:16px;box-shadow:0 8px 30px rgba(23,21,15,.22);overflow:hidden;transition:all .2s ease}
 .sandboxTaskHud .hudHeader{background:#FAF7F0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--line)}
 .sandboxTaskHud .hudTitle{display:flex;align-items:center;gap:10px}
 .sandboxTaskHud .hudTitle b{font-size:13.5px;color:var(--ink);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
@@ -1017,52 +987,6 @@ async function computeStockFallback(){
 const onHand = id => S.stock[id]??0;
 const balanceOf = id => S.balances[id]??0;
 const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
-
-/* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
-const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
-// small "Expiry: {date}" indicator for a single item, shown on its row
-// regardless of how far off the date is — the alert card below is only for
-// the genuinely urgent (180-day) case, but an item's tracked expiry should
-// always be visible somewhere, not just when it's imminent
-function expiryBadge(itemId){
-  const r=(S.expiringSoon||[]).find(x=>x.item_id===itemId);
-  if(!r) return '';
-  const urgent=new Date(r.expiry_date)-Date.now() <= 180*86400000;
-  return `<div class="cat" style="${urgent?'color:var(--amber);font-weight:600':''}">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` (${r.batch_count} batches)`:''} — <a href="#" onclick="viewExpiryBatches('${itemId}');return false">manage</a></div>`;
-}
-function expiringSoonCard(){
-  const rows=(S.expiringSoon||[]).filter(r=>new Date(r.expiry_date)-Date.now() <= 180*86400000);
-  if(!rows.length) return '';
-  return `<div class="card" id="expiringSoonCard" style="border-color:var(--amber)"><div class="hd"><h2>${icon('alert')} Expiring soon</h2><span class="desc">within 6 months</span></div><div class="bd tight">
-    <table><tbody>${rows.map(r=>`<tr>
-      <td class="itemname">${esc(r.item_name)}<div class="cat">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` · ${r.batch_count} batches tracked`:''}</div></td>
-      <td class="r"><button class="btn ghost sm" onclick="viewExpiryBatches('${r.item_id}')">Manage</button></td>
-    </tr>`).join('')}</tbody></table>
-  </div></div>`;
-}
-async function viewExpiryBatches(itemId){
-  const it=S.items.find(i=>i.id===itemId); if(!it) return;
-  const {data,error}=await sb.from('item_expiry_batches').select('*').eq('item_id',itemId).eq('cleared',false).order('expiry_date');
-  if(error) return err(error);
-  document.getElementById('expiryBatchCard')?.remove();
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="expiryBatchCard"><div class="hd"><h2>${esc(it.name)} — batches</h2><div class="spacer"></div>
-    <button class="btn ghost sm" onclick="document.getElementById('expiryBatchCard').remove()">Close</button></div><div class="bd tight">
-    ${data.length?`<table><tbody>${data.map(b=>`<tr>
-      <td class="itemname">${fmtExpiry(b.expiry_date)}${b.note?`<div class="cat">${esc(b.note)}</div>`:''}</td>
-      <td class="r"><button class="btn ghost sm" onclick="clearExpiryBatch('${b.id}','${itemId}')">Mark sold out</button></td>
-    </tr>`).join('')}</tbody></table>`:'<div class="empty">No batches left to track.</div>'}
-    <div class="bd" style="padding-top:12px"><button class="btn primary sm" onclick='openExpiryRound("${itemId}","${esc(it.name).replace(/'/g,"\\'")}")'>${icon('chat')} Notify customers of a discount</button></div>
-  </div></div>`);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-async function clearExpiryBatch(batchId,itemId){
-  const {error}=await sb.rpc('clear_expiry_batch',{p_batch_id:batchId});
-  if(error) return err(error);
-  toast('Batch marked sold out');
-  await loadData();
-  viewExpiryBatches(itemId);
-}
-
 // admin actions are always immediate regardless of settings — this only ever
 // gates managers. The RLS policies in migration-approval-settings.sql are the
 // actual enforcement; this just decides which UI path (immediate vs. queued)
@@ -1475,9 +1399,6 @@ async function render(){
     if(!S.biz){ renderNoBiz(); return; }
     const v=$('#view');
     if(!v) return;
-    if(S._isSandbox && !document.getElementById('sandboxTopBanner')){
-      renderSandboxBanner();
-    }
     // trial expired (or paid plan lapsed past grace) and never paid — hard
     // block, not the old soft 15-item/owner-only downgrade. Checked on every
     // render (not just on business switch) so it also catches a trial ending
@@ -4022,257 +3943,49 @@ const AUDIT_META={
   role_changed:            {label:'Role changed',         cls:'blue'}
 };
 function auditMeta(action){ return AUDIT_META[action] || {label:(action||'').replace(/_/g,' '), cls:'zero'}; }
-async // Parser helper to unpack unstructured event text strings into structured columns
-function parseAuditRecord(action, detail, staffName){
-  const str = String(detail || '');
-  let staff = staffName || 'System';
-  const items = [];
-  const remaining = [];
-  const financials = [];
-  let actionGroup = 'neutral'; // 'sale' | 'restock' | 'adjust' | 'expense' | 'neutral'
-
-  // Determine action style group
-  if(action === 'sale_completed' || action === 'credit_added' || action === 'payment_received' || action === 'credit_payment_recorded'){
-    actionGroup = 'sale';
-  } else if(action === 'restock_added' || action === 'item_added' || action === 'change_approved'){
-    actionGroup = 'restock';
-  } else if(action === 'reconciliation_recorded' || action === 'item_updated' || action === 'item_deleted' || action === 'change_rejected'){
-    actionGroup = 'adjust';
-  } else if(action === 'expenditure_added' || action === 'expenditure_approved' || action === 'expenditure_rejected' || action === 'till_cleared'){
-    actionGroup = 'expense';
-  }
-
-  // 1. Check if staff is mentioned in detail string: e.g. "by Emeka Obi."
-  const mStaff = str.match(/\bby\s+([^.]+?)(?:\.\s*|$)/i);
-  if(mStaff && mStaff[1]){
-    const candidate = mStaff[1].trim();
-    if(candidate.length > 1 && candidate.length < 40 && !/sold|remaining|received|in till|total/i.test(candidate)){
-      staff = candidate;
-    }
-  }
-
-  // 2. Sales movement format: "Rice: 2 Packs sold, 18 Packs remaining; Oil: 1 Bottle sold, 4 Bottles remaining"
-  const saleMatches = [...str.matchAll(/([^;,.]+?):\s*([^;,]+?\s+sold),\s*([^;,]+?\s+remaining)/gi)];
-  if(saleMatches.length){
-    saleMatches.forEach(m => {
-      const prod = m[1].trim();
-      const soldQty = m[2].trim();
-      const remQty = m[3].trim();
-      items.push({ prod, qty: soldQty });
-      remaining.push({ prod, balance: remQty });
-    });
-  }
-
-  // 3. Restock format: "Sugar: 10 Packs restocked (cost ₦5,000), now 35 Packs, store value..."
-  const restockMatch = str.match(/([^:]+?):\s*(\d+[^,]+?\s+restocked(?:\s*\([^)]*\))?),\s*now\s+([^,]+)/i);
-  if(restockMatch){
-    const prod = restockMatch[1].trim();
-    const qty = restockMatch[2].trim();
-    const nowQty = restockMatch[3].trim();
-    items.push({ prod, qty: '+' + qty });
-    remaining.push({ prod, balance: nowQty + ' (in stock)' });
-  }
-
-  // 4. Reconciliation format: "Flour: expected 20 Bags, counted 18 Bags (-2 Bags variance), stock corrected to 18 Bags"
-  const reconMatch = str.match(/([^:]+?):\s*expected\s+([^,]+),\s*counted\s+([^,(]+)(?:\s*\(([^)]*)\))?(?:.*stock corrected to\s+([^;,.]+))?/i);
-  if(reconMatch){
-    const prod = reconMatch[1].trim();
-    const exp = reconMatch[2].trim();
-    const counted = reconMatch[3].trim();
-    const variance = reconMatch[4] ? reconMatch[4].trim() : '';
-    const corrected = reconMatch[5] ? reconMatch[5].trim() : counted;
-    items.push({ prod, qty: `Counted ${counted} (exp ${exp}${variance ? ', ' + variance : ''})` });
-    remaining.push({ prod, balance: corrected + ' (audited)' });
-  }
-
-  // 5. Item added format: "Paracetamol: pack price ₦1,200, opening stock 10 Packs"
-  const itemAddMatch = str.match(/([^:]+?):(?:[^,]+,)?\s*opening stock\s+([^;,.]+)/i);
-  if(itemAddMatch){
-    const prod = itemAddMatch[1].trim();
-    const opening = itemAddMatch[2].trim();
-    items.push({ prod, qty: 'New product catalog entry' });
-    remaining.push({ prod, balance: opening + ' (initial stock)' });
-  }
-
-  // 6. Financials extraction: Payment method, amount received, till shifts
-  // Payment received / credit line
-  const mReceived = str.match(/(₦?[0-9,.]+\s+(?:received|added)[^.]+?)(?:\.\s*|$)/i);
-  if(mReceived) financials.push(mReceived[1].trim());
-
-  // Till shift
-  const mTill = str.match(/((?:Cash|Transfer|till)[^.]+?in till[^.]+?)(?:\.\s*|$)/i);
-  if(mTill) financials.push(mTill[1].trim());
-
-  // Credit shift
-  const mCredit = str.match(/((?:Total\s+)?credit[^.]+?)(?:\.\s*|$)/i);
-  if(mCredit && (!mTill || action === 'credit_added')) financials.push(mCredit[1].trim());
-
-  // If no items were parsed but there's a detail string, keep it readable
-  const fallbackDetail = (!items.length && !remaining.length && !financials.length) ? str : '';
-
-  return {
-    staff,
-    actionGroup,
-    items,
-    remaining,
-    financials,
-    fallbackDetail
-  };
-}
-
 async function vAudit(v){
   v.innerHTML=`
   <div class="pageHero">
     <div>
-      <div class="phTitle">${icon('shield','lg')} Security & Activity Audit Log</div>
-      <div class="phSubtitle">Real-time structured ledger tracking all transactions, staff actions, and stock balances immediately after sales.</div>
+      <div class="phTitle">${icon('shield','lg')} Security & Audit Trail</div>
+      <div class="phSubtitle">Immutable chronological ledger of price changes, stock reconciliations, till clearings, and staff actions.</div>
     </div>
   </div>
   
   <div class="card">
-    <div class="hd" style="flex-wrap:wrap;gap:10px">
-      <div>
-        <h2>Activity Journal</h2>
-        <span class="desc">Structured multi-column ledger tracking inventory shifts and remaining balances</span>
-      </div>
-      <div class="spacer"></div>
-      <button class="btn ghost sm" onclick="vAudit($('#view'))">${icon('refresh')} Refresh Logs</button>
+    <div class="hd">
+      <h2>Activity Journal</h2>
+      <span class="desc">Real-time tamper-proof event logs</span>
     </div>
-    <div class="bd tight auditTableWrap" id="auTableContainer">
-      <div id="auList" class="empty">Scanning audit trail & stock movements…</div>
+    <div class="bd tight tableWrap">
+      <div id="auList" class="empty">Loading security logs…</div>
     </div>
   </div>`;
 
-  try {
-    let logs = [];
-    let members = [];
-    if(S._isSandbox){
-      // Rich mock audit records demonstrating the multi-column layout with immediate remaining stock
-      const t = today();
-      logs = [
-        { id:'sb_a1', action:'sale_completed', user_id:'sb_u1', created_at: t + 'T14:32:00', detail:'₦18,000 received (Cash) from Walk-in by Marketer Trainee (You). Peak Milk: 2 Packs sold, 18 Packs remaining; Milo 500g: 1 Tin sold, 9 Tins remaining. total sold ₦0→₦18,000. Cash in till ₦0→₦18,000' },
-        { id:'sb_a2', action:'credit_added', user_id:'sb_u1', created_at: t + 'T13:45:00', detail:'₦1,900 added to Alhaji Musa\'s credit balance by Marketer Trainee (You), not yet received. Golden Penny Sugar: 5 Packs sold, 25 Packs remaining. total sold ₦18,000→₦19,900. Total credit ₦0→₦1,900' },
-        { id:'sb_a3', action:'restock_added', user_id:'sb_u1', created_at: t + 'T12:15:00', detail:'Peak Milk: 10 Packs restocked (cost ₦62,500), now 20 Packs, store value ₦120,000→₦182,500' },
-        { id:'sb_a4', action:'reconciliation_recorded', user_id:'sb_u1', created_at: t + 'T11:00:00', detail:'Milo 500g: expected 12 Tins, counted 10 Tins (-2 Tins variance), stock corrected to 10 Tins. Discrepancy logged' },
-        { id:'sb_a5', action:'credit_payment_recorded', user_id:'sb_u1', created_at: t + 'T10:15:00', detail:'₦4,500 received (Cash) from Alhaji Musa, credit balance reduced ₦4,500→₦0. Cash in till ₦18,000→₦22,500' },
-        { id:'sb_a6', action:'till_cleared', user_id:'sb_u1', created_at: t + 'T09:30:00', detail:'₦15,000 cash cleared, cash balance ₦22,500→₦7,500. Note: Bank deposit GTBank' }
-      ];
-      members = [{ user_id:'sb_u1', full_name:'Marketer Trainee (You)' }];
-    } else {
-      const [logRes, memRes] = await Promise.all([
-        sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200),
-        sb.rpc('list_members',{b:S.biz.id})
-      ]);
-      if(logRes.error) return err(logRes.error);
-      logs = logRes.data || [];
-      members = memRes.data || [];
-    }
-
-    const memberMap = {};
-    members.forEach(m => { memberMap[m.user_id] = m.full_name || 'Staff'; });
-
-    const fmt = t => new Date(t).toLocaleString('en-NG', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-
-    const listEl = $('#auList');
-    if(!listEl) return;
-
-    if(!logs.length){
-      listEl.outerHTML = '<div id="auList" class="empty">No security or activity events recorded yet.</div>';
-      return;
-    }
-
-    listEl.outerHTML = `
-    <table class="auditTable rtable" id="auList">
+  sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200).then(({data,error})=>{
+    if(error) return err(error);
+    const fmt=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+    $('#auList').outerHTML=`<div id="auList">${data.length?`
+    <table class="rtable">
       <thead>
         <tr>
-          <th style="width:130px">TIMESTAMP</th>
-          <th style="width:120px">ACTION</th>
-          <th style="width:130px">STAFF</th>
-          <th>ITEMS SOLD / ACTION DETAILS</th>
-          <th style="width:230px" class="auditStockColHead">REMAINING STOCK (AFTER SALE)</th>
-          <th style="width:220px">FINANCIALS / TILL UPDATE</th>
+          <th>Timestamp</th>
+          <th>Action Type</th>
+          <th>Event Detail</th>
         </tr>
       </thead>
       <tbody>
-        ${logs.map(a => {
-          const meta = auditMeta(a.action);
-          const staffFallback = memberMap[a.user_id] || 'Staff';
-          const p = parseAuditRecord(a.action, a.detail, staffFallback);
-
-          // Items sold / action column
-          let itemsHtml = '';
-          if(p.items.length){
-            itemsHtml = `<ul class="auditItemsList">
-              ${p.items.map(it => `
-                <li class="auditItemTag">
-                  <span class="auditItemBullet">●</span>
-                  <span><b>${esc(it.prod)}</b>: ${esc(it.qty)}</span>
-                </li>
-              `).join('')}
-            </ul>`;
-          } else if(p.fallbackDetail){
-            itemsHtml = `<span style="color:var(--ink);font-size:12.5px">${esc(p.fallbackDetail)}</span>`;
-          } else {
-            itemsHtml = `<span class="hint">—</span>`;
-          }
-
-          // Remaining stock column (distinct standout column)
-          let stockHtml = '';
-          if(p.remaining.length){
-            stockHtml = `<ul class="auditStockList">
-              ${p.remaining.map(rem => {
-                const isShort = rem.balance.includes('0') || rem.balance.toLowerCase().includes('out');
-                return `
-                  <li>
-                    <span class="auditStockBadge ${isShort ? 'auditStockShort' : ''}">
-                      <span>📦</span>
-                      <span><b>${esc(rem.prod)}:</b> ${esc(rem.balance)}</span>
-                    </span>
-                  </li>
-                `;
-              }).join('')}
-            </ul>`;
-          } else {
-            stockHtml = `<span class="hint" style="font-size:12px">No stock affected</span>`;
-          }
-
-          // Financials column
-          let finHtml = '';
-          if(p.financials.length){
-            finHtml = `<div class="auditFinCol">
-              ${p.financials.map((f, idx) => {
-                const isTill = f.toLowerCase().includes('till');
-                return `<span class="${isTill ? 'auditFinTill' : 'auditFinHighlight'}">${esc(f)}</span>`;
-              }).join('')}
-            </div>`;
-          } else {
-            finHtml = `<span class="hint">—</span>`;
-          }
-
+        ${data.map(a=>{
+          const m=auditMeta(a.action);
           return `<tr>
-            <td class="auditTimeCol" data-label="Timestamp">${fmt(a.created_at)}</td>
-            <td data-label="Action">
-              <span class="auditActionBadge ${p.actionGroup}">${esc(meta.label)}</span>
-            </td>
-            <td class="auditStaffCol" data-label="Staff">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:13px">👤</span>
-                <b>${esc(p.staff)}</b>
-              </div>
-            </td>
-            <td data-label="Items / Action Details">${itemsHtml}</td>
-            <td class="auditStockCol" data-label="Remaining Stock">${stockHtml}</td>
-            <td data-label="Financials">${finHtml}</td>
+            <td class="num hint" data-label="Timestamp">${fmt(a.created_at)}</td>
+            <td data-label="Action"><span class="badge ${m.cls}">${esc(m.label)}</span></td>
+            <td data-label="Detail" style="font-size:13.5px;color:var(--ink)">${esc(a.detail||'')}</td>
           </tr>`;
         }).join('')}
       </tbody>
-    </table>
-    `;
-  } catch(e) {
-    console.error('Failed to render audit log:', e);
-    const listEl = $('#auList');
-    if(listEl) listEl.outerHTML = `<div id="auList" class="empty" style="color:var(--red)">Failed to load activity logs: ${esc((e&&e.message)||e)}</div>`;
-  }
+    </table>`:'<div class="empty">No security events recorded yet.</div>'}</div>`;
+  });
 }
 
 /* ============================================================
@@ -5926,6 +5639,51 @@ function waCustomer(id,kind){
   window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'waSend');
 }
 
+/* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
+const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+// small "Expiry: {date}" indicator for a single item, shown on its row
+// regardless of how far off the date is — the alert card below is only for
+// the genuinely urgent (180-day) case, but an item's tracked expiry should
+// always be visible somewhere, not just when it's imminent
+function expiryBadge(itemId){
+  const r=(S.expiringSoon||[]).find(x=>x.item_id===itemId);
+  if(!r) return '';
+  const urgent=new Date(r.expiry_date)-Date.now() <= 180*86400000;
+  return `<div class="cat" style="${urgent?'color:var(--amber);font-weight:600':''}">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` (${r.batch_count} batches)`:''} — <a href="#" onclick="viewExpiryBatches('${itemId}');return false">manage</a></div>`;
+}
+function expiringSoonCard(){
+  const rows=(S.expiringSoon||[]).filter(r=>new Date(r.expiry_date)-Date.now() <= 180*86400000);
+  if(!rows.length) return '';
+  return `<div class="card" id="expiringSoonCard" style="border-color:var(--amber)"><div class="hd"><h2>${icon('alert')} Expiring soon</h2><span class="desc">within 6 months</span></div><div class="bd tight">
+    <table><tbody>${rows.map(r=>`<tr>
+      <td class="itemname">${esc(r.item_name)}<div class="cat">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` · ${r.batch_count} batches tracked`:''}</div></td>
+      <td class="r"><button class="btn ghost sm" onclick="viewExpiryBatches('${r.item_id}')">Manage</button></td>
+    </tr>`).join('')}</tbody></table>
+  </div></div>`;
+}
+async function viewExpiryBatches(itemId){
+  const it=S.items.find(i=>i.id===itemId); if(!it) return;
+  const {data,error}=await sb.from('item_expiry_batches').select('*').eq('item_id',itemId).eq('cleared',false).order('expiry_date');
+  if(error) return err(error);
+  document.getElementById('expiryBatchCard')?.remove();
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="expiryBatchCard"><div class="hd"><h2>${esc(it.name)} — batches</h2><div class="spacer"></div>
+    <button class="btn ghost sm" onclick="document.getElementById('expiryBatchCard').remove()">Close</button></div><div class="bd tight">
+    ${data.length?`<table><tbody>${data.map(b=>`<tr>
+      <td class="itemname">${fmtExpiry(b.expiry_date)}${b.note?`<div class="cat">${esc(b.note)}</div>`:''}</td>
+      <td class="r"><button class="btn ghost sm" onclick="clearExpiryBatch('${b.id}','${itemId}')">Mark sold out</button></td>
+    </tr>`).join('')}</tbody></table>`:'<div class="empty">No batches left to track.</div>'}
+    <div class="bd" style="padding-top:12px"><button class="btn primary sm" onclick='openExpiryRound("${itemId}","${esc(it.name).replace(/'/g,"\\'")}")'>${icon('chat')} Notify customers of a discount</button></div>
+  </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function clearExpiryBatch(batchId,itemId){
+  const {error}=await sb.rpc('clear_expiry_batch',{p_batch_id:batchId});
+  if(error) return err(error);
+  toast('Batch marked sold out');
+  await loadData();
+  viewExpiryBatches(itemId);
+}
+
 /* ---------- expiry discount round: same reusable pattern as the thank-you round ---------- */
 let expiryRoundQueue=[], expiryRoundIdx=0, expiryRoundItemName='';
 function expiryRoundSentKey(itemId){ return `expirySent_${S.biz.id}_${itemId}`; }
@@ -6602,17 +6360,17 @@ function renderSandboxBanner(){
   banner.className = 'sandboxTopBanner';
   banner.innerHTML = `
     <div class="sbLeft">
-      <span class="sbBadge">🧪 SANDBOX</span>
-      <span class="sbText">Training Mode · Isolated Demo Store (Real shop data is safe)</span>
+      <span class="sbBadge">🧪 SANDBOX MODE</span>
+      <span class="sbText">Training Mode · Isolated Demo Store (Real shop data is 100% safe)</span>
     </div>
     <div class="sbRight">
-      <button class="sbTaskBtn" onclick="openSandboxChecklist()">📋 Checklist: <span id="sbTaskCount">${sandboxProgress.completedCount}/12</span></button>
+      <button class="sbTaskBtn" onclick="openSandboxChecklist()">📋 Tasks: <span id="sbTaskCount">${sandboxProgress.completedCount}/12</span></button>
       <button class="sbExitBtn" onclick="exitSandbox()">✕ Exit Sandbox</button>
     </div>
   `;
   const viewEl = document.getElementById('view');
-  if(viewEl){
-    viewEl.insertBefore(banner, viewEl.firstChild);
+  if(viewEl && viewEl.parentElement){
+    viewEl.parentElement.insertBefore(banner, viewEl);
   } else {
     document.body.appendChild(banner);
   }
@@ -6624,7 +6382,7 @@ function renderSandboxHud(){
   hud.id = 'sandboxTaskHud';
   hud.className = 'sandboxTaskHud';
   hud.innerHTML = `
-    <div class="hudHeader" onclick="toggleSandboxHud()" title="Click to minimize/expand task guide">
+    <div class="hudHeader" onclick="toggleSandboxHud()">
       <div class="hudTitle">
         <span>🎯</span>
         <div>
@@ -6632,7 +6390,7 @@ function renderSandboxHud(){
           <div class="hudProgressText"><span id="hudCount">0</span>/12 Tasks Completed (<span id="hudPct">0%</span>)</div>
         </div>
       </div>
-      <div class="hudToggleIcon" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</div>
+      <div style="font-size:12px;color:var(--muted)">▼</div>
     </div>
     <div class="hudBody" id="hudBody">
       <p id="hudInstruction">Follow instructions to complete this task.</p>
@@ -6900,10 +6658,11 @@ async function vTxAudit(v){
         <div class="field">
           <label>Payment Method</label>
           <select id="txMethod" onchange="txAuditFilter.method=this.value;runTxAudit();">
-            <option value="all">All Channels (Cash, Transfer, Credit)</option>
+            <option value="all">All Channels (Cash, Bank, Credit)</option>
             <option value="cash">Cash Only</option>
-            <option value="transfer">Bank Transfer Only (Direct & Transfers)</option>
+            <option value="transfer">Bank Transfer Only</option>
             <option value="credit">Credit / Unpaid Debt Only</option>
+            <option value="card">Card Terminal Only</option>
           </select>
         </div>
       </div>
@@ -6991,7 +6750,7 @@ async function runTxAudit(){
       { id: 'sb_e1', amount: 3000, category: 'Utilities', note: 'Generator fuel', entry_date: today(), created_at: today() + 'T12:00:00', created_by: 'sb_u1', status: 'approved' }
     ];
     rawPos = [
-      { id: 'sb_pos1', type: 'cash_out', amount: 5000, charge: 150, created_at: today() + 'T15:20:00', created_by: 'sb_u1', note: 'Cash withdrawal' }
+      { id: 'sb_pos1', type: 'cash_out', amount: 5000, charge: 150, created_at: today() + 'T15:20:00', created_by: 'sb_u1', note: 'Card withdrawal' }
     ];
     members = [{ user_id: 'sb_u1', full_name: 'Marketer Trainee (You)' }];
   } else {

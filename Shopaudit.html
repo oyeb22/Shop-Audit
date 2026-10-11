@@ -16,7 +16,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 /* ============================================================
-   MARKETER TRAINING SANDBOX & TASK ENGINE
+   SANDBOX TRAINING PROFILE & TASK ENGINE
    Completely isolated environment for marketers to learn and test
    every feature of TheMonishop with 0 risk to live database.
    ============================================================ */
@@ -204,10 +204,16 @@ function startSandbox(){
   S.cart = [];
   S.tab = 'dashboard';
 
+  const rolePill = document.getElementById('rolePill');
+  if(rolePill) rolePill.textContent = 'SANDBOX';
+  const navCurrent = document.getElementById('navCurrent');
+  if(navCurrent) navCurrent.textContent = 'Sandbox';
+
+  buildNav();
   renderSandboxBanner();
   renderSandboxHud();
   render();
-  toast('🧪 Entered Marketer Training Sandbox. Live store is 100% safe.');
+  toast('🧪 Entered Sandbox Profile. Live store is 100% safe.');
 }
 
 function exitSandbox(){
@@ -240,6 +246,10 @@ function exitSandbox(){
     S.tab = window._REAL_S_STATE.tab || 'dashboard';
     window._REAL_S_STATE = null;
   }
+  const rolePill = document.getElementById('rolePill');
+  if(rolePill) rolePill.textContent = S.role || '';
+
+  buildNav();
   loadData().then(()=>render());
   toast('Exited Sandbox. You are back in your real shop.');
 }
@@ -330,7 +340,7 @@ function renderSandboxBanner(){
   banner.className = 'sandboxTopBanner';
   banner.innerHTML = `
     <div class="sbLeft">
-      <span class="sbBadge">🧪 MARKETER SANDBOX</span>
+      <span class="sbBadge">🧪 SANDBOX MODE</span>
       <span class="sbText">Training Mode · Isolated Demo Store (Real shop data is 100% safe)</span>
     </div>
     <div class="sbRight">
@@ -338,8 +348,12 @@ function renderSandboxBanner(){
       <button class="sbExitBtn" onclick="exitSandbox()">✕ Exit Sandbox</button>
     </div>
   `;
-  const appEl = document.getElementById('app');
-  if(appEl) appEl.insertBefore(banner, appEl.querySelector('.wrap'));
+  const viewEl = document.getElementById('view');
+  if(viewEl && viewEl.parentElement){
+    viewEl.parentElement.insertBefore(banner, viewEl);
+  } else {
+    document.body.appendChild(banner);
+  }
 }
 
 function renderSandboxHud(){
@@ -423,7 +437,7 @@ function openSandboxChecklist(){
     <div class="taskModalBox">
       <div class="taskHead">
         <div>
-          <h2>Marketer Training Checklist</h2>
+          <h2>Sandbox Training Checklist</h2>
           <div class="hint">Completed ${sandboxProgress.completedCount} of 12 Tasks (${Math.round((sandboxProgress.completedCount/12)*100)}% Proficiency)</div>
         </div>
         <button class="btn ghost sm" onclick="document.getElementById('taskModalBg').remove()">✕</button>
@@ -533,8 +547,604 @@ function openSandboxCertificate(){
 function shareCertWhatsApp(){
   const name = sandboxProgress.marketerName || 'Marketer';
   const code = sandboxProgress.certCode || 'TM-MKT-PASS';
-  const text = encodeURIComponent(`Hello Admin, I (${name}) have completed all 12 tasks in TheMonishop Marketer Training Sandbox with a 100% score (Cert ID: ${code}). I am now conversant with all inventory, POS, credit, till, and report features and ready to onboard merchants!`);
+  const text = encodeURIComponent(`Hello Admin, I (${name}) have completed all 12 tasks in TheMonishop Sandbox Profile with a 100% score (Cert ID: ${code}). I am now conversant with all inventory, POS, credit, till, and report features and ready to onboard merchants!`);
   window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+
+/* ============================================================
+   TRANSACTION AUDIT & DISCREPANCY INVESTIGATION
+   Forensic timeline of all sales, payments, clearings, expenses
+   and agency transactions with sorting, filtering, and receipt breakdown
+   ============================================================ */
+
+let txAuditFilter = {
+  from: monthStart(),
+  to: today(),
+  type: 'all',
+  method: 'all',
+  staff: 'all',
+  sort: 'time_desc',
+  q: ''
+};
+
+function txAuditRange(range){
+  const d = new Date();
+  const iso = x => x.toISOString().slice(0, 10);
+  if(range === 'today'){
+    txAuditFilter.from = today(); txAuditFilter.to = today();
+  } else if(range === 'yesterday'){
+    const y = new Date(d); y.setDate(d.getDate() - 1);
+    txAuditFilter.from = iso(y); txAuditFilter.to = iso(y);
+  } else if(range === 'week'){
+    const f = new Date(d); f.setDate(d.getDate() - 6);
+    txAuditFilter.from = iso(f); txAuditFilter.to = today();
+  } else if(range === 'month'){
+    txAuditFilter.from = monthStart(); txAuditFilter.to = today();
+  } else if(range === 'lastmonth'){
+    const f = new Date(d.getFullYear(), d.getMonth() - 1, 1);
+    const l = new Date(d.getFullYear(), d.getMonth(), 0);
+    txAuditFilter.from = iso(f); txAuditFilter.to = iso(l);
+  }
+  $('#txFrom').value = txAuditFilter.from;
+  $('#txTo').value = txAuditFilter.to;
+  document.querySelectorAll('.txPresetBtn').forEach(b => b.classList.toggle('active', b.dataset.range === range));
+  runTxAudit();
+}
+
+async function vTxAudit(v){
+  v.innerHTML = `
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('receipt','lg')} Transaction Audit & Investigation</div>
+      <div class="phSubtitle">When register money does not tally, investigate every transaction across sales, debt payments, clearings, and expenses on a chronological timeline.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Audit Filters & Parameters</h2>
+      <span class="desc">Filter transactions to isolate discrepancies</span>
+    </div>
+    <div class="bd">
+      <div class="presetRow" style="margin-bottom:14px">
+        <button class="presetBtn txPresetBtn" data-range="today" onclick="txAuditRange('today')">Today</button>
+        <button class="presetBtn txPresetBtn" data-range="yesterday" onclick="txAuditRange('yesterday')">Yesterday</button>
+        <button class="presetBtn txPresetBtn" data-range="week" onclick="txAuditRange('week')">Last 7 Days</button>
+        <button class="presetBtn txPresetBtn active" data-range="month" onclick="txAuditRange('month')">This Month</button>
+        <button class="presetBtn txPresetBtn" data-range="lastmonth" onclick="txAuditRange('lastmonth')">Last Month</button>
+      </div>
+
+      <div class="formGrid" style="margin-bottom:12px">
+        <div class="field">
+          <label>From Date</label>
+          <input id="txFrom" type="date" value="${txAuditFilter.from}" onchange="txAuditFilter.from=this.value">
+        </div>
+        <div class="field">
+          <label>To Date</label>
+          <input id="txTo" type="date" value="${txAuditFilter.to}" onchange="txAuditFilter.to=this.value">
+        </div>
+        <div class="field">
+          <label>Activity Type</label>
+          <select id="txType" onchange="txAuditFilter.type=this.value;runTxAudit();">
+            <option value="all">All Activities</option>
+            <option value="sale">Sales (POS Checkouts)</option>
+            <option value="debt_payment">Customer Debt Payments</option>
+            <option value="till_clear">Till Drawer Clearings</option>
+            <option value="expense">Operating Expenses</option>
+            <option value="pos_txn">Agency Banking POS Swaps</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Payment Method</label>
+          <select id="txMethod" onchange="txAuditFilter.method=this.value;runTxAudit();">
+            <option value="all">All Channels (Cash, Bank, Credit)</option>
+            <option value="cash">Cash Only</option>
+            <option value="transfer">Bank Transfer Only</option>
+            <option value="credit">Credit / Unpaid Debt Only</option>
+            <option value="card">Card Terminal Only</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="formGrid">
+        <div class="field">
+          <label>Sales Rep / Staff</label>
+          <select id="txStaff" onchange="txAuditFilter.staff=this.value;runTxAudit();">
+            <option value="all">All Cashiers & Staff</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Sort Order</label>
+          <select id="txSort" onchange="txAuditFilter.sort=this.value;runTxAudit();">
+            <option value="time_desc">Timeline: Newest First</option>
+            <option value="time_asc">Timeline: Oldest First</option>
+            <option value="amount_desc">Amount: Highest to Lowest</option>
+            <option value="amount_asc">Amount: Lowest to Highest</option>
+          </select>
+        </div>
+        <div class="field" style="display:flex;align-items:flex-end">
+          <button class="btn primary" onclick="runTxAudit()" style="width:100%;height:44px">
+            ${icon('refresh')} Apply Filters
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="txAuditSummary"></div>
+  <div class="card">
+    <div class="hd">
+      <h2>Transaction Audit Ledger</h2>
+      <span class="desc">Click any row to view complete line-item breakdown & calculation receipt</span>
+    </div>
+    <div class="bd tight tableWrap" id="txAuditList">
+      <div class="empty">Loading transaction history...</div>
+    </div>
+  </div>
+  `;
+
+  loadTxStaffList();
+  runTxAudit();
+}
+
+async function loadTxStaffList(){
+  let members = [];
+  if(S._isSandbox){
+    members = [{ user_id: 'sb_u1', full_name: 'Marketer Trainee (You)' }];
+  } else {
+    const { data } = await sb.rpc('list_members', { b: S.biz.id });
+    members = data || [];
+  }
+  const sel = $('#txStaff');
+  if(sel){
+    sel.innerHTML = '<option value="all">All Cashiers & Staff</option>' +
+      members.map(m => `<option value="${m.user_id}">${esc(m.full_name || 'Staff member')}</option>`).join('');
+  }
+}
+
+async function runTxAudit(){
+  const listEl = $('#txAuditList');
+  const sumEl = $('#txAuditSummary');
+  if(!listEl) return;
+  listEl.innerHTML = '<div class="empty">Scanning transactions & receipts...</div>';
+
+  const from = txAuditFilter.from;
+  const to = txAuditFilter.to;
+
+  let rawSales = [], rawCustTx = [], rawClearings = [], rawExps = [], rawPos = [], members = [];
+
+  if(S._isSandbox){
+    rawSales = [
+      { id: 'sb_s1', item_id: 'sb_1', quantity: 2, sold_as: 'Pack', unit_price: 18000, payment_method: 'cash', created_at: today() + 'T10:15:00', created_by: 'sb_u1', customer_id: null },
+      { id: 'sb_s2', item_id: 'sb_2', quantity: 3, sold_as: 'Piece', unit_price: 800, payment_method: 'transfer', created_at: today() + 'T11:30:00', created_by: 'sb_u1', customer_id: 'sb_c1' },
+      { id: 'sb_s3', item_id: 'sb_3', quantity: 5, sold_as: 'Single', unit_price: 380, payment_method: 'credit', created_at: today() + 'T13:45:00', created_by: 'sb_u1', customer_id: 'sb_c2' }
+    ];
+    rawCustTx = [
+      { id: 'sb_ctx1', type: 'payment', amount: 4500, method: 'cash', created_at: today() + 'T14:10:00', created_by: 'sb_u1', customer_id: 'sb_c2', note: 'Debt recovery' }
+    ];
+    rawClearings = [
+      { id: 'sb_tc1', method: 'cash', amount: 15000, created_at: today() + 'T16:00:00', created_by: 'sb_u1', note: 'Bank deposit to GTBank' }
+    ];
+    rawExps = [
+      { id: 'sb_e1', amount: 3000, category: 'Utilities', note: 'Generator fuel', entry_date: today(), created_at: today() + 'T12:00:00', created_by: 'sb_u1', status: 'approved' }
+    ];
+    rawPos = [
+      { id: 'sb_pos1', type: 'cash_out', amount: 5000, charge: 150, created_at: today() + 'T15:20:00', created_by: 'sb_u1', note: 'Card withdrawal' }
+    ];
+    members = [{ user_id: 'sb_u1', full_name: 'Marketer Trainee (You)' }];
+  } else {
+    const [sRes, ctxRes, tcRes, expRes, posRes, memRes] = await Promise.all([
+      sb.from('sales').select('*').eq('business_id', S.biz.id).gte('entry_date', from).lte('entry_date', to).order('created_at', { ascending: false }),
+      sb.from('customer_transactions').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
+      sb.from('till_clearings').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
+      sb.from('expenditures').select('*').eq('business_id', S.biz.id).gte('entry_date', from).lte('entry_date', to).order('created_at', { ascending: false }),
+      sb.from('pos_transactions').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
+      sb.rpc('list_members', { b: S.biz.id })
+    ]);
+    rawSales = sRes.data || [];
+    rawCustTx = ctxRes.data || [];
+    rawClearings = tcRes.data || [];
+    rawExps = (expRes.data || []).filter(e => e.status === 'approved');
+    rawPos = posRes.data || [];
+    members = memRes.data || [];
+  }
+
+  const staffNameMap = {};
+  members.forEach(m => staffNameMap[m.user_id] = m.full_name || 'Staff');
+  const custNameMap = {};
+  S.customers.forEach(c => custNameMap[c.id] = c.name);
+  const itemNameMap = {};
+  S.items.forEach(i => itemNameMap[i.id] = i.name);
+
+  // Group sales into distinct orders (by created_at and customer_id and created_by)
+  const salesOrders = {};
+  rawSales.forEach(s => {
+    // group by timestamp + staff + customer
+    const orderKey = `${s.created_at.slice(0, 19)}_${s.created_by}_${s.customer_id || 'walkin'}`;
+    if(!salesOrders[orderKey]){
+      salesOrders[orderKey] = {
+        type: 'sale',
+        id: s.id,
+        created_at: s.created_at,
+        created_by: s.created_by,
+        customer_id: s.customer_id,
+        payment_method: s.payment_method || 'cash',
+        amount: 0,
+        items: []
+      };
+    }
+    const lineTotal = Number(s.quantity) * Number(s.unit_price);
+    salesOrders[orderKey].amount += lineTotal;
+    salesOrders[orderKey].items.push({
+      item_name: itemNameMap[s.item_id] || '(Item)',
+      qty: s.quantity,
+      sold_as: s.sold_as || 'Unit',
+      unit_price: s.unit_price,
+      line_total: lineTotal
+    });
+  });
+
+  // Build unified transaction stream
+  const txList = [];
+
+  // 1. Add Sales
+  Object.values(salesOrders).forEach(o => txList.push(o));
+
+  // 2. Add Debt Payments
+  rawCustTx.forEach(c => {
+    if(c.type === 'payment'){
+      txList.push({
+        type: 'debt_payment',
+        id: c.id,
+        created_at: c.created_at,
+        created_by: c.created_by,
+        customer_id: c.customer_id,
+        payment_method: c.method || 'cash',
+        amount: Number(c.amount),
+        note: c.note || 'Debt payment',
+        items: []
+      });
+    }
+  });
+
+  // 3. Add Till Clearings
+  rawClearings.forEach(tc => {
+    txList.push({
+      type: 'till_clear',
+      id: tc.id,
+      created_at: tc.created_at,
+      created_by: tc.created_by,
+      customer_id: null,
+      payment_method: tc.method || 'cash',
+      amount: -Number(tc.amount),
+      note: tc.note || 'Till withdrawal',
+      items: []
+    });
+  });
+
+  // 4. Add Expenditures
+  rawExps.forEach(e => {
+    txList.push({
+      type: 'expense',
+      id: e.id,
+      created_at: e.created_at || (e.entry_date + 'T12:00:00'),
+      created_by: e.created_by,
+      customer_id: null,
+      payment_method: 'cash',
+      amount: -Number(e.amount),
+      note: e.note ? `${e.category || 'Expense'}: ${e.note}` : (e.category || 'Store expense'),
+      items: []
+    });
+  });
+
+  // 5. Add POS Agency
+  rawPos.forEach(p => {
+    const isOut = p.type === 'cash_out';
+    txList.push({
+      type: 'pos_txn',
+      id: p.id,
+      created_at: p.created_at,
+      created_by: p.created_by,
+      customer_id: null,
+      payment_method: isOut ? 'transfer' : 'cash',
+      amount: isOut ? Number(p.charge || 0) : Number(p.charge || 0),
+      posDetails: { type: p.type, amount: p.amount, charge: p.charge },
+      note: `${isOut ? 'Cash Out (Dispensed cash, kept fee)' : 'Cash In (Took cash, sent transfer)'}${p.note ? ' · ' + p.note : ''}`,
+      items: []
+    });
+  });
+
+  // Filter transactions
+  let filtered = txList.filter(t => {
+    if(txAuditFilter.type !== 'all' && t.type !== txAuditFilter.type) return false;
+    if(txAuditFilter.method !== 'all' && t.payment_method !== txAuditFilter.method) return false;
+    if(txAuditFilter.staff !== 'all' && t.created_by !== txAuditFilter.staff) return false;
+    return true;
+  });
+
+  // Sort transactions
+  if(txAuditFilter.sort === 'time_desc'){
+    filtered.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  } else if(txAuditFilter.sort === 'time_asc'){
+    filtered.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  } else if(txAuditFilter.sort === 'amount_desc'){
+    filtered.sort((a,b) => Math.abs(b.amount) - Math.abs(a.amount));
+  } else if(txAuditFilter.sort === 'amount_asc'){
+    filtered.sort((a,b) => Math.abs(a.amount) - Math.abs(b.amount));
+  }
+
+  // Calculate Inflows & Outflows for Reconciliation
+  let cashIn = 0, transferIn = 0, cashOut = 0, creditGiven = 0;
+  filtered.forEach(t => {
+    if(t.amount > 0){
+      if(t.payment_method === 'cash') cashIn += t.amount;
+      else if(t.payment_method === 'transfer') transferIn += t.amount;
+      else if(t.payment_method === 'credit') creditGiven += t.amount;
+    } else {
+      if(t.payment_method === 'cash') cashOut += Math.abs(t.amount);
+    }
+  });
+
+  const netCashFlow = cashIn - cashOut;
+
+  // Render Reconciliation Strip
+  if(sumEl){
+    sumEl.innerHTML = `
+    <div class="stats" style="margin-bottom:16px">
+      <div class="stat good">
+        <div class="label">${icon('cash')} Cash Inflow Received</div>
+        <div class="value num">${money(cashIn)}</div>
+        <div class="sub">sales & debt payments in cash</div>
+      </div>
+      <div class="stat bad">
+        <div class="label">${icon('wallet')} Cash Outflow (Removed)</div>
+        <div class="value num">${money(cashOut)}</div>
+        <div class="sub">clearings & cash expenses</div>
+      </div>
+      <div class="stat ${netCashFlow>=0?'good':'bad'}">
+        <div class="label">${icon('sparkle')} Net Expected Cash</div>
+        <div class="value num">${money(netCashFlow)}</div>
+        <div class="sub">cash that should be in till</div>
+      </div>
+      <div class="stat">
+        <div class="label">${icon('bank')} Bank Transfers</div>
+        <div class="value num">${money(transferIn)}</div>
+        <div class="sub">verified bank deposits</div>
+      </div>
+    </div>`;
+  }
+
+  // Save for modal lookup
+  window._CURRENT_AUDIT_TXNS = filtered;
+
+  if(!filtered.length){
+    listEl.innerHTML = '<div class="empty">No transactions found matching your audit filters.</div>';
+    return;
+  }
+
+  const fmtTime = t => new Date(t).toLocaleString('en-NG', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+
+  listEl.innerHTML = `
+  <table class="rtable">
+    <thead>
+      <tr>
+        <th>Date & Time</th>
+        <th>Activity Type</th>
+        <th class="r">Amount</th>
+        <th>Payment Channel</th>
+        <th>Sales Rep / Staff</th>
+        <th>Customer</th>
+        <th class="r">Breakdown</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filtered.map((t, idx) => {
+        const staff = staffNameMap[t.created_by] || 'Staff member';
+        const cust = t.customer_id ? (custNameMap[t.customer_id] || 'Customer') : 'Walk-in';
+        
+        let typeBadge = '';
+        if(t.type === 'sale') typeBadge = '<span class="badge ok">Sale Checkout</span>';
+        else if(t.type === 'debt_payment') typeBadge = '<span class="badge ok">Debt Recovery</span>';
+        else if(t.type === 'till_clear') typeBadge = '<span class="badge neg">Till Clearing</span>';
+        else if(t.type === 'expense') typeBadge = '<span class="badge neg">Store Expense</span>';
+        else if(t.type === 'pos_txn') typeBadge = '<span class="badge blue">POS Agency Swap</span>';
+
+        let methodBadge = `<span class="badge ${t.payment_method==='credit'?'warn':'ok'}">${t.payment_method.toUpperCase()}</span>`;
+        const amtColor = t.amount < 0 ? 'var(--red)' : 'var(--green)';
+        const amtSign = t.amount > 0 ? '+' : '';
+
+        return `<tr>
+          <td class="num hint" data-label="Timestamp">${fmtTime(t.created_at)}</td>
+          <td data-label="Activity">${typeBadge}</td>
+          <td class="r num" style="font-weight:700;color:${amtColor}" data-label="Amount">${amtSign}${money(t.amount)}</td>
+          <td data-label="Channel">${methodBadge}</td>
+          <td data-label="Sales Rep"><b>${esc(staff)}</b></td>
+          <td data-label="Customer">${esc(cust)}</td>
+          <td class="r" data-label="Breakdown">
+            <button class="btn ghost sm" onclick="openTxAuditReceipt(${idx})" style="display:inline-flex;align-items:center;gap:4px">
+              ${icon('receipt')} View Receipt
+            </button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  `;
+}
+
+function openTxAuditReceipt(idx){
+  const txn = (window._CURRENT_AUDIT_TXNS || [])[idx];
+  if(!txn) return;
+
+  document.getElementById('txReceiptModal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'txReceiptModal';
+  modal.className = 'taskModalBg';
+  modal.onclick = e => { if(e.target === modal) modal.remove(); };
+
+  const fmtTime = t => new Date(t).toLocaleString('en-NG', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const staff = (S.user && S.user.id === txn.created_by) ? (S.user.user_metadata?.full_name || 'You') : 'Store Staff';
+  const custName = txn.customer_id ? ((S.customers.find(c=>c.id===txn.customer_id)||{}).name || 'Registered Customer') : 'Walk-in Customer';
+
+  let bodyHtml = '';
+  if(txn.type === 'sale' && txn.items && txn.items.length){
+    bodyHtml = `
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:8px">Items Purchased & Mathematical Breakdown</div>
+        <table style="width:100%;font-size:13.5px;border-collapse:collapse">
+          <thead>
+            <tr style="border-bottom:1px solid var(--line);text-align:left;color:var(--muted)">
+              <th style="padding:6px 0">Product</th>
+              <th class="c" style="padding:6px 0">Unit/Mode</th>
+              <th class="r" style="padding:6px 0">Rate</th>
+              <th class="r" style="padding:6px 0">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${txn.items.map(it => `
+              <tr style="border-bottom:1px dashed var(--line)">
+                <td style="padding:8px 0;font-weight:600">${esc(it.item_name)}</td>
+                <td class="c" style="padding:8px 0">${it.qty} ${esc(it.sold_as)}</td>
+                <td class="r num" style="padding:8px 0">${money(it.unit_price)}</td>
+                <td class="r num" style="padding:8px 0;font-weight:700">${money(it.line_total)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div style="background:#FAF7F0;border-radius:12px;padding:12px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px">
+          <span>Items Count:</span><b>${txn.items.length} product(s)</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13.5px">
+          <span>Payment Channel:</span><b>${txn.payment_method.toUpperCase()}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0 4px;font-size:16px;border-top:1px dashed var(--line);font-weight:800">
+          <span>Total Settled:</span><span style="color:var(--green)">${money(txn.amount)}</span>
+        </div>
+      </div>
+    `;
+  } else {
+    bodyHtml = `
+      <div style="background:#FAF7F0;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px">
+          <span>Transaction Nature:</span><b>${txn.type.toUpperCase()}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px">
+          <span>Channel / Method:</span><b>${txn.payment_method.toUpperCase()}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13.5px">
+          <span>Note / Description:</span><b>${esc(txn.note || 'No note attached')}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:10px 0 4px;font-size:16px;border-top:1px dashed var(--line);font-weight:800">
+          <span>Recorded Amount:</span><span style="color:${txn.amount<0?'var(--red)':'var(--green)'}">${money(Math.abs(txn.amount))}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  modal.innerHTML = `
+    <div class="taskModalBox" style="max-width:480px">
+      <div style="text-align:center;margin-bottom:16px;border-bottom:1px solid var(--line);padding-bottom:12px">
+        <div style="font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--green-d)">${esc(S.biz.name)}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:2px">Transaction Audit Breakdown & Receipt</div>
+      </div>
+
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap">
+        <div>Time: <b>${fmtTime(txn.created_at)}</b></div>
+        <div>Cashier: <b>${esc(staff)}</b></div>
+      </div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px">
+        Customer: <b>${esc(custName)}</b>
+      </div>
+
+      ${bodyHtml}
+
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+        <button class="btn primary sm" onclick="window.print()">🖨️ Print Receipt</button>
+        <button class="btn ghost sm" onclick="document.getElementById('txReceiptModal').remove()">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+/* ============================================================
+   HELP & MERCHANT SUPPORT
+   WhatsApp direct assistance, phone helpline, email, and FAQs
+   ============================================================ */
+
+function vSupport(v){
+  v.innerHTML = `
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('chat','lg')} Merchant Help & Support</div>
+      <div class="phSubtitle">Direct WhatsApp assistance, helpline contact, and step-by-step troubleshooting for store owners and cashiers.</div>
+    </div>
+  </div>
+
+  <div class="stats" style="margin-bottom:20px">
+    <div class="stat good" style="cursor:pointer" onclick="window.open('https://wa.me/2348088334592?text=Hello%20TheMonishop%20Support%2C%20I%20need%20assistance%20with%20my%20shop','_blank')">
+      <div class="label">${icon('chat')} WhatsApp Support (Instant)</div>
+      <div class="value" style="font-size:18px;margin-top:8px">Chat on WhatsApp ➔</div>
+      <div class="sub">Average response: under 5 minutes</div>
+    </div>
+    <div class="stat" style="cursor:pointer" onclick="window.open('tel:+2348088334592')">
+      <div class="label">${icon('settings')} Phone Helpline</div>
+      <div class="value" style="font-size:18px;margin-top:8px">+234 808 833 4592</div>
+      <div class="sub">Call Monday – Saturday 8am to 8pm</div>
+    </div>
+    <div class="stat" style="cursor:pointer" onclick="window.open('mailto:hello@themonishop.com.ng')">
+      <div class="label">${icon('user')} Email Assistance</div>
+      <div class="value" style="font-size:18px;margin-top:8px">hello@themonishop.com.ng</div>
+      <div class="sub">Official support inbox</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Frequently Asked Questions & Troubleshooting</h2>
+      <span class="desc">Common solutions for day-to-day shop management</span>
+    </div>
+    <div class="bd">
+      <div class="formSection">
+        <div class="fsTitle">💰 1. My Money in Till Does Not Tally with Sales. What Should I Do?</div>
+        <p class="hint" style="line-height:1.55;color:var(--ink)">
+          Open the new <b>Transaction Audit</b> tab from the menu. It lists every transaction (Sales, Debt collections, Clearings, and Expenses) chronologically with the responsible cashier attached. Check if money was removed from the drawer for a bank deposit or emergency shop expense without being recorded under <b>Till Clearing</b> or <b>Expenses</b>.
+        </p>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">🧪 2. How Do I Train My Staff or Test the App Safely?</div>
+        <p class="hint" style="line-height:1.55;color:var(--ink)">
+          Open the <b>Sandbox Profile</b> from the menu. It loads a 100% isolated simulated store with 12 structured tasks (adding products, checkout sales, debt recovery, till clearings, and profit reports). Your staff can practice freely without altering or touching your real inventory or balances.
+        </p>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">👥 3. How Do I Invite Staff and Control Their Access?</div>
+        <p class="hint" style="line-height:1.55;color:var(--ink)">
+          Go to the <b>Team & Staff</b> tab, copy your store's 6-digit invite passcode, and give it to your employee. When they create an account and select "Join a Business", approve them as <b>Receptionist / Cashier</b> (who can only sell and view items) or <b>Manager</b>.
+        </p>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">🖨️ 4. How Do I Print Receipts on Bluetooth Thermal Printers?</div>
+        <p class="hint" style="line-height:1.55;color:var(--ink)">
+          Pair your Bluetooth thermal printer (58mm or 80mm) in your phone's Bluetooth settings. In TheMonishop, after completing any sale, tap <b>Print Bluetooth Receipt</b> to print instantly. You can also tap <b>Share on WhatsApp</b> to send an electronic receipt.
+        </p>
+      </div>
+
+      <div class="formSection" style="margin-bottom:0">
+        <div class="fsTitle">📦 5. How Does Stock Reconciliation Catch Missing Items?</div>
+        <p class="hint" style="line-height:1.55;color:var(--ink)">
+          Go to <b>Reconcile Stock</b>. Pick an item and physically count what is sitting on your shelf. The app compares it to the system expected quantity and immediately flags any shortage or shrinkage with a color badge and logs the discrepancy in the audit trail.
+        </p>
+      </div>
+    </div>
+  </div>
+  `;
 }
 
 </script>
@@ -1007,7 +1617,7 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 }
 
 
-/* ===== MARKETER TRAINING SANDBOX & CERTIFICATE STYLES ===== */
+/* ===== SANDBOX TRAINING PROFILE & CERTIFICATE STYLES ===== */
 .sandboxTopBanner{position:sticky;top:62px;z-index:38;background:linear-gradient(90deg,#16432F,#1F5A41);color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);flex-wrap:wrap}
 .sandboxTopBanner .sbLeft{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .sandboxTopBanner .sbBadge{background:#E9B949;color:#17150F;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px}
@@ -1121,7 +1731,6 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
       <button class="navToggle hidden" id="topSignoutBtn" onclick="signOut()" aria-label="Sign out"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       <div class="navCurrent" id="navCurrent">Dashboard</div>
       <div class="spacer"></div>
-      <button class="sandboxPillBtn" id="sandboxTopBtn" onclick="startSandbox()" title="Switch to Marketer Training Sandbox profile">🧪 Sandbox</button>
       <button class="navToggle" onclick="startTour()" aria-label="Help" title="What does this app do?">?</button>
       <div class="bizsel">
         <select id="bizSelect" class="biz" onchange="switchBiz(this.value)"></select>
@@ -1617,19 +2226,26 @@ function buildNav(){
       ]
     },
     {
+      title: 'Auditing & Investigation',
+      items: [
+        ['txaudit', 'Transaction Audit', 'receipt'],
+        ['audit', 'Audit Activity Log', 'shield'],
+        ['approvals', 'Approvals Queue', 'check']
+      ]
+    },
+    {
       title: 'Store Administration',
       items: [
         ['members', 'Team & Staff', 'user'],
-        ['approvals', 'Approvals Queue', 'check'],
         ['branches', 'Store Branches', 'bank'],
-        ['audit', 'Audit Activity Log', 'receipt'],
         ['settings', 'Settings & WhatsApp', 'settings']
       ]
     },
     {
-      title: 'Marketer Training',
+      title: 'Training & Support',
       items: [
-        ['sandbox', 'Marketer Sandbox', 'sparkle']
+        ['sandbox', 'Sandbox Profile', 'sparkle'],
+        ['support', 'Help & Support', 'chat']
       ]
     }
   ];
@@ -1640,12 +2256,12 @@ function buildNav(){
 
   let allowedKeys = [];
   if(S.role==='admin'){
-    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','sandbox'];
+    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','txaudit','sandbox','support'];
     if(!S.biz.parent_business_id) allowedKeys.push('branches');
   } else if(S.role==='manager'){
-    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers'];
+    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','txaudit','sandbox','support'];
   } else {
-    allowedKeys = ['sell','customers','mysales','stocklist'];
+    allowedKeys = ['sell','customers','mysales','stocklist','txaudit','sandbox','support'];
   }
   if(TERMINAL_ENABLED) allowedKeys.push('terminal');
 
@@ -1923,7 +2539,7 @@ async function render(){
   // too in case S.tab is left over from a role switch
   if(S.role==='manager' && S.tab==='reports') S.tab='dashboard';
   if(S.tab==='branches' && (S.role!=='admin' || S.biz.parent_business_id)) S.tab='dashboard';
-  const map={dashboard:vDashboard,additem:vAddItem,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches,eod:vEndOfDay};
+  const map={dashboard:vDashboard,additem:vAddItem,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches,eod:vEndOfDay,txaudit:vTxAudit,support:vSupport};
   (map[S.tab]||vDashboard)(v);
 }
 // full-screen block for an unpaid business whose trial has ended (or whose
@@ -2087,10 +2703,21 @@ function filterDashStockTable(q){
 async function vDashboard(v){
   v.innerHTML='<div class="empty">Loading…</div>';
   const windowStart=(()=>{const d=new Date();d.setDate(d.getDate()-120);return d.toISOString().slice(0,10);})();
-  const [salesRes,expRes]=await Promise.all([
-    sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',windowStart),
-    sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',windowStart)
-  ]);
+  let salesRes, expRes;
+  if(S._isSandbox){
+    const t=today();
+    salesRes = { data: [
+      { id:'sb_s1', item_id:'sb_1', quantity:8, unit_price:800, unit_cost:625, payment_method:'cash', entry_date:t, created_at:new Date().toISOString() },
+      { id:'sb_s2', item_id:'sb_2', quantity:5, unit_price:800, unit_cost:625, payment_method:'transfer', entry_date:t, created_at:new Date().toISOString() },
+      { id:'sb_s3', item_id:'sb_3', quantity:10, unit_price:380, unit_cost:287, payment_method:'credit', customer_id:'sb_c2', entry_date:t, created_at:new Date().toISOString() }
+    ]};
+    expRes = { data: [{ amount:3000, entry_date:t }] };
+  } else {
+    [salesRes,expRes]=await Promise.all([
+      sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',windowStart),
+      sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',windowStart)
+    ]);
+  }
   if(salesRes.error) return err(salesRes.error);
   const sales=salesRes.data, exps=expRes.data||[];
   const t=today(), m=monthStart();
@@ -2575,7 +3202,10 @@ function trialDaysLeft(){
   return Math.ceil((new Date(S.biz.trial_ends_at).getTime()-Date.now())/86400000);
 }
 function trialActive(){ return trialDaysLeft()>0; }
-function planActive(){ return paidActive() || trialActive(); }
+function planActive(){
+  if(S && S._isSandbox) return true;
+  return paidActive() || trialActive();
+}
 function vAddItem(v){
   draftModes=[];
   const isManager=S.role==='manager';
@@ -6362,10 +6992,10 @@ function vSettings(v){
       </div>
 
       <div class="formSection" style="margin-bottom:0">
-        <div class="fsTitle">🧪 Marketer Training Sandbox</div>
+        <div class="fsTitle">🧪 Sandbox Profile</div>
         <p class="hint" style="margin-bottom:12px">Practice every feature of TheMonishop on an isolated demo store without touching real data. Complete 12 core tasks and generate a verified certificate screenshot for your supervisor.</p>
         <button class="btn primary sm" onclick="startSandbox()" style="display:inline-flex;align-items:center;gap:6px">
-          ${icon('sparkle')} Launch Marketer Training Sandbox
+          ${icon('sparkle')} Launch Sandbox Profile
         </button>
       </div>
     </div>

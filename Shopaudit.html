@@ -1017,6 +1017,52 @@ async function computeStockFallback(){
 const onHand = id => S.stock[id]??0;
 const balanceOf = id => S.balances[id]??0;
 const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
+
+/* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
+const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
+// small "Expiry: {date}" indicator for a single item, shown on its row
+// regardless of how far off the date is — the alert card below is only for
+// the genuinely urgent (180-day) case, but an item's tracked expiry should
+// always be visible somewhere, not just when it's imminent
+function expiryBadge(itemId){
+  const r=(S.expiringSoon||[]).find(x=>x.item_id===itemId);
+  if(!r) return '';
+  const urgent=new Date(r.expiry_date)-Date.now() <= 180*86400000;
+  return `<div class="cat" style="${urgent?'color:var(--amber);font-weight:600':''}">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` (${r.batch_count} batches)`:''} — <a href="#" onclick="viewExpiryBatches('${itemId}');return false">manage</a></div>`;
+}
+function expiringSoonCard(){
+  const rows=(S.expiringSoon||[]).filter(r=>new Date(r.expiry_date)-Date.now() <= 180*86400000);
+  if(!rows.length) return '';
+  return `<div class="card" id="expiringSoonCard" style="border-color:var(--amber)"><div class="hd"><h2>${icon('alert')} Expiring soon</h2><span class="desc">within 6 months</span></div><div class="bd tight">
+    <table><tbody>${rows.map(r=>`<tr>
+      <td class="itemname">${esc(r.item_name)}<div class="cat">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` · ${r.batch_count} batches tracked`:''}</div></td>
+      <td class="r"><button class="btn ghost sm" onclick="viewExpiryBatches('${r.item_id}')">Manage</button></td>
+    </tr>`).join('')}</tbody></table>
+  </div></div>`;
+}
+async function viewExpiryBatches(itemId){
+  const it=S.items.find(i=>i.id===itemId); if(!it) return;
+  const {data,error}=await sb.from('item_expiry_batches').select('*').eq('item_id',itemId).eq('cleared',false).order('expiry_date');
+  if(error) return err(error);
+  document.getElementById('expiryBatchCard')?.remove();
+  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="expiryBatchCard"><div class="hd"><h2>${esc(it.name)} — batches</h2><div class="spacer"></div>
+    <button class="btn ghost sm" onclick="document.getElementById('expiryBatchCard').remove()">Close</button></div><div class="bd tight">
+    ${data.length?`<table><tbody>${data.map(b=>`<tr>
+      <td class="itemname">${fmtExpiry(b.expiry_date)}${b.note?`<div class="cat">${esc(b.note)}</div>`:''}</td>
+      <td class="r"><button class="btn ghost sm" onclick="clearExpiryBatch('${b.id}','${itemId}')">Mark sold out</button></td>
+    </tr>`).join('')}</tbody></table>`:'<div class="empty">No batches left to track.</div>'}
+    <div class="bd" style="padding-top:12px"><button class="btn primary sm" onclick='openExpiryRound("${itemId}","${esc(it.name).replace(/'/g,"\\'")}")'>${icon('chat')} Notify customers of a discount</button></div>
+  </div></div>`);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+async function clearExpiryBatch(batchId,itemId){
+  const {error}=await sb.rpc('clear_expiry_batch',{p_batch_id:batchId});
+  if(error) return err(error);
+  toast('Batch marked sold out');
+  await loadData();
+  viewExpiryBatches(itemId);
+}
+
 // admin actions are always immediate regardless of settings — this only ever
 // gates managers. The RLS policies in migration-approval-settings.sql are the
 // actual enforcement; this just decides which UI path (immediate vs. queued)
@@ -5878,51 +5924,6 @@ function waCustomer(id,kind){
   // repeated sends instead of piling up a new tab per customer — matters a lot once
   // you're going through dozens of people back to back
   window.open(`https://wa.me/${waNumber(c.phone)}?text=${encodeURIComponent(msg)}`,'waSend');
-}
-
-/* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
-const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
-// small "Expiry: {date}" indicator for a single item, shown on its row
-// regardless of how far off the date is — the alert card below is only for
-// the genuinely urgent (180-day) case, but an item's tracked expiry should
-// always be visible somewhere, not just when it's imminent
-function expiryBadge(itemId){
-  const r=(S.expiringSoon||[]).find(x=>x.item_id===itemId);
-  if(!r) return '';
-  const urgent=new Date(r.expiry_date)-Date.now() <= 180*86400000;
-  return `<div class="cat" style="${urgent?'color:var(--amber);font-weight:600':''}">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` (${r.batch_count} batches)`:''} — <a href="#" onclick="viewExpiryBatches('${itemId}');return false">manage</a></div>`;
-}
-function expiringSoonCard(){
-  const rows=(S.expiringSoon||[]).filter(r=>new Date(r.expiry_date)-Date.now() <= 180*86400000);
-  if(!rows.length) return '';
-  return `<div class="card" id="expiringSoonCard" style="border-color:var(--amber)"><div class="hd"><h2>${icon('alert')} Expiring soon</h2><span class="desc">within 6 months</span></div><div class="bd tight">
-    <table><tbody>${rows.map(r=>`<tr>
-      <td class="itemname">${esc(r.item_name)}<div class="cat">expires ${fmtExpiry(r.expiry_date)}${r.batch_count>1?` · ${r.batch_count} batches tracked`:''}</div></td>
-      <td class="r"><button class="btn ghost sm" onclick="viewExpiryBatches('${r.item_id}')">Manage</button></td>
-    </tr>`).join('')}</tbody></table>
-  </div></div>`;
-}
-async function viewExpiryBatches(itemId){
-  const it=S.items.find(i=>i.id===itemId); if(!it) return;
-  const {data,error}=await sb.from('item_expiry_batches').select('*').eq('item_id',itemId).eq('cleared',false).order('expiry_date');
-  if(error) return err(error);
-  document.getElementById('expiryBatchCard')?.remove();
-  $('#view').insertAdjacentHTML('afterbegin',`<div class="card" id="expiryBatchCard"><div class="hd"><h2>${esc(it.name)} — batches</h2><div class="spacer"></div>
-    <button class="btn ghost sm" onclick="document.getElementById('expiryBatchCard').remove()">Close</button></div><div class="bd tight">
-    ${data.length?`<table><tbody>${data.map(b=>`<tr>
-      <td class="itemname">${fmtExpiry(b.expiry_date)}${b.note?`<div class="cat">${esc(b.note)}</div>`:''}</td>
-      <td class="r"><button class="btn ghost sm" onclick="clearExpiryBatch('${b.id}','${itemId}')">Mark sold out</button></td>
-    </tr>`).join('')}</tbody></table>`:'<div class="empty">No batches left to track.</div>'}
-    <div class="bd" style="padding-top:12px"><button class="btn primary sm" onclick='openExpiryRound("${itemId}","${esc(it.name).replace(/'/g,"\\'")}")'>${icon('chat')} Notify customers of a discount</button></div>
-  </div></div>`);
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-async function clearExpiryBatch(batchId,itemId){
-  const {error}=await sb.rpc('clear_expiry_batch',{p_batch_id:batchId});
-  if(error) return err(error);
-  toast('Batch marked sold out');
-  await loadData();
-  viewExpiryBatches(itemId);
 }
 
 /* ---------- expiry discount round: same reusable pattern as the thank-you round ---------- */

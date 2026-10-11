@@ -14,7 +14,530 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+/* ============================================================
+   MARKETER TRAINING SANDBOX & TASK ENGINE
+   Completely isolated environment for marketers to learn and test
+   every feature of TheMonishop with 0 risk to live database.
+   ============================================================ */
+
+const SANDBOX_TASKS = [
+  {
+    id: 'explore_dash',
+    title: '1. Explore Dashboard & Today\'s Pulse',
+    tab: 'dashboard',
+    objective: 'Understand real-time store revenue, gross profit, and stock alerts.',
+    instruction: 'Go to the Dashboard and switch between tabs (e.g. tap "Top Selling" or "Catalog") to inspect sales trends.',
+    checkKey: 'explore_dash'
+  },
+  {
+    id: 'add_item',
+    title: '2. Add Product with Selling Modes',
+    tab: 'additem',
+    objective: 'Master Nigerian multi-unit retail pricing (Pack vs Tin, Bottle, or Piece).',
+    instruction: 'Go to Add Item, create a new product (e.g. "Peak Milk"), give it a Pack price, tap "+ Add Mode" to add a sub-mode price, and save.',
+    checkKey: 'add_item'
+  },
+  {
+    id: 'restock',
+    title: '3. Restock Inventory with Cost Price',
+    tab: 'restock',
+    objective: 'Learn weighted-average cost recalculation and batch expiry tracking.',
+    instruction: 'Go to Restock, select any product, enter quantity added (e.g. 5) and cost price, then record restock.',
+    checkKey: 'restock'
+  },
+  {
+    id: 'cash_sale',
+    title: '4. High-Speed Cash Sale at POS',
+    tab: 'sell',
+    objective: 'Demonstrate fast checkout for walk-in cash customers.',
+    instruction: 'Go to Sell, tap an item to add it to cart, select Cash, and tap "Complete Sale".',
+    checkKey: 'cash_sale'
+  },
+  {
+    id: 'transfer_sale',
+    title: '5. Bank Transfer & Multi-Cart Tabs',
+    tab: 'sell',
+    objective: 'Handle customer bank transfers without blocking waiting customers.',
+    instruction: 'In Sell, tap "+" to open a second cart tab, add an item, choose "Transfer", and complete checkout.',
+    checkKey: 'transfer_sale'
+  },
+  {
+    id: 'credit_sale',
+    title: '6. Record a Credit Sale to a Customer',
+    tab: 'sell',
+    objective: 'Prevent debt leakage: attach unpaid sales directly to a customer ledger.',
+    instruction: 'In Sell, add an item, choose "Credit", select or add a customer, and complete checkout.',
+    checkKey: 'credit_sale'
+  },
+  {
+    id: 'settle_debt',
+    title: '7. Customer Debt Repayment',
+    tab: 'customers',
+    objective: 'Show shop owners how to record debt recovery and balance clearing.',
+    instruction: 'Go to Customers, tap on an owing customer (e.g. Mama Chidi), and record a payment towards their debt.',
+    checkKey: 'settle_debt'
+  },
+  {
+    id: 'reconcile',
+    title: '8. Stock Reconciliation (Shrinkage Audit)',
+    tab: 'reconcile',
+    objective: 'Detect missing stock and theft by comparing physical count to system balance.',
+    instruction: 'Go to Reconcile, pick any item, enter a physical count, and record audit count with auto-correction.',
+    checkKey: 'reconcile'
+  },
+  {
+    id: 'pos_agency',
+    title: '9. Agency Banking POS Transaction',
+    tab: 'till',
+    objective: 'Handle cash-in / cash-out agency banking swaps with fee retention.',
+    instruction: 'Go to Till, select Agency Banking (Cash Out or Cash In), enter amount and fee kept, and record.',
+    checkKey: 'pos_agency'
+  },
+  {
+    id: 'clear_till',
+    title: '10. Clear the Till (Register Bank Deposit)',
+    tab: 'till',
+    objective: 'Document money physically removed from the drawer for bank deposits or restock.',
+    instruction: 'In Till, scroll to "Clear the Till", enter amount (e.g. ₦10,000) with a note (e.g. "Bank deposit"), and record.',
+    checkKey: 'clear_till'
+  },
+  {
+    id: 'expense',
+    title: '11. Record Operating Expense',
+    tab: 'expenses',
+    objective: 'Separate overhead costs (fuel, transport, electricity) from inventory purchases.',
+    instruction: 'Go to Expenses, enter an expenditure (e.g. ₦3,000 for "Generator Fuel"), and save.',
+    checkKey: 'expense'
+  },
+  {
+    id: 'reports',
+    title: '12. Financial Reports & CSV Export',
+    tab: 'reports',
+    objective: 'Demonstrate executive profit reporting and data export.',
+    instruction: 'Go to Reports, view the profit breakdown for This Month, and tap "Export CSV".',
+    checkKey: 'reports'
+  }
+];
+
+function getSandboxDemoData(){
+  return {
+    biz: {
+      id: 'demo_sandbox_biz',
+      name: 'Marketer Demo Store (Sandbox)',
+      is_paid: true,
+      paid_until: '2099-12-31',
+      invite_code: 'DEMO88',
+      currency: 'NGN',
+      wa_enabled: true
+    },
+    items: [
+      { id:'sb_1', name:'Peak Evaporated Milk (160g)', category:'Dairy & Provisions', pack_price:18000, cost_price:15000, unit_name:'Pack', modes:[{name:'Tin', per_pack:24, price:800}], low_stock_threshold:5 },
+      { id:'sb_2', name:'Golden Penny Spaghetti (500g)', category:'Pasta & Grains', pack_price:15000, cost_price:12500, unit_name:'Carton', modes:[{name:'Piece', per_pack:20, price:800}], low_stock_threshold:4 },
+      { id:'sb_3', name:'Indomie Super Pack (120g)', category:'Noodles', pack_price:13500, cost_price:11500, unit_name:'Carton', modes:[{name:'Single', per_pack:40, price:380}], low_stock_threshold:6 },
+      { id:'sb_4', name:'Dangote Sugar (50kg)', category:'Commodities', pack_price:82000, cost_price:76000, unit_name:'Bag', modes:[{name:'Mudú', per_pack:40, price:2200}], low_stock_threshold:2 },
+      { id:'sb_5', name:'Sunlight Detergent (900g)', category:'Household & Cleaning', pack_price:9500, cost_price:8000, unit_name:'Pack', modes:[{name:'Sachet', per_pack:10, price:1000}], low_stock_threshold:3 }
+    ],
+    stock: { sb_1: 22, sb_2: 18, sb_3: 35, sb_4: 4, sb_5: 12 },
+    customers: [
+      { id:'sb_c1', name:'Alhaji Ibrahim', phone:'08031234567', notes:'Regular bulk buyer' },
+      { id:'sb_c2', name:'Mama Chidi Provision', phone:'08029876543', notes:'Buys on short credit' }
+    ],
+    balances: { sb_c1: 0, sb_c2: 6500 },
+    till: { cash: 32000, transfer: 58000 },
+    sales: [],
+    purchases: [],
+    reconciliations: [],
+    pos_transactions: [],
+    till_clearings: [],
+    expenditures: []
+  };
+}
+
+let sandboxProgress = {
+  currentIdx: 0,
+  completed: {},
+  completedCount: 0,
+  certCode: null,
+  marketerName: 'Marketer Trainee'
+};
+
+function loadSandboxProgress(){
+  try{
+    const saved = localStorage.getItem('tm_sandbox_progress');
+    if(saved) sandboxProgress = Object.assign(sandboxProgress, JSON.parse(saved));
+  }catch{}
+}
+function saveSandboxProgress(){
+  try{ localStorage.setItem('tm_sandbox_progress', JSON.stringify(sandboxProgress)); }catch{}
+}
+
+function startSandbox(){
+  if(S._isSandbox) return;
+  // Backup real store state
+  window._REAL_S_STATE = {
+    biz: S.biz,
+    role: S.role,
+    items: S.items,
+    stock: S.stock,
+    customers: S.customers,
+    balances: S.balances,
+    tab: S.tab
+  };
+
+  loadSandboxProgress();
+  let demo = null;
+  try{
+    const s = localStorage.getItem('tm_sandbox_store');
+    if(s) demo = JSON.parse(s);
+  }catch{}
+  if(!demo) demo = getSandboxDemoData();
+
+  window._SANDBOX_STORE = demo;
+  S._isSandbox = true;
+  S.biz = demo.biz;
+  S.role = 'admin';
+  S.items = demo.items;
+  S.stock = demo.stock;
+  S.customers = demo.customers;
+  S.balances = demo.balances;
+  S.cart = [];
+  S.tab = 'dashboard';
+
+  renderSandboxBanner();
+  renderSandboxHud();
+  render();
+  toast('🧪 Entered Marketer Training Sandbox. Live store is 100% safe.');
+}
+
+function exitSandbox(){
+  if(!S._isSandbox) return;
+  // Save current sandbox changes locally
+  try{
+    if(window._SANDBOX_STORE){
+      window._SANDBOX_STORE.items = S.items;
+      window._SANDBOX_STORE.stock = S.stock;
+      window._SANDBOX_STORE.customers = S.customers;
+      window._SANDBOX_STORE.balances = S.balances;
+      localStorage.setItem('tm_sandbox_store', JSON.stringify(window._SANDBOX_STORE));
+    }
+  }catch{}
+
+  // Restore real store
+  delete S._isSandbox;
+  document.getElementById('sandboxTopBanner')?.remove();
+  document.getElementById('sandboxTaskHud')?.remove();
+  document.getElementById('taskModalBg')?.remove();
+  document.getElementById('certModalBg')?.remove();
+
+  if(window._REAL_S_STATE){
+    S.biz = window._REAL_S_STATE.biz;
+    S.role = window._REAL_S_STATE.role;
+    S.items = window._REAL_S_STATE.items;
+    S.stock = window._REAL_S_STATE.stock;
+    S.customers = window._REAL_S_STATE.customers;
+    S.balances = window._REAL_S_STATE.balances;
+    S.tab = window._REAL_S_STATE.tab || 'dashboard';
+    window._REAL_S_STATE = null;
+  }
+  loadData().then(()=>render());
+  toast('Exited Sandbox. You are back in your real shop.');
+}
+
+function playCelebrationChime(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.12, now + idx * 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now + idx * 0.1);
+      osc.stop(now + idx * 0.1 + 0.35);
+    });
+  }catch{}
+}
+
+function completeSandboxTask(taskId){
+  if(!S._isSandbox) return;
+  if(sandboxProgress.completed[taskId]) return; // already done
+  
+  const task = SANDBOX_TASKS.find(t => t.id === taskId);
+  sandboxProgress.completed[taskId] = {
+    at: new Date().toISOString(),
+    name: task ? task.title : taskId
+  };
+  sandboxProgress.completedCount = Object.keys(sandboxProgress.completed).length;
+
+  // Advance current index if it matches
+  if(SANDBOX_TASKS[sandboxProgress.currentIdx]?.id === taskId){
+    sandboxProgress.currentIdx = Math.min(SANDBOX_TASKS.length - 1, sandboxProgress.currentIdx + 1);
+  }
+
+  saveSandboxProgress();
+  playCelebrationChime();
+  toast(`🎉 Task Passed: ${task ? task.title : 'Task Completed'} (100% Correct)!`);
+  updateSandboxHud();
+
+  if(sandboxProgress.completedCount === SANDBOX_TASKS.length){
+    if(!sandboxProgress.certCode){
+      sandboxProgress.certCode = 'TM-MKT-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-PASS';
+      saveSandboxProgress();
+    }
+    setTimeout(() => openSandboxCertificate(), 700);
+  }
+}
+
+function checkSandboxTask(type, payload){
+  if(!S._isSandbox) return;
+  const curr = SANDBOX_TASKS[sandboxProgress.currentIdx];
+  if(type === 'explore_dash' && (curr?.id === 'explore_dash' || !sandboxProgress.completed.explore_dash)){
+    completeSandboxTask('explore_dash');
+  } else if(type === 'add_item' && (curr?.id === 'add_item' || !sandboxProgress.completed.add_item)){
+    completeSandboxTask('add_item');
+  } else if(type === 'restock' && (curr?.id === 'restock' || !sandboxProgress.completed.restock)){
+    completeSandboxTask('restock');
+  } else if(type === 'cash_sale' && (curr?.id === 'cash_sale' || !sandboxProgress.completed.cash_sale)){
+    completeSandboxTask('cash_sale');
+  } else if(type === 'transfer_sale' && (curr?.id === 'transfer_sale' || !sandboxProgress.completed.transfer_sale)){
+    completeSandboxTask('transfer_sale');
+  } else if(type === 'credit_sale' && (curr?.id === 'credit_sale' || !sandboxProgress.completed.credit_sale)){
+    completeSandboxTask('credit_sale');
+  } else if(type === 'settle_debt' && (curr?.id === 'settle_debt' || !sandboxProgress.completed.settle_debt)){
+    completeSandboxTask('settle_debt');
+  } else if(type === 'reconcile' && (curr?.id === 'reconcile' || !sandboxProgress.completed.reconcile)){
+    completeSandboxTask('reconcile');
+  } else if(type === 'pos_agency' && (curr?.id === 'pos_agency' || !sandboxProgress.completed.pos_agency)){
+    completeSandboxTask('pos_agency');
+  } else if(type === 'clear_till' && (curr?.id === 'clear_till' || !sandboxProgress.completed.clear_till)){
+    completeSandboxTask('clear_till');
+  } else if(type === 'expense' && (curr?.id === 'expense' || !sandboxProgress.completed.expense)){
+    completeSandboxTask('expense');
+  } else if(type === 'reports' && (curr?.id === 'reports' || !sandboxProgress.completed.reports)){
+    completeSandboxTask('reports');
+  }
+}
+
+function renderSandboxBanner(){
+  document.getElementById('sandboxTopBanner')?.remove();
+  const banner = document.createElement('div');
+  banner.id = 'sandboxTopBanner';
+  banner.className = 'sandboxTopBanner';
+  banner.innerHTML = `
+    <div class="sbLeft">
+      <span class="sbBadge">🧪 MARKETER SANDBOX</span>
+      <span class="sbText">Training Mode · Isolated Demo Store (Real shop data is 100% safe)</span>
+    </div>
+    <div class="sbRight">
+      <button class="sbTaskBtn" onclick="openSandboxChecklist()">📋 Tasks: <span id="sbTaskCount">${sandboxProgress.completedCount}/12</span></button>
+      <button class="sbExitBtn" onclick="exitSandbox()">✕ Exit Sandbox</button>
+    </div>
+  `;
+  const appEl = document.getElementById('app');
+  if(appEl) appEl.insertBefore(banner, appEl.querySelector('.wrap'));
+}
+
+function renderSandboxHud(){
+  document.getElementById('sandboxTaskHud')?.remove();
+  const hud = document.createElement('div');
+  hud.id = 'sandboxTaskHud';
+  hud.className = 'sandboxTaskHud';
+  hud.innerHTML = `
+    <div class="hudHeader" onclick="toggleSandboxHud()">
+      <div class="hudTitle">
+        <span>🎯</span>
+        <div>
+          <b id="hudTaskTitle">Loading task...</b>
+          <div class="hudProgressText"><span id="hudCount">0</span>/12 Tasks Completed (<span id="hudPct">0%</span>)</div>
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">▼</div>
+    </div>
+    <div class="hudBody" id="hudBody">
+      <p id="hudInstruction">Follow instructions to complete this task.</p>
+      <div class="hudActions">
+        <button class="btn primary sm" id="hudActionBtn" onclick="sandboxGoCurrentTask()">👉 Do This Task</button>
+        <button class="btn ghost sm" onclick="openSandboxChecklist()">📋 All Tasks</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(hud);
+  updateSandboxHud();
+}
+
+function updateSandboxHud(){
+  const countEl = document.getElementById('hudCount');
+  const sbTaskCount = document.getElementById('sbTaskCount');
+  const pctEl = document.getElementById('hudPct');
+  const titleEl = document.getElementById('hudTaskTitle');
+  const instEl = document.getElementById('hudInstruction');
+
+  const count = sandboxProgress.completedCount || 0;
+  const pct = Math.round((count / SANDBOX_TASKS.length) * 100);
+
+  if(countEl) countEl.textContent = count;
+  if(sbTaskCount) sbTaskCount.textContent = `${count}/12`;
+  if(pctEl) pctEl.textContent = `${pct}%`;
+
+  const curr = SANDBOX_TASKS[sandboxProgress.currentIdx] || SANDBOX_TASKS[0];
+  if(titleEl) titleEl.textContent = count === 12 ? '🎉 All 12 Tasks Completed!' : curr.title;
+  if(instEl) instEl.textContent = count === 12 ? 'Excellent job! Tap below to open your official qualification certificate and screenshot it.' : curr.instruction;
+
+  const actionBtn = document.getElementById('hudActionBtn');
+  if(actionBtn){
+    if(count === 12){
+      actionBtn.textContent = '🏆 View Certificate';
+      actionBtn.onclick = openSandboxCertificate;
+    } else {
+      actionBtn.textContent = '👉 Do This Task';
+      actionBtn.onclick = sandboxGoCurrentTask;
+    }
+  }
+}
+
+function toggleSandboxHud(){
+  document.getElementById('sandboxTaskHud')?.classList.toggle('minimized');
+}
+
+function sandboxGoCurrentTask(){
+  const curr = SANDBOX_TASKS[sandboxProgress.currentIdx];
+  if(curr){
+    go(curr.tab);
+    toast(`Switched to ${curr.title}. Follow instructions!`);
+  }
+}
+
+function openSandboxChecklist(){
+  document.getElementById('taskModalBg')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'taskModalBg';
+  modal.className = 'taskModalBg';
+  modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div class="taskModalBox">
+      <div class="taskHead">
+        <div>
+          <h2>Marketer Training Checklist</h2>
+          <div class="hint">Completed ${sandboxProgress.completedCount} of 12 Tasks (${Math.round((sandboxProgress.completedCount/12)*100)}% Proficiency)</div>
+        </div>
+        <button class="btn ghost sm" onclick="document.getElementById('taskModalBg').remove()">✕</button>
+      </div>
+
+      <div class="taskList">
+        ${SANDBOX_TASKS.map((t, idx) => {
+          const isDone = !!sandboxProgress.completed[t.id];
+          const isCurrent = idx === sandboxProgress.currentIdx && !isDone;
+          const statusCls = isDone ? 'completed' : isCurrent ? 'active' : 'pending';
+          return `
+          <div class="taskRow ${statusCls}">
+            <div class="taskStatusIcon">${isDone ? '✓' : idx + 1}</div>
+            <div class="taskInfo">
+              <div class="taskTitle">${esc(t.title)}</div>
+              <div class="taskDesc">${esc(t.instruction)}</div>
+              ${isDone ? `<div class="taskFeedback good">✅ PASSED (Verified Correct)</div>` : isCurrent ? `<div class="taskFeedback hint">👉 Current Task: Tap "Go to Screen" to practice</div>` : ''}
+            </div>
+            <div style="flex-shrink:0">
+              ${isDone ? `<span class="badge ok">Done</span>` : `<button class="btn primary sm" onclick="document.getElementById('taskModalBg').remove();go('${t.tab}');toast('Practicing ${esc(t.title)}');">Go ➔</button>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;flex-wrap:wrap;gap:8px">
+        <button class="btn ghost sm" onclick="resetSandboxTasks()">Reset Checklist</button>
+        <div style="display:flex;gap:8px">
+          ${sandboxProgress.completedCount === 12 ? `<button class="btn primary sm" onclick="document.getElementById('taskModalBg').remove();openSandboxCertificate()">🏆 View Certificate</button>` : ''}
+          <button class="btn ghost sm" onclick="document.getElementById('taskModalBg').remove()">Close</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function resetSandboxTasks(){
+  if(confirm('Are you sure you want to reset your marketer training checklist progress?')){
+    sandboxProgress = { currentIdx: 0, completed: {}, completedCount: 0, certCode: null, marketerName: sandboxProgress.marketerName };
+    saveSandboxProgress();
+    updateSandboxHud();
+    openSandboxChecklist();
+    toast('Checklist reset.');
+  }
+}
+
+function openSandboxCertificate(){
+  document.getElementById('certModalBg')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'certModalBg';
+  modal.className = 'taskModalBg';
+  modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
+
+  if(!sandboxProgress.certCode){
+    sandboxProgress.certCode = 'TM-MKT-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-PASS';
+    saveSandboxProgress();
+  }
+
+  const todayStr = new Date().toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' });
+
+  modal.innerHTML = `
+    <div class="certModalBox">
+      <div class="certBadgeTop">THEMONISHOP VERIFIED PRODUCT SPECIALIST</div>
+      <div class="certTitle">Certificate of Operational Mastery</div>
+      <div class="certSub">OFFICIAL MARKETER QUALIFICATION PROOF</div>
+      
+      <p style="font-size:13px;color:var(--muted);margin-bottom:6px">This certifies that</p>
+      <div class="certRecipient" contenteditable="true" id="certNameInput" oninput="sandboxProgress.marketerName=this.textContent.trim();saveSandboxProgress();" title="Tap to type your full name">${esc(sandboxProgress.marketerName || 'Your Full Name')}</div>
+      
+      <p class="certStatement">
+        has successfully executed all 12 core retail operations in the sandbox training profile, demonstrating 100% operational competency across Inventory Modes, POS Checkout, Split Payments, Customer Credit Ledgers, Till Clearing, Agency POS Banking, and Financial Reports.
+      </p>
+
+      <div class="certStatsGrid">
+        <div class="certStatItem">
+          <span>Curriculum Score</span>
+          <b style="color:var(--green)">12 / 12 TASKS PASSED (100%)</b>
+        </div>
+        <div class="certStatItem">
+          <span>Verification Code</span>
+          <b style="font-family:ui-monospace,monospace">${sandboxProgress.certCode}</b>
+        </div>
+        <div class="certStatItem">
+          <span>Date Verified</span>
+          <b>${todayStr}</b>
+        </div>
+        <div class="certStatItem">
+          <span>Qualification</span>
+          <b>Store Onboarding Specialist</b>
+        </div>
+      </div>
+
+      <div class="certInstructionCard">
+        📸 <b>TAKE A SCREENSHOT OF THIS CERTIFICATE</b> and send to your Administrator / Supervisor as verification of app mastery.
+      </div>
+
+      <div class="row" style="justify-content:center;gap:10px;flex-wrap:wrap">
+        <button class="btn primary sm" onclick="shareCertWhatsApp()">📲 Share via WhatsApp</button>
+        <button class="btn ghost sm" onclick="document.getElementById('certModalBg').remove()">Close</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function shareCertWhatsApp(){
+  const name = sandboxProgress.marketerName || 'Marketer';
+  const code = sandboxProgress.certCode || 'TM-MKT-PASS';
+  const text = encodeURIComponent(`Hello Admin, I (${name}) have completed all 12 tasks in TheMonishop Marketer Training Sandbox with a 100% score (Cert ID: ${code}). I am now conversant with all inventory, POS, credit, till, and report features and ready to onboard merchants!`);
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+}
+
+</script>
 <style>
 :root{
   --paper:#FBF8F1; --card:#FFFFFF; --ink:#17150F; --muted:#6F6A5E; --line:#E8E1D3;
@@ -483,6 +1006,63 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
   .topbar .rolepill{display:none}
 }
 
+
+/* ===== MARKETER TRAINING SANDBOX & CERTIFICATE STYLES ===== */
+.sandboxTopBanner{position:sticky;top:62px;z-index:38;background:linear-gradient(90deg,#16432F,#1F5A41);color:#fff;padding:8px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);flex-wrap:wrap}
+.sandboxTopBanner .sbLeft{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.sandboxTopBanner .sbBadge{background:#E9B949;color:#17150F;font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.06em;padding:4px 9px;border-radius:99px}
+.sandboxTopBanner .sbText{font-size:13px;font-weight:600;color:#FBF8F1}
+.sandboxTopBanner .sbRight{display:flex;align-items:center;gap:8px}
+.sandboxTopBanner button{padding:6px 12px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .15s}
+.sandboxTopBanner .sbTaskBtn{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3)}
+.sandboxTopBanner .sbTaskBtn:hover{background:rgba(255,255,255,.35)}
+.sandboxTopBanner .sbExitBtn{background:#B23A33;color:#fff;border:none}
+.sandboxTopBanner .sbExitBtn:hover{background:#962A24}
+
+.sandboxPillBtn{background:#FAF7F0;border:1px solid var(--gold);color:var(--gold);font-weight:700;font-size:12.5px;padding:6px 12px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all .15s}
+.sandboxPillBtn:hover{background:var(--gold);color:#fff}
+
+.sandboxTaskHud{position:fixed;bottom:20px;right:20px;z-index:90;width:min(380px,calc(100vw - 32px));background:var(--card);border:2px solid var(--gold);border-radius:16px;box-shadow:0 8px 30px rgba(23,21,15,.22);overflow:hidden;transition:all .2s ease}
+.sandboxTaskHud .hudHeader{background:#FAF7F0;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border-bottom:1px solid var(--line)}
+.sandboxTaskHud .hudTitle{display:flex;align-items:center;gap:10px}
+.sandboxTaskHud .hudTitle b{font-size:13.5px;color:var(--ink);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px}
+.sandboxTaskHud .hudProgressText{font-size:11.5px;color:var(--muted);font-weight:600}
+.sandboxTaskHud .hudBody{padding:14px 16px;max-height:300px;overflow-y:auto}
+.sandboxTaskHud .hudBody p{font-size:13px;line-height:1.45;color:var(--ink);margin-bottom:12px}
+.sandboxTaskHud .hudActions{display:flex;gap:8px;justify-content:flex-end}
+.sandboxTaskHud.minimized .hudBody{display:none}
+
+.taskModalBg{position:fixed;inset:0;z-index:100;background:rgba(23,21,15,.6);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px}
+.taskModalBox{background:var(--card);border:1px solid var(--line);border-radius:18px;width:min(620px,100%);max-height:88vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.3);padding:22px}
+.taskModalBox .taskHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.taskModalBox .taskHead h2{font-family:'Fraunces',serif;font-size:20px;color:var(--ink)}
+
+.taskRow{background:#FAF7F0;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;align-items:flex-start;gap:12px;transition:all .15s}
+.taskRow.completed{border-color:rgba(31,90,65,.3);background:rgba(31,90,65,.04)}
+.taskRow.active{border-color:var(--gold);border-width:2px;background:#FFFBF0}
+.taskStatusIcon{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;flex-shrink:0;margin-top:2px}
+.taskRow.completed .taskStatusIcon{background:var(--green);color:#fff}
+.taskRow.active .taskStatusIcon{background:var(--gold);color:#fff}
+.taskRow.pending .taskStatusIcon{background:#EFE8DA;color:var(--muted)}
+.taskRow .taskInfo{flex:1}
+.taskRow .taskTitle{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:3px}
+.taskRow .taskDesc{font-size:12.5px;color:var(--muted);line-height:1.4}
+.taskRow .taskFeedback{font-size:12px;margin-top:6px;font-weight:600}
+.taskRow .taskFeedback.good{color:var(--green)}
+.taskRow .taskFeedback.hint{color:var(--gold)}
+
+/* CERTIFICATE STYLES FOR SCREENSHOTTING */
+.certModalBox{background:#FFFDF9;border:3px double var(--gold);border-radius:20px;width:min(580px,100%);max-height:92vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,.35);padding:28px 24px;text-align:center;position:relative}
+.certBadgeTop{display:inline-flex;align-items:center;gap:6px;background:var(--green-d);color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:5px 14px;border-radius:99px;margin-bottom:14px}
+.certTitle{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:#16432F;margin-bottom:6px;letter-spacing:-.02em}
+.certSub{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);font-weight:700;margin-bottom:12px}
+.certRecipient{font-family:'Fraunces',serif;font-size:24px;font-weight:700;color:var(--ink);border-bottom:2px solid var(--gold);display:inline-block;padding:2px 20px;margin-bottom:14px;outline:none}
+.certStatement{font-size:13.5px;color:var(--muted);line-height:1.5;max-width:480px;margin:0 auto 18px}
+.certStatsGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;background:#FAF7F0;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:18px;text-align:left}
+.certStatItem span{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.certStatItem b{font-size:14px;color:var(--ink)}
+.certInstructionCard{background:#EBF3EE;border:1px dashed var(--green);border-radius:12px;padding:12px;margin-bottom:18px;font-size:13px;color:var(--green-d);font-weight:600}
+
 </style>
 </head>
 <body>
@@ -541,6 +1121,7 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
       <button class="navToggle hidden" id="topSignoutBtn" onclick="signOut()" aria-label="Sign out"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
       <div class="navCurrent" id="navCurrent">Dashboard</div>
       <div class="spacer"></div>
+      <button class="sandboxPillBtn" id="sandboxTopBtn" onclick="startSandbox()" title="Switch to Marketer Training Sandbox profile">🧪 Sandbox</button>
       <button class="navToggle" onclick="startTour()" aria-label="Help" title="What does this app do?">?</button>
       <div class="bizsel">
         <select id="bizSelect" class="biz" onchange="switchBiz(this.value)"></select>
@@ -1044,6 +1625,12 @@ function buildNav(){
         ['audit', 'Audit Activity Log', 'receipt'],
         ['settings', 'Settings & WhatsApp', 'settings']
       ]
+    },
+    {
+      title: 'Marketer Training',
+      items: [
+        ['sandbox', 'Marketer Sandbox', 'sparkle']
+      ]
     }
   ];
 
@@ -1053,7 +1640,7 @@ function buildNav(){
 
   let allowedKeys = [];
   if(S.role==='admin'){
-    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings'];
+    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','sandbox'];
     if(!S.biz.parent_business_id) allowedKeys.push('branches');
   } else if(S.role==='manager'){
     allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers'];
@@ -1079,7 +1666,7 @@ function buildNav(){
   $('#navCurrent').textContent = currentLabel;
   $('#navGrid').innerHTML = html;
 }
-function go(t){ S.tab=t; buildNav(); closeNavMenu(); render(); }
+function go(t){ if(t==='sandbox'){ startSandbox(); return; } S.tab=t; buildNav(); closeNavMenu(); render(); }
 function toggleNavMenu(){ $('#navMenu').classList.toggle('show'); }
 function closeNavMenu(){ $('#navMenu').classList.remove('show'); }
 
@@ -1217,8 +1804,32 @@ const TOUR_STEPS={
     {tab:'stocklist',title:'Items',points:['Prices and stock levels, read-only — but you can still mark a perishable batch as sold out once it\'s gone.']}
   ]
 };
+
+/* ---------- Tour Guide Customization & Settings ---------- */
+function isTourDisabled(){
+  try{
+    return localStorage.getItem('tourDisabled_all') === '1' ||
+           (S.biz && S.user && localStorage.getItem(`tourDisabled_${S.biz.id}_${S.user.id}`) === '1');
+  }catch{ return false; }
+}
+function toggleTourSetting(disabled){
+  try{
+    localStorage.setItem('tourDisabled_all', disabled ? '1' : '0');
+    if(S.biz && S.user) localStorage.setItem(`tourDisabled_${S.biz.id}_${S.user.id}`, disabled ? '1' : '0');
+    toast(disabled ? 'Tour guide disabled on login' : 'Tour guide enabled on login');
+  }catch{}
+}
+function resetTourSeen(){
+  try{
+    localStorage.removeItem(tourKey());
+    localStorage.removeItem('tourDisabled_all');
+    if(S.biz && S.user) localStorage.removeItem(`tourDisabled_${S.biz.id}_${S.user.id}`);
+    toast('Tour reset. You will see the tour guide on next login.');
+  }catch{}
+}
 function tourKey(){ return `tourSeen_${S.biz.id}_${S.user.id}`; }
 function maybeStartTour(){
+  if(isTourDisabled()) return; // respects user toggle in settings
   if(!planActive()) return; // nothing to tour behind the upgrade wall
   try{ if(localStorage.getItem(tourKey())) return; }catch{}
   startTour();
@@ -1438,6 +2049,7 @@ let dashStockQuery = '';
 
 function setDashTab(t){
   dashTab = t;
+  if(S._isSandbox && t !== 'day') checkSandboxTask('explore_dash', { tab: t });
   document.querySelectorAll('.dashNavBtn').forEach(b => b.classList.toggle('active', b.dataset.tab === t));
   document.querySelectorAll('.dashTabPane').forEach(p => p.classList.toggle('hidden', p.id !== 'dashPane-' + t));
 }
@@ -2194,6 +2806,24 @@ function addDraftMode(){ draftModes.push({name:'',price:0,per_pack:2}); renderDr
 function removeDraftMode(idx){ draftModes.splice(idx,1); renderDraftModes(); iOpenModeOptions(); iThrModeOptions(); }
 async function addItem(){
   const btn=$('#addItemBtn'); if(btn?.disabled) return; // guards against a slow double-tap firing twice
+  if(S._isSandbox){
+    const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
+    const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost')?.value||0;
+    if(!packSell) return toast('Enter the pack sell price',true);
+    const modes=(draftModes||[]).filter(m=>m.name.trim()&&m.price>0&&m.per_pack>=1).map(m=>({name:m.name.trim(),price:m.price,per_pack:m.per_pack}));
+    const newItem = {
+      id: 'sb_item_' + Date.now(),
+      name, category: $('#iCat').value.trim()||'General',
+      pack_price: packSell, cost_price: packCost, modes,
+      low_stock_threshold: iThrBaseUnits(), unit_name: unitValue('iUnit')
+    };
+    S.items.unshift(newItem);
+    S.stock[newItem.id] = iOpenBaseUnits() || 10;
+    toast('Product added in sandbox');
+    checkSandboxTask('add_item', { item: newItem, modesCount: modes.length });
+    go('items');
+    return;
+  }
   if(S.role!=='manager' && !planActive() && S.items.length>=FREE_ITEM_CAP) return toast('Free plan limit reached, upgrade to add more items',true);
   const name=$('#iName').value.trim(); if(!name) return toast('Enter item name',true);
   const packSell=+$('#iPack').value||0, packCost=+$('#iPackCost')?.value||0;
@@ -2570,6 +3200,16 @@ async function applyRestock(item_id,qty,base,unit_cost,entry_date,actorId,newCos
 async function addPurchase(){
   const item_id=$('#rItem').value, qty=+$('#rQty').value;
   if(!item_id||!qty||qty<=0) return toast('Enter a valid quantity',true);
+  if(S._isSandbox){
+    const it=S.items.find(i=>i.id===item_id);
+    const modeName=$('#rMode').value, mode=itemModes(it).find(m=>m.name===modeName);
+    const base = mode ? qty/mode.per_pack : qty;
+    S.stock[item_id] = (Number(S.stock[item_id]) || 0) + base;
+    toast('Restock recorded in sandbox');
+    checkSandboxTask('restock', { item_id, qty: base });
+    go('items');
+    return;
+  }
   const it=S.items.find(i=>i.id===item_id);
   const modeName=$('#rMode').value, mode=itemModes(it).find(m=>m.name===modeName);
   const base = mode ? qty/mode.per_pack : qty;
@@ -2742,6 +3382,13 @@ async function saveRecon(){
   const item_id=$('#cItem').value, exp=+$('#cExp')?.dataset.val||0, cnt=$('#cCount').value;
   if(cnt===''||isNaN(+cnt)) return toast('Enter the counted amount',true);
   const counted=cCountBase(), variance=counted-exp, note=$('#cNote').value.trim(), apply=$('#cApply').checked;
+  if(S._isSandbox){
+    if(apply) S.stock[item_id] = counted;
+    checkSandboxTask('reconcile', { item_id, variance });
+    toast(variance < 0 ? `Audit recorded: shrinkage of ${Math.abs(variance)}` : 'Audit count recorded in sandbox');
+    render();
+    return;
+  }
   if(needsApproval('reconcile')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
       action_type:'reconcile',item_id,payload:{item_id,exp,counted,variance,note,apply}});
@@ -2933,6 +3580,12 @@ async function applyPosTransaction(type,amount,charge,note,actorId){
 async function recordPosTransaction(){
   const type=$('#pType').value, amount=+$('#pAmt').value||0, charge=+$('#pCharge').value||0, note=$('#pNote').value.trim();
   if(!amount||amount<=0) return toast('Enter the cash amount',true);
+  if(S._isSandbox){
+    checkSandboxTask('pos_agency', { type, amount, charge });
+    toast('POS agency transaction recorded in sandbox');
+    vTill($('#view'));
+    return;
+  }
   if(needsApproval('pos')){
     const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
       action_type:'pos_transaction',item_id:null,payload:{type,amount,charge,note}});
@@ -2947,6 +3600,10 @@ async function recordPosTransaction(){
   vTill($('#view'));
 }
 async function loadPosTransactions(){
+  if(S._isSandbox){
+    $('#posList').innerHTML='<div class="empty">No POS agency transactions recorded in sandbox yet.</div>';
+    return;
+  }
   const {data,error}=await sb.from('pos_transactions').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
   if(error) return;
   const fmtD=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -2954,6 +3611,12 @@ async function loadPosTransactions(){
   <tbody>${data.map(p=>`<tr><td class="num hint" data-label="Date">${fmtD(p.created_at)}</td><td data-label="Direction"><span class="badge blue">${p.type==='cash_out'?'Gave cash':'Took cash'}</span></td><td class="r num" data-label="Cash">${money(p.amount)}</td><td class="r num" data-label="Charge kept">${money(p.charge)}</td><td class="hint" data-label="Note">${esc(p.note||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No POS transactions yet.</div>'}</div>`;
 }
 async function loadTillSummary(){
+  if(S._isSandbox){
+    $('#tillStats').innerHTML=`
+      <div class="stat good"><div class="label">${icon('cash')} Cash in till</div><div class="value num">${money(32000)}</div><div class="sub">physical cash in drawer</div></div>
+      <div class="stat"><div class="label">${icon('bank')} Transfer in till</div><div class="value num">${money(58000)}</div><div class="sub">bank / card balance</div></div>`;
+    return;
+  }
   const {data,error}=await sb.rpc('till_summary',{b:S.biz.id});
   if(error) return err(error);
   const s=data[0]||{cash_balance:0,transfer_balance:0};
@@ -2962,6 +3625,11 @@ async function loadTillSummary(){
     <div class="stat"><div class="label">Transfer in till</div><div class="value num">${money(s.transfer_balance)}</div></div>`;
 }
 async function loadTillByStaff(){
+  if(S._isSandbox){
+    $('#tillByStaff').innerHTML=`<table class="rtable"><thead><tr><th>Name</th><th class="r">Cash</th><th class="r">Transfer</th></tr></thead>
+      <tbody><tr><td class="itemname">Marketer Trainee (You)</td><td class="r num">${money(32000)}</td><td class="r num">${money(58000)}</td></tr></tbody></table>`;
+    return;
+  }
   const {data,error}=await sb.rpc('till_breakdown_by_staff',{b:S.biz.id});
   if(error){ $('#tillByStaff').innerHTML=`<div class="empty">Could not load: ${esc(error.message)}</div>`; return; }
   const rows=(data||[]).filter(r=>r.cash_amount>0||r.transfer_amount>0);
@@ -2981,6 +3649,12 @@ async function applyTillClear(method,amount,note,before,actorId){
 async function clearTill(){
   const method=$('#tMethod').value, amount=+$('#tAmt').value, note=$('#tNote').value.trim();
   if(!amount||amount<=0) return toast('Enter an amount',true);
+  if(S._isSandbox){
+    checkSandboxTask('clear_till', { method, amount });
+    toast('Till clearing recorded in sandbox');
+    vTill($('#view'));
+    return;
+  }
   const {data,error:se}=await sb.rpc('till_summary',{b:S.biz.id});
   if(se) return err(se);
   const s=data[0]||{cash_balance:0,transfer_balance:0};
@@ -3000,6 +3674,10 @@ async function clearTill(){
   vTill($('#view'));
 }
 async function loadTillClearings(){
+  if(S._isSandbox){
+    $('#tillList').innerHTML='<div class="empty">No till clearings recorded in sandbox yet.</div>';
+    return;
+  }
   const {data,error}=await sb.from('till_clearings').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
   if(error) return;
   const fmtD=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
@@ -3067,12 +3745,24 @@ function repRange(which){
 }
 async function runReport(){
   const from=$('#repFrom').value, to=$('#repTo').value;
-  const [salesRes,expRes,purRes,posRes]=await Promise.all([
-    sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-    sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
-    sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-    sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to))
-  ]);
+  let salesRes, expRes, purRes, posRes;
+  if(S._isSandbox){
+    salesRes = { data: [
+      { id:'sb_s1', item_id:'sb_1', quantity:8, unit_price:8000, unit_cost:6000, payment_method:'cash' },
+      { id:'sb_s2', item_id:'sb_2', quantity:6, unit_price:7500, unit_cost:5800, payment_method:'transfer' },
+      { id:'sb_s3', item_id:'sb_3', quantity:10, unit_price:4000, unit_cost:3000, payment_method:'credit' }
+    ]};
+    expRes = { data: [{ amount: 12500 }] };
+    purRes = { data: [{ unit_cost: 15000, base_units: 5, quantity: 5 }] };
+    posRes = { data: [{ charge: 1500 }] };
+  } else {
+    [salesRes,expRes,purRes,posRes]=await Promise.all([
+      sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+      sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
+      sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+      sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to))
+    ]);
+  }
   if(salesRes.error) return err(salesRes.error);
   const data=salesRes.data;
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
@@ -3367,6 +4057,7 @@ function todayStoryLines(s,hideProfit){
 }
 async function exportCSV(){
   const r=S._report; if(!r) return;
+  if(S._isSandbox) checkSandboxTask('reports', {});
   let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nPOS commission,${r.totPos||0}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
   r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
   const filename=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`;
@@ -3555,6 +4246,12 @@ async function addExpenditure(){
   if(!amount||amount<=0) return toast('Enter the amount',true);
   const note=$('#exNote').value.trim();
   if(!note) return toast('Add a note explaining the expense',true);
+  if(S._isSandbox){
+    checkSandboxTask('expense', { amount, note });
+    toast('Expense recorded in sandbox');
+    vExpenses($('#view'));
+    return;
+  }
   const status = S.role==='manager' ? 'pending' : 'approved';
   const rec={business_id:S.biz.id,amount,category:$('#exCat').value.trim()||null,note,entry_date:$('#exDate').value||today(),status,created_by:S.user.id};
   const {error}=await sb.from('expenditures').insert(rec);
@@ -4817,6 +5514,31 @@ async function checkout(){
   const shownName = custId ? (S.customers.find(c=>c.id===custId)||{}).name : (typedName||'Walk-in');
   if(!confirm(`Complete sale?\n\n${cnt} item(s)\nTotal: ${money(total)}\nCustomer: ${shownName}\n${onCredit?'ON CREDIT':'Paid by '+S.payMode}`)) return;
   $('#checkoutBtn').disabled=true;
+  if(S._isSandbox){
+    S.cart.forEach(c => {
+      const it = S.items.find(x => x.id === c.item_id);
+      const units = c.mode ? (c.qty / c.mode.per_pack) : c.qty;
+      S.stock[c.item_id] = Math.max(0, (Number(S.stock[c.item_id]) || 0) - units);
+    });
+    if(onCredit){
+      if(!custId){
+        custId = 'sb_c_' + Date.now();
+        S.customers.push({ id: custId, name: typedName || 'Credit Customer', phone: typedPhone || '08000000000' });
+      }
+      S.balances[custId] = (Number(S.balances[custId]) || 0) + total;
+      checkSandboxTask('credit_sale', { total, custId });
+    } else if(S.payMode === 'transfer'){
+      checkSandboxTask('transfer_sale', { total });
+    } else {
+      checkSandboxTask('cash_sale', { total });
+    }
+    const saleItems = [...S.cart];
+    clearCart();
+    toast('Sale completed in sandbox!');
+    showReceipt({ id:'sb_txn_'+Date.now(), items:saleItems, total, payMode:S.payMode, customer:shownName, created_at:new Date().toISOString() });
+    render();
+    return;
+  }
   try{
     // resolve customer: chosen → existing by name/phone → create new
     if(!custId && typedName){
@@ -5291,6 +6013,14 @@ function setCustSort(s){ S._custSort=s; $('#custTableWrap').innerHTML=customerTa
 function setCustQ(q){ S._custQ=q; $('#custTableWrap').innerHTML=customerTable(); }
 async function addCustomer(){
   const name=$('#newCustName').value.trim(); if(!name) return toast('Enter a name',true);
+  if(S._isSandbox){
+    const newC = { id: 'sb_c_' + Date.now(), name, phone: $('#newCustPhone').value.trim()||null };
+    S.customers.push(newC);
+    S.balances[newC.id] = 0;
+    toast('Customer added in sandbox');
+    vCustomers($('#view'));
+    return;
+  }
   const {error}=await sb.from('customers').insert({business_id:S.biz.id,name,phone:$('#newCustPhone').value.trim()||null});
   if(error) return err(error);
   toast('Customer added'); await loadData(); vCustomers($('#view'));
@@ -5333,6 +6063,18 @@ async function openCustomer(id){
 async function custTx(id,type){
   const amount=+$('#ctxAmt').value;
   if(!amount||amount<=0) return toast('Enter an amount',true);
+  if(S._isSandbox){
+    if(type === 'payment'){
+      S.balances[id] = Math.max(0, (Number(S.balances[id]) || 0) - amount);
+      checkSandboxTask('settle_debt', { amount });
+      toast('Debt payment recorded in sandbox');
+    } else {
+      S.balances[id] = (Number(S.balances[id]) || 0) + amount;
+      toast('Credit added in sandbox');
+    }
+    vCustomers($('#view'));
+    return;
+  }
   const method=type==='payment'?($('#ctxMethod').value||'cash'):null;
   const {error}=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:id,type,amount,method,note:$('#ctxNote').value.trim()||null,created_by:S.user.id});
   if(error) return err(error);
@@ -5601,6 +6343,34 @@ function vSettings(v){
     <div class="row"><button class="btn primary" onclick="saveSettings()">Save</button>
     <button class="btn ghost" onclick="sendWhatsAppSummary()">Preview / send summary now</button></div>
   </div></div>
+  <div class="card">
+    <div class="hd">
+      <h2>${icon('sparkle')} App Tour & Marketer Training</h2>
+      <span class="desc">Interactive guided tour and training mode</span>
+    </div>
+    <div class="bd">
+      <div style="margin-bottom:14px">
+        <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:6px">
+          <input id="setDisableTour" type="checkbox" ${isTourDisabled()?'checked':''} onchange="toggleTourSetting(this.checked)" style="width:auto">
+          Turn off automatic tour guide popups on login
+        </label>
+        <p class="hint">Check this box if you already know the app and do not want the guided tour to pop up automatically when signing in.</p>
+      </div>
+      <div class="row" style="gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn ghost sm" onclick="startTour()">Launch Tour Guide Now</button>
+        <button class="btn ghost sm" onclick="resetTourSeen()">Reset Tour Status</button>
+      </div>
+
+      <div class="formSection" style="margin-bottom:0">
+        <div class="fsTitle">🧪 Marketer Training Sandbox</div>
+        <p class="hint" style="margin-bottom:12px">Practice every feature of TheMonishop on an isolated demo store without touching real data. Complete 12 core tasks and generate a verified certificate screenshot for your supervisor.</p>
+        <button class="btn primary sm" onclick="startSandbox()" style="display:inline-flex;align-items:center;gap:6px">
+          ${icon('sparkle')} Launch Marketer Training Sandbox
+        </button>
+      </div>
+    </div>
+  </div>
+
   <div class="card"><div class="hd"><h2>Notifications</h2></div><div class="bd">
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:6px">
       <input id="setNotifySale" type="checkbox" ${S.biz.notify_on_sale?'checked':''} style="width:auto" onchange="saveNotifySale(this.checked)"> Notify me on every sale</label>

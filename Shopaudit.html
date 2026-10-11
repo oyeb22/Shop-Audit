@@ -486,9 +486,9 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 
 
 /* ===== REFACTORED AUDIT ACTIVITY LOG MULTI-COLUMN STYLES ===== */
-.auditTableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.auditTable{width:100%;border-collapse:collapse;font-size:13px}
-.auditTable th{background:var(--card);color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+.auditTableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
+.auditTable{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto}
+.auditTable th{background:#FAF7F0;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
 .auditTable td{padding:14px;border-bottom:1px solid var(--line);vertical-align:top;background:var(--card)}
 .auditTable tr:hover td{background:#FAF7F0}
 .auditTimeCol{white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--muted)}
@@ -498,17 +498,23 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 .auditActionBadge.restock{background:#E8F0FE;color:#1A73E8;border:1px solid #D2E3FC}
 .auditActionBadge.adjust{background:#FEF7E0;color:#B06000;border:1px solid #FEEFC3}
 .auditActionBadge.expense{background:#FCE8E6;color:#C5221F;border:1px solid #FAD2CF}
+.auditActionBadge.pos{background:#F3E8FD;color:#7B1FA2;border:1px solid #E1BEE7}
 .auditActionBadge.neutral{background:#F1F3F4;color:#3C4043;border:1px solid #DADCE0}
 .auditItemsList{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .auditItemTag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
 .auditItemBullet{color:var(--muted);font-size:9px}
-.auditStockCol{background:rgba(230,244,234,.35)!important;border-left:2px solid #34A853;padding:10px 14px!important}
+.auditStockCol{padding:12px 14px}
 .auditStockList{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
-.auditStockBadge{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#0D652D;font-size:12.5px;background:#FFFFFF;border:1px solid #A8DAB5;padding:3px 8px;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.auditStockBadge{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#0D652D;font-size:12px;background:#F0F5F1;border:1px solid #CEEAD6;padding:4px 8px;border-radius:6px}
 .auditStockShort{color:#D93025;background:#FCE8E6;border-color:#F5C2C7}
-.auditFinCol{font-size:12.5px;color:var(--ink);display:flex;flex-direction:column;gap:3px}
-.auditFinHighlight{font-weight:700;color:var(--ink)}
-.auditFinTill{font-size:11.5px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+.auditFinCol{font-size:12.5px;display:flex;flex-direction:column;gap:5px}
+.auditFinItem{display:flex;flex-direction:column;gap:2px}
+.auditFinBadge{display:inline-block;padding:3px 7px;border-radius:6px;font-size:11.5px;font-weight:700;line-height:1.3}
+.auditFinPos{background:#E6F4EA;color:#137333;border:1px solid #CEEAD6}
+.auditFinNeg{background:#FCE8E6;color:#C5221F;border:1px solid #FAD2CF}
+.auditFinWarn{background:#FEF7E0;color:#B06000;border:1px solid #FEEFC3}
+.auditFinNeutral{background:#F1F3F4;color:#3C4043;border:1px solid #DADCE0}
+.auditFinSub{font-size:11px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;padding-left:2px}
 
 /* ===== SANDBOX TRAINING PROFILE & CERTIFICATE STYLES ===== */
 .sandboxTopBanner{position:relative;z-index:10;background:linear-gradient(90deg,#16432F,#1F5A41);color:#fff;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15);margin-bottom:16px;border-radius:12px}
@@ -664,12 +670,26 @@ const S = { user:null, businesses:[], biz:null, role:null, items:[], stock:{}, c
 
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
 const money = n => new Intl.NumberFormat('en-NG',{style:'currency',currency:'NGN',maximumFractionDigits:0}).format(Number(n||0));
-const today = () => new Date().toISOString().slice(0,10);
-const monthStart = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1).toISOString().slice(0,10); };
+const localIso = (d = new Date()) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+const today = () => localIso(new Date());
+const monthStart = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+};
 // one calendar day after a 'YYYY-MM-DD' date string — for turning an
 // inclusive entry_date "to" bound into an exclusive created_at upper bound
-const nextDay = iso => { const d=new Date(iso+'T00:00:00'); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10); };
+const nextDay = iso => {
+  const parts = String(iso).split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2] + 1);
+  return localIso(d);
+};
 const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // tiny inline icon set — plain geometric strokes, no emoji, no external icon library/CDN
 const ICON_PATHS = {
@@ -1145,6 +1165,7 @@ function buildNav(){
       items: [
         ['dashboard', 'Dashboard', 'sparkle'],
         ['sell', 'Point of Sale', 'cart'],
+        ['agency', 'Agency Banking', 'card'],
         ['till', 'Till & Cash', 'bank'],
         ['restock', 'Restock Stock', 'box'],
         ['expenses', 'Store Expenses', 'receipt'],
@@ -1199,12 +1220,12 @@ function buildNav(){
 
   let allowedKeys = [];
   if(S.role==='admin'){
-    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','txaudit','sandbox','support'];
+    allowedKeys = ['dashboard','sell','agency','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','txaudit','sandbox','support'];
     if(!S.biz.parent_business_id) allowedKeys.push('branches');
   } else if(S.role==='manager'){
-    allowedKeys = ['dashboard','sell','till','restock','expenses','eod','items','additem','reconcile','customers','txaudit','sandbox','support'];
+    allowedKeys = ['dashboard','sell','agency','till','restock','expenses','eod','items','additem','reconcile','customers','txaudit','sandbox','support'];
   } else {
-    allowedKeys = ['sell','customers','mysales','stocklist','txaudit','sandbox','support'];
+    allowedKeys = ['sell','agency','customers','mysales','stocklist','txaudit','sandbox','support'];
   }
   if(TERMINAL_ENABLED) allowedKeys.push('terminal');
 
@@ -1487,7 +1508,7 @@ async function render(){
     // too in case S.tab is left over from a role switch
     if(S.role==='manager' && S.tab==='reports') S.tab='dashboard';
     if(S.tab==='branches' && (S.role!=='admin' || S.biz.parent_business_id)) S.tab='dashboard';
-    const map={dashboard:vDashboard,additem:vAddItem,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches,eod:vEndOfDay,txaudit:vTxAudit,support:vSupport};
+    const map={dashboard:vDashboard,additem:vAddItem,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,agency:vAgency,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches,eod:vEndOfDay,txaudit:vTxAudit,support:vSupport};
     const fn = map[S.tab]||vDashboard;
     await fn(v);
   } catch(e) {
@@ -3048,58 +3069,14 @@ async function vTill(v){
     </div>
   </div>
 
-  <div class="card">
+  <div class="card" style="border-left:4px solid var(--gold);background:#FFFDF7">
     <div class="hd">
-      <h2>Agency Banking / POS Transaction</h2>
-      <span class="desc">Exchange cash for transfer or vice-versa with commission</span>
-    </div>
-    <div class="bd">
-      <div class="formSection">
-        <div class="fsTitle">${icon('refresh')} Transaction Direction</div>
-        <div class="field">
-          <label>Select Operation</label>
-          <select id="pType" onchange="posInfo()">
-            <option value="cash_out">Cash Out: Customer transfers/cards you → You dispense Cash</option>
-            <option value="cash_in">Cash In: Customer gives you Cash → You send Transfer</option>
-          </select>
-        </div>
+      <div>
+        <h2>${icon('card')} Agency Banking & POS Swaps</h2>
+        <span class="desc">Conduct customer cash-in & cash-out agent transactions with service fees</span>
       </div>
-
-      <div class="formSection">
-        <div class="fsTitle">${icon('cash')} Amounts & Commission</div>
-        <div class="formGrid">
-          <div class="field">
-            <label id="pAmtLabel">Cash Amount (₦)</label>
-            <input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5,000" oninput="posInfo()">
-          </div>
-          <div class="field">
-            <label>Service Fee / Commission Kept (₦)</label>
-            <input id="pCharge" type="number" min="0" step="1" placeholder="e.g. 100" oninput="posInfo()">
-          </div>
-        </div>
-        <div id="pInfo" class="diffBox" style="display:none"></div>
-      </div>
-
-      <div class="field">
-        <label>Customer Reference / Note (optional)</label>
-        <input id="pNote" placeholder="e.g. Emeka POS withdrawal, Ref #1234">
-      </div>
-
-      <div style="display:flex;justify-content:flex-end;margin-top:12px">
-        <button class="btn primary" onclick="recordPosTransaction()" style="padding:11px 22px">
-          ${icon('check')} Record POS Transaction
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="hd">
-      <h2>Recent Agency POS Transactions</h2>
-      <span class="desc">Cash-in & cash-out log</span>
-    </div>
-    <div class="bd tight tableWrap">
-      <div id="posList" class="empty">Loading transactions…</div>
+      <div class="spacer"></div>
+      <button class="btn primary sm" onclick="go('agency')">${icon('card')} Open Agency Banking →</button>
     </div>
   </div>
 
@@ -3144,15 +3121,97 @@ async function vTill(v){
     </div>
   </div>`;
   
-  loadTillSummary(); loadTillClearings(); loadTillByStaff(); loadPosTransactions();
+  loadTillSummary(); loadTillClearings(); loadTillByStaff();
+}
+
+/* ============================================================
+   AGENCY BANKING / POS TRANSACTIONS (Cash-in & Cash-out agent swaps)
+   Accessible to Receptionists, Managers, and Store Admins
+   ============================================================ */
+async function vAgency(v){
+  v.innerHTML=`
+  <div class="pageHero">
+    <div>
+      <div class="phTitle">${icon('card','lg')} Agency Banking & POS Swaps</div>
+      <div class="phSubtitle">Dispense cash for customer transfers or take cash for electronic transfers with commission fees.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd">
+      <h2>Record Agency POS Transaction</h2>
+      <span class="desc">Exchange cash for transfer or vice-versa with retained service fee</span>
+    </div>
+    <div class="bd">
+      <div class="formSection">
+        <div class="fsTitle">${icon('refresh')} Transaction Direction</div>
+        <div class="field">
+          <label>Select Operation</label>
+          <select id="pType" onchange="posInfo()">
+            <option value="cash_out">Cash Out: Customer transfers/cards you → You dispense Cash</option>
+            <option value="cash_in">Cash In: Customer gives you Cash → You send Transfer</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="formSection">
+        <div class="fsTitle">${icon('cash')} Amounts & Commission</div>
+        <div class="formGrid">
+          <div class="field">
+            <label id="pAmtLabel">Cash Amount (₦)</label>
+            <input id="pAmt" type="number" min="1" step="1" placeholder="e.g. 5,000" oninput="posInfo()">
+          </div>
+          <div class="field">
+            <label>Service Fee / Commission Kept (₦)</label>
+            <input id="pCharge" type="number" min="0" step="1" placeholder="e.g. 100" oninput="posInfo()">
+          </div>
+        </div>
+        <div id="pInfo" class="diffBox" style="display:none;margin-top:10px;padding:12px;background:#FAF7F0;border:1px solid var(--line);border-radius:8px"></div>
+      </div>
+
+      <div class="field" style="margin-top:10px">
+        <label>Customer Reference / Note (optional)</label>
+        <input id="pNote" placeholder="e.g. Customer withdrawal, reference number">
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <button class="btn primary" id="recordPosBtn" onclick="recordPosTransaction()" style="padding:11px 22px">
+          ${icon('check')} Record POS Transaction
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="hd" style="flex-wrap:wrap;gap:10px">
+      <div>
+        <h2>Recent Agency Transactions</h2>
+        <span class="desc">Cash-in & cash-out ledger</span>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="loadPosTransactions()">${icon('refresh')} Refresh</button>
+    </div>
+    <div class="bd tight tableWrap">
+      <div id="posList" class="empty">Loading transactions…</div>
+    </div>
+  </div>`;
+
+  posInfo();
+  loadPosTransactions();
 }
 function posInfo(){
-  const type=$('#pType').value, amt=+$('#pAmt').value||0, charge=+$('#pCharge').value||0;
-  $('#pAmtLabel').textContent = type==='cash_out' ? 'Cash given to customer (₦)' : 'Cash received from customer (₦)';
-  if(!amt){ $('#pInfo').textContent=''; return; }
-  $('#pInfo').textContent = type==='cash_out'
-    ? `Customer pays ${money(amt+charge)} total by transfer/card${charge?`, you keep ${money(charge)}`:''}.`
-    : `You send ${money(Math.max(amt-charge,0))} by transfer/card${charge?`, you keep ${money(charge)}`:''}.`;
+  const typeEl=$('#pType'), amtEl=$('#pAmt'), chargeEl=$('#pCharge');
+  if(!typeEl || !amtEl) return;
+  const type=typeEl.value, amt=+amtEl.value||0, charge=+(chargeEl?.value||0);
+  const lbl=$('#pAmtLabel');
+  if(lbl) lbl.textContent = type==='cash_out' ? 'Cash given to customer (₦)' : 'Cash received from customer (₦)';
+  const box=$('#pInfo');
+  if(!box) return;
+  if(!amt){ box.style.display='none'; box.innerHTML=''; return; }
+  box.style.display='block';
+  box.innerHTML = type==='cash_out'
+    ? `<span style="color:var(--ink)">Customer pays <b>${money(amt+charge)}</b> by transfer/card. You dispense <b>${money(amt)}</b> cash. ${charge ? `<span class="badge ok" style="margin-left:6px">+${money(charge)} fee kept</span>` : ''}</span>`
+    : `<span style="color:var(--ink)">Customer gives <b>${money(amt)}</b> cash. You transfer <b>${money(Math.max(amt-charge,0))}</b>. ${charge ? `<span class="badge ok" style="margin-left:6px">+${money(charge)} fee kept</span>` : ''}</span>`;
 }
 // shared by the immediate path (recordPosTransaction) and the approval path (approveChange)
 async function applyPosTransaction(type,amount,charge,note,actorId){
@@ -3166,37 +3225,48 @@ async function applyPosTransaction(type,amount,charge,note,actorId){
   return {error:null,auditErr,detail};
 }
 async function recordPosTransaction(){
-  const type=$('#pType').value, amount=+$('#pAmt').value||0, charge=+$('#pCharge').value||0, note=$('#pNote').value.trim();
+  const type=$('#pType')?.value, amount=+($('#pAmt')?.value||0), charge=+($('#pCharge')?.value||0), note=($('#pNote')?.value||'').trim();
   if(!amount||amount<=0) return toast('Enter the cash amount',true);
-  if(S._isSandbox){
-    checkSandboxTask('pos_agency', { type, amount, charge });
-    toast('POS agency transaction recorded in sandbox');
-    vTill($('#view'));
-    return;
-  }
-  if(needsApproval('pos')){
-    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
-      action_type:'pos_transaction',item_id:null,payload:{type,amount,charge,note}});
+  const btn=$('#recordPosBtn');
+  if(btn) btn.disabled=true;
+  try {
+    if(S._isSandbox){
+      checkSandboxTask('pos_agency', { type, amount, charge });
+      toast('POS agency transaction recorded in sandbox');
+      if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
+      return;
+    }
+    if(needsApproval('pos')){
+      const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+        action_type:'pos_transaction',item_id:null,payload:{type,amount,charge,note}});
+      if(error) return err(error);
+      toast('Submitted for owner approval');
+      if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
+      return;
+    }
+    const {error,auditErr}=await applyPosTransaction(type,amount,charge,note,S.user.id);
     if(error) return err(error);
-    toast('Sent for approval'); vTill($('#view'));
-    return;
+    if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
+    else toast('POS agency transaction recorded');
+    if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
+  } finally {
+    if(btn) btn.disabled=false;
   }
-  const {error,auditErr}=await applyPosTransaction(type,amount,charge,note,S.user.id);
-  if(error) return err(error);
-  if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
-  else toast('POS transaction recorded');
-  vTill($('#view'));
 }
 async function loadPosTransactions(){
+  const listEl=$('#posList');
+  if(!listEl) return;
   if(S._isSandbox){
-    $('#posList').innerHTML='<div class="empty">No POS agency transactions recorded in sandbox yet.</div>';
+    listEl.innerHTML='<div class="empty">No POS agency transactions recorded in sandbox yet.</div>';
     return;
   }
   const {data,error}=await sb.from('pos_transactions').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(25);
   if(error) return;
   const fmtD=t=>new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  $('#posList').outerHTML=`<div id="posList">${data.length?`<table><thead><tr><th>Date</th><th>Direction</th><th class="r">Cash</th><th class="r">Charge kept</th><th>Note</th></tr></thead>
-  <tbody>${data.map(p=>`<tr><td class="num hint" data-label="Date">${fmtD(p.created_at)}</td><td data-label="Direction"><span class="badge blue">${p.type==='cash_out'?'Gave cash':'Took cash'}</span></td><td class="r num" data-label="Cash">${money(p.amount)}</td><td class="r num" data-label="Charge kept">${money(p.charge)}</td><td class="hint" data-label="Note">${esc(p.note||'')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No POS transactions yet.</div>'}</div>`;
+  const target=$('#posList');
+  if(!target) return;
+  target.outerHTML=`<div id="posList">${data.length?`<table class="rtable"><thead><tr><th>Date</th><th>Direction</th><th class="r">Cash</th><th class="r">Charge kept</th><th>Note</th></tr></thead>
+  <tbody>${data.map(p=>`<tr><td class="num hint" data-label="Date">${fmtD(p.created_at)}</td><td data-label="Direction"><span class="badge ${p.type==='cash_out'?'blue':'ok'}">${p.type==='cash_out'?'Gave cash (Cash Out)':'Took cash (Cash In)'}</span></td><td class="r num" data-label="Cash">${money(p.amount)}</td><td class="r num" data-label="Charge kept">${money(p.charge)}</td><td class="hint" data-label="Note">${esc(p.note||'—')}</td></tr>`).join('')}</tbody></table>`:'<div class="empty">No POS agency transactions yet.</div>'}</div>`;
 }
 async function loadTillSummary(){
   if(S._isSandbox){
@@ -3291,7 +3361,7 @@ function vReports(v){
       <span class="desc">Filter analytics by standard accounting periods or custom dates</span>
     </div>
     <div class="bd">
-      <div class="presetRow" style="margin-bottom:14px">
+      <div class="presetRow" id="repPresetRow" style="margin-bottom:14px">
         <button class="presetBtn" id="rpBtn-today" onclick="repRange('today')">Today</button>
         <button class="presetBtn" id="rpBtn-week" onclick="repRange('week')">Last 7 Days</button>
         <button class="presetBtn active" id="rpBtn-month" onclick="repRange('month')">This Month</button>
@@ -3309,7 +3379,7 @@ function vReports(v){
           <input id="repTo" type="date" value="${today()}">
         </div>
         <div class="field" style="flex:1">
-          <button class="btn primary" onclick="runReport()" style="width:100%;height:44px">
+          <button class="btn primary" id="repGenBtn" onclick="runReport()" style="width:100%;height:44px">
             ${icon('refresh')} Generate
           </button>
         </div>
@@ -3320,179 +3390,190 @@ function vReports(v){
   runReport();
 }
 function repRange(which){
-  const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
+  const d=new Date();
+  $$('#repPresetRow .presetBtn, .presetRow .presetBtn').forEach(b=>{
+    if(b.id&&b.id.startsWith('rpBtn-')) b.classList.remove('active');
+  });
+  const act=$('#rpBtn-'+which);
+  if(act) act.classList.add('active');
   if(which==='today'){ $('#repFrom').value=today(); $('#repTo').value=today(); }
-  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#repFrom').value=iso(f); $('#repTo').value=today(); }
+  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); $('#repFrom').value=localIso(f); $('#repTo').value=today(); }
   else if(which==='month'){ $('#repFrom').value=monthStart(); $('#repTo').value=today(); }
   else if(which==='lastmonth'){
     const f=new Date(d.getFullYear(),d.getMonth()-1,1), l=new Date(d.getFullYear(),d.getMonth(),0);
-    $('#repFrom').value=iso(f); $('#repTo').value=iso(l);
+    $('#repFrom').value=localIso(f); $('#repTo').value=localIso(l);
   }else if(which==='year'){ $('#repFrom').value=`${d.getFullYear()}-01-01`; $('#repTo').value=today(); }
   else if(which==='all'){ $('#repFrom').value='2000-01-01'; $('#repTo').value=today(); }
   runReport();
 }
 async function runReport(){
-  const from=$('#repFrom').value, to=$('#repTo').value;
-  let salesRes, expRes, purRes, posRes;
-  if(S._isSandbox){
-    salesRes = { data: [
-      { id:'sb_s1', item_id:'sb_1', quantity:8, unit_price:8000, unit_cost:6000, payment_method:'cash' },
-      { id:'sb_s2', item_id:'sb_2', quantity:6, unit_price:7500, unit_cost:5800, payment_method:'transfer' },
-      { id:'sb_s3', item_id:'sb_3', quantity:10, unit_price:4000, unit_cost:3000, payment_method:'credit' }
-    ]};
-    expRes = { data: [{ amount: 12500 }] };
-    purRes = { data: [{ unit_cost: 15000, base_units: 5, quantity: 5 }] };
-    posRes = { data: [{ charge: 1500 }] };
-  } else {
-    [salesRes,expRes,purRes,posRes]=await Promise.all([
-      sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-      sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
-      sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-      sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to))
-    ]);
+  const btn=$('#repGenBtn');
+  if(btn){ btn.disabled=true; btn.innerHTML=`${icon('refresh')} Generating…`; }
+  const from=$('#repFrom')?.value||monthStart(), to=$('#repTo')?.value||today();
+  try {
+    let salesRes, expRes, purRes, posRes;
+    if(S._isSandbox){
+      salesRes = { data: [
+        { id:'sb_s1', item_id:'sb_1', quantity:8, unit_price:8000, unit_cost:6000, payment_method:'cash' },
+        { id:'sb_s2', item_id:'sb_2', quantity:6, unit_price:7500, unit_cost:5800, payment_method:'transfer' },
+        { id:'sb_s3', item_id:'sb_3', quantity:10, unit_price:4000, unit_cost:3000, payment_method:'credit' }
+      ]};
+      expRes = { data: [{ amount: 12500 }] };
+      purRes = { data: [{ unit_cost: 15000, base_units: 5, quantity: 5 }] };
+      posRes = { data: [{ charge: 1500 }] };
+    } else {
+      [salesRes,expRes,purRes,posRes]=await Promise.all([
+        sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+        sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
+        sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+        sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to))
+      ]);
+    }
+    if(salesRes.error) return err(salesRes.error);
+    const data=salesRes.data;
+    const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
+    const totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
+    const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0);
+    const totPos=(posRes.data||[]).reduce((a,p)=>a+Number(p.charge||0),0);
+    const netProfit=totP-totExp+totPos;
+    const totSpent=(purRes.data||[]).reduce((a,p)=>a+Number(p.unit_cost||0)*Number(p.base_units||p.quantity||0),0);
+    const byMethod={cash:0,transfer:0,credit:0,card:0};
+    data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
+    const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
+    const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
+    const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
+    S._report={from,to,rows,nm,byMethod,totExp,totPos,netProfit};
+    const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
+    const stockLow=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).low,0);
+    const stockHigh=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).high,0);
+    const profitMargin = totR > 0 ? Math.round((netProfit / totR) * 100) : 0;
+    const cashPct = totR > 0 ? Math.round((byMethod.cash / totR) * 100) : 0;
+    const bankPct = totR > 0 ? Math.round((byMethod.transfer / totR) * 100) : 0;
+    const credPct = totR > 0 ? Math.round((byMethod.credit / totR) * 100) : 0;
+    const cardPct = totR > 0 ? Math.round(((byMethod.card || 0) / totR) * 100) : 0;
+
+    $('#repOut').innerHTML=`
+      <div class="stats" style="margin-bottom:18px">
+        <div class="stat good">
+          <div class="label">${icon('trend_up')} Total Revenue</div>
+          <div class="value num">${money(totR)}</div>
+          <div class="sub num">Gross Margin: ${money(totP)}</div>
+        </div>
+        <div class="stat ${netProfit>=0?'good':'bad'}">
+          <div class="label">${icon('sparkle')} Net Profit</div>
+          <div class="value num">${money(netProfit)}</div>
+          <div class="sub num">${profitMargin}% profit margin</div>
+        </div>
+        <div class="stat">
+          <div class="label">${icon('box')} Stock Purchases</div>
+          <div class="value num">${money(totSpent)}</div>
+          <div class="sub">inventory restocking</div>
+        </div>
+        <div class="stat ${totExp>0?'bad':''}">
+          <div class="label">${icon('wallet')} Operating Expenses</div>
+          <div class="value num">${money(totExp)}</div>
+          <div class="sub">approved expenses</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <h2>Payment Channels Breakdown</h2>
+          <span class="desc">Settlement distribution for this period</span>
+        </div>
+        <div class="bd">
+          <div class="splitBar">
+            <div style="width:${cashPct}%;background:var(--green)"></div>
+            <div style="width:${bankPct}%;background:var(--gold)"></div>
+            <div style="width:${cardPct}%;background:#2C4A78"></div>
+            <div style="width:${credPct}%;background:var(--red)"></div>
+          </div>
+          <div class="stats" style="margin-bottom:0">
+            <div class="stat">
+              <div class="label">${icon('cash')} Cash (${cashPct}%)</div>
+              <div class="value num">${money(byMethod.cash)}</div>
+            </div>
+            <div class="stat">
+              <div class="label">${icon('bank')} Bank Transfer (${bankPct}%)</div>
+              <div class="value num">${money(byMethod.transfer)}</div>
+            </div>
+            ${byMethod.card ? `
+            <div class="stat">
+              <div class="label">${icon('card')} POS Card (${cardPct}%)</div>
+              <div class="value num">${money(byMethod.card)}</div>
+            </div>` : ''}
+            <div class="stat ${byMethod.credit>0?'warn':''}">
+              <div class="label">Credit / Unpaid (${credPct}%)</div>
+              <div class="value num">${money(byMethod.credit)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <h2>Product Sales & Profit Contribution</h2>
+          <span class="desc">${from} → ${to}</span>
+          <div class="spacer"></div>
+          <button class="btn ghost sm" onclick="exportCSV()" style="display:inline-flex;align-items:center;gap:6px">
+            ${icon('download')} Export CSV
+          </button>
+        </div>
+        <div class="bd tight tableWrap">
+          ${rows.length ? `
+          <table class="rtable">
+            <thead>
+              <tr>
+                <th>Product Name</th>
+                <th class="r">Units Sold</th>
+                <th class="r">Total Revenue</th>
+                <th class="r">Net Contribution</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(([id,o])=>{
+                const it=S.items.find(x=>x.id===id);
+                return `<tr>
+                  <td class="itemname" data-label="Product">${esc(nm(id))}</td>
+                  <td class="r" data-label="Sold">${it?breakdownQty(it,o.u):fmtPacks(o.u)}</td>
+                  <td class="r num" data-label="Revenue">${money(o.r)}</td>
+                  <td class="r num" style="color:var(--green);font-weight:700" data-label="Profit">${money(o.p)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>`
+          : '<div class="empty">No sales recorded during this date window.</div>'}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
+          <h2>Live Warehouse Inventory Valuation</h2>
+          <span class="desc">Current total value of stock currently on your shelves</span>
+        </div>
+        <div class="bd">
+          <div class="stats" style="margin-bottom:0">
+            <div class="stat">
+              <div class="label">At Purchase Cost</div>
+              <div class="value num">${money(stockCost)}</div>
+              <div class="sub">capital tied up in stock</div>
+            </div>
+            <div class="stat">
+              <div class="label">Conservative Retail Value</div>
+              <div class="value num">${money(stockLow)}</div>
+              <div class="sub">if sold at lowest tier mode</div>
+            </div>
+            <div class="stat good">
+              <div class="label">Max Potential Realization</div>
+              <div class="value num">${money(stockHigh)}</div>
+              <div class="sub">if sold at single unit retail</div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML=`${icon('refresh')} Generate`; }
   }
-  if(salesRes.error) return err(salesRes.error);
-  const data=salesRes.data;
-  const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const totR=data.reduce((a,s)=>a+rev(s),0), totP=data.reduce((a,s)=>a+prof(s),0);
-  const totExp=(expRes.data||[]).reduce((a,e)=>a+Number(e.amount),0);
-  const totPos=(posRes.data||[]).reduce((a,p)=>a+Number(p.charge||0),0);
-  const netProfit=totP-totExp+totPos;
-  const totSpent=(purRes.data||[]).reduce((a,p)=>a+Number(p.unit_cost||0)*Number(p.base_units||p.quantity||0),0);
-  const byMethod={cash:0,transfer:0,credit:0,card:0};
-  data.forEach(s=>{ const m=s.payment_method||'cash'; byMethod[m]=(byMethod[m]||0)+rev(s); });
-  const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
-  const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
-  const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
-  S._report={from,to,rows,nm,byMethod,totExp,totPos,netProfit};
-  const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
-  const stockLow=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).low,0);
-  const stockHigh=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).high,0);
-  const profitMargin = totR > 0 ? Math.round((netProfit / totR) * 100) : 0;
-  const cashPct = totR > 0 ? Math.round((byMethod.cash / totR) * 100) : 0;
-  const bankPct = totR > 0 ? Math.round((byMethod.transfer / totR) * 100) : 0;
-  const credPct = totR > 0 ? Math.round((byMethod.credit / totR) * 100) : 0;
-  const cardPct = totR > 0 ? Math.round(((byMethod.card || 0) / totR) * 100) : 0;
-
-  $('#repOut').innerHTML=`
-    <div class="stats" style="margin-bottom:18px">
-      <div class="stat good">
-        <div class="label">${icon('trend_up')} Total Revenue</div>
-        <div class="value num">${money(totR)}</div>
-        <div class="sub num">Gross Margin: ${money(totP)}</div>
-      </div>
-      <div class="stat ${netProfit>=0?'good':'bad'}">
-        <div class="label">${icon('sparkle')} Net Profit</div>
-        <div class="value num">${money(netProfit)}</div>
-        <div class="sub num">${profitMargin}% profit margin</div>
-      </div>
-      <div class="stat">
-        <div class="label">${icon('box')} Stock Purchases</div>
-        <div class="value num">${money(totSpent)}</div>
-        <div class="sub">inventory restocking</div>
-      </div>
-      <div class="stat ${totExp>0?'bad':''}">
-        <div class="label">${icon('wallet')} Operating Expenses</div>
-        <div class="value num">${money(totExp)}</div>
-        <div class="sub">approved expenses</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="hd">
-        <h2>Payment Channels Breakdown</h2>
-        <span class="desc">Settlement distribution for this period</span>
-      </div>
-      <div class="bd">
-        <div class="splitBar">
-          <div style="width:${cashPct}%;background:var(--green)"></div>
-          <div style="width:${bankPct}%;background:var(--gold)"></div>
-          <div style="width:${cardPct}%;background:#2C4A78"></div>
-          <div style="width:${credPct}%;background:var(--red)"></div>
-        </div>
-        <div class="stats" style="margin-bottom:0">
-          <div class="stat">
-            <div class="label">${icon('cash')} Cash (${cashPct}%)</div>
-            <div class="value num">${money(byMethod.cash)}</div>
-          </div>
-          <div class="stat">
-            <div class="label">${icon('bank')} Bank Transfer (${bankPct}%)</div>
-            <div class="value num">${money(byMethod.transfer)}</div>
-          </div>
-          ${byMethod.card ? `
-          <div class="stat">
-            <div class="label">${icon('card')} POS Card (${cardPct}%)</div>
-            <div class="value num">${money(byMethod.card)}</div>
-          </div>` : ''}
-          <div class="stat ${byMethod.credit>0?'warn':''}">
-            <div class="label">Credit / Unpaid (${credPct}%)</div>
-            <div class="value num">${money(byMethod.credit)}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="hd">
-        <h2>Product Sales & Profit Contribution</h2>
-        <span class="desc">${from} → ${to}</span>
-        <div class="spacer"></div>
-        <button class="btn ghost sm" onclick="exportCSV()" style="display:inline-flex;align-items:center;gap:6px">
-          ${icon('download')} Export CSV
-        </button>
-      </div>
-      <div class="bd tight tableWrap">
-        ${rows.length ? `
-        <table class="rtable">
-          <thead>
-            <tr>
-              <th>Product Name</th>
-              <th class="r">Units Sold</th>
-              <th class="r">Total Revenue</th>
-              <th class="r">Net Contribution</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows.map(([id,o])=>{
-              const it=S.items.find(x=>x.id===id);
-              return `<tr>
-                <td class="itemname" data-label="Product">${esc(nm(id))}</td>
-                <td class="r" data-label="Sold">${it?breakdownQty(it,o.u):fmtPacks(o.u)}</td>
-                <td class="r num" data-label="Revenue">${money(o.r)}</td>
-                <td class="r num" style="color:var(--green);font-weight:700" data-label="Profit">${money(o.p)}</td>
-              </tr>`;
-            }).join('')}
-          </tbody>
-        </table>`
-        : '<div class="empty">No sales recorded during this date window.</div>'}
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="hd">
-        <h2>Live Warehouse Inventory Valuation</h2>
-        <span class="desc">Current total value of stock currently on your shelves</span>
-      </div>
-      <div class="bd">
-        <div class="stats" style="margin-bottom:0">
-          <div class="stat">
-            <div class="label">At Purchase Cost</div>
-            <div class="value num">${money(stockCost)}</div>
-            <div class="sub">capital tied up in stock</div>
-          </div>
-          <div class="stat">
-            <div class="label">Conservative Retail Value</div>
-            <div class="value num">${money(stockLow)}</div>
-            <div class="sub">if sold at lowest tier mode</div>
-          </div>
-          <div class="stat good">
-            <div class="label">Max Potential Realization</div>
-            <div class="value num">${money(stockHigh)}</div>
-            <div class="sub">if sold at single unit retail</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
 }
 /* ============================================================
    END OF DAY STOCK — what was on the shelf as at a given date,
@@ -3727,13 +3808,13 @@ async function vExpenses(v){
         <span class="desc">Filter expense totals by time window</span>
       </div>
       <div class="bd">
-        <div class="presetRow" style="margin-bottom:14px">
-          <button class="presetBtn" onclick="expRange('today')">Today</button>
-          <button class="presetBtn" onclick="expRange('week')">Last 7 Days</button>
-          <button class="presetBtn active" onclick="expRange('month')">This Month</button>
-          <button class="presetBtn" onclick="expRange('lastmonth')">Last Month</button>
-          <button class="presetBtn" onclick="expRange('year')">This Year</button>
-          <button class="presetBtn" onclick="expRange('all')">All Time</button>
+        <div class="presetRow" id="expPresetRow" style="margin-bottom:14px">
+          <button class="presetBtn" id="expBtn-today" onclick="expRange('today')">Today</button>
+          <button class="presetBtn" id="expBtn-week" onclick="expRange('week')">Last 7 Days</button>
+          <button class="presetBtn active" id="expBtn-month" onclick="expRange('month')">This Month</button>
+          <button class="presetBtn" id="expBtn-lastmonth" onclick="expRange('lastmonth')">Last Month</button>
+          <button class="presetBtn" id="expBtn-year" onclick="expRange('year')">This Year</button>
+          <button class="presetBtn" id="expBtn-all" onclick="expRange('all')">All Time</button>
         </div>
         <div class="frow" style="align-items:flex-end">
           <div class="field" style="flex:2">
@@ -3745,7 +3826,7 @@ async function vExpenses(v){
             <input id="exTo" type="date" value="${S._expTo}">
           </div>
           <div class="field" style="flex:1">
-            <button class="btn primary" onclick="runExpReport()" style="width:100%;height:44px">
+            <button class="btn primary" id="expFilterBtn" onclick="runExpReport()" style="width:100%;height:44px">
               ${icon('refresh')} Filter
             </button>
           </div>
@@ -3790,10 +3871,24 @@ async function vExpenses(v){
   });
 }
 function expRange(which){
-  const d=new Date(); const iso=x=>x.toISOString().slice(0,10);
-  if(which==='today'){ const f=$('#exFrom'), t=$('#exTo'); if(f) f.value=today(); if(t) t.value=today(); }
-  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); const ef=$('#exFrom'), et=$('#exTo'); if(ef) ef.value=iso(f); if(et) et.value=today(); }
-  else if(which==='month'){ const ef=$('#exFrom'), et=$('#exTo'); if(ef) ef.value=monthStart(); if(et) et.value=today(); }
+  const d=new Date();
+  $$('#expPresetRow .presetBtn, .presetRow .presetBtn').forEach(b=>{
+    if(b.id&&b.id.startsWith('expBtn-')) b.classList.remove('active');
+  });
+  const act=$('#expBtn-'+which);
+  if(act) act.classList.add('active');
+  const ef=$('#exFrom'), et=$('#exTo');
+  if(which==='today'){ if(ef) ef.value=today(); if(et) et.value=today(); }
+  else if(which==='week'){ const f=new Date(d); f.setDate(d.getDate()-6); if(ef) ef.value=localIso(f); if(et) et.value=today(); }
+  else if(which==='month'){ if(ef) ef.value=monthStart(); if(et) et.value=today(); }
+  else if(which==='lastmonth'){
+    const f=new Date(d.getFullYear(),d.getMonth()-1,1), l=new Date(d.getFullYear(),d.getMonth(),0);
+    if(ef) ef.value=localIso(f); if(et) et.value=localIso(l);
+  } else if(which==='year'){
+    if(ef) ef.value=`${d.getFullYear()}-01-01`; if(et) et.value=today();
+  } else if(which==='all'){
+    if(ef) ef.value='2000-01-01'; if(et) et.value=today();
+  }
   runExpReport();
 }
 function runExpReport(){
@@ -4036,7 +4131,7 @@ function parseAuditRecord(action, detail, staffName){
   const items = [];
   const remaining = [];
   const financials = [];
-  let actionGroup = 'neutral'; // 'sale' | 'restock' | 'adjust' | 'expense' | 'neutral'
+  let actionGroup = 'neutral'; // 'sale' | 'restock' | 'adjust' | 'expense' | 'pos' | 'neutral'
 
   // Determine action style group
   if(action === 'sale_completed' || action === 'credit_added' || action === 'payment_received' || action === 'credit_payment_recorded'){
@@ -4047,13 +4142,21 @@ function parseAuditRecord(action, detail, staffName){
     actionGroup = 'adjust';
   } else if(action === 'expenditure_added' || action === 'expenditure_approved' || action === 'expenditure_rejected' || action === 'till_cleared'){
     actionGroup = 'expense';
+  } else if(action === 'pos_transaction'){
+    actionGroup = 'pos';
   }
 
-  // 1. Check if staff is mentioned in detail string: e.g. "by Emeka Obi."
-  const mStaff = str.match(/\bby\s+([^.]+?)(?:\.\s*|$)/i);
+  const parseNum = s => {
+    if(!s) return 0;
+    const n = parseFloat(String(s).replace(/[^0-9.-]/g, ''));
+    return isNaN(n) ? 0 : n;
+  };
+
+  // 1. Check if staff is mentioned in detail string: e.g. "by Bobo."
+  const mStaff = str.match(/\bby\s+([^.]+?)(?:\.\s*|$|,)/i);
   if(mStaff && mStaff[1]){
     const candidate = mStaff[1].trim();
-    if(candidate.length > 1 && candidate.length < 40 && !/sold|remaining|received|in till|total/i.test(candidate)){
+    if(candidate.length > 1 && candidate.length < 40 && !/sold|remaining|received|in till|total|cost|counted/i.test(candidate)){
       staff = candidate;
     }
   }
@@ -4080,16 +4183,25 @@ function parseAuditRecord(action, detail, staffName){
     remaining.push({ prod, balance: nowQty + ' (in stock)' });
   }
 
-  // 4. Reconciliation format: "Flour: expected 20 Bags, counted 18 Bags (-2 Bags variance), stock corrected to 18 Bags"
-  const reconMatch = str.match(/([^:]+?):\s*expected\s+([^,]+),\s*counted\s+([^,(]+)(?:\s*\(([^)]*)\))?(?:.*stock corrected to\s+([^;,.]+))?/i);
-  if(reconMatch){
-    const prod = reconMatch[1].trim();
-    const exp = reconMatch[2].trim();
-    const counted = reconMatch[3].trim();
-    const variance = reconMatch[4] ? reconMatch[4].trim() : '';
-    const corrected = reconMatch[5] ? reconMatch[5].trim() : counted;
-    items.push({ prod, qty: `Counted ${counted} (exp ${exp}${variance ? ', ' + variance : ''})` });
-    remaining.push({ prod, balance: corrected + ' (audited)' });
+  // 4. Reconciliation format (Supports both "expected X, counted Y" and "Counted Y (exp X)")
+  const reconA = str.match(/([^:]+?):\s*expected\s+([^,]+),\s*counted\s+([^,(]+)(?:\s*\(([^)]*)\))?(?:.*?(?:stock corrected to|now)\s+([^;,.]+))?/i);
+  const reconB = str.match(/([^:]+?):\s*counted\s+([^,(]+)\s*\(exp\s+([^,)]+)(?:,\s*([^)]*))?\)/i);
+
+  if(reconA){
+    const prod = reconA[1].trim();
+    const exp = reconA[2].trim();
+    const counted = reconA[3].trim();
+    const varText = reconA[4] ? reconA[4].trim() : '';
+    const corrected = reconA[5] ? reconA[5].trim() : counted;
+    items.push({ prod, qty: `Counted ${counted} (expected ${exp}${varText ? ', ' + varText : ''})` });
+    remaining.push({ prod, balance: corrected + ' (audited balance)' });
+  } else if(reconB){
+    const prod = reconB[1].trim();
+    const counted = reconB[2].trim();
+    const exp = reconB[3].trim();
+    const varText = reconB[4] ? reconB[4].trim() : '';
+    items.push({ prod, qty: `Counted ${counted} (expected ${exp}${varText ? ', ' + varText : ''})` });
+    remaining.push({ prod, balance: counted + ' (audited balance)' });
   }
 
   // 5. Item added format: "Paracetamol: pack price ₦1,200, opening stock 10 Packs"
@@ -4098,23 +4210,141 @@ function parseAuditRecord(action, detail, staffName){
     const prod = itemAddMatch[1].trim();
     const opening = itemAddMatch[2].trim();
     items.push({ prod, qty: 'New product catalog entry' });
-    remaining.push({ prod, balance: opening + ' (initial stock)' });
+    remaining.push({ prod, balance: opening + ' (opening stock)' });
   }
 
-  // 6. Financials extraction: Payment method, amount received, till shifts
-  // Payment received / credit line
+  // 6. Till cleared format: "₦15,000 cash cleared, cash balance ₦22,500→₦7,500..."
+  const tillClearMatch = str.match(/([₦0-9,.]+)\s+cash cleared(?:,\s*cash balance\s+([₦0-9,.]+)→([₦0-9,.]+))?(?:.*Note:\s*([^.]+))?/i);
+  if(tillClearMatch){
+    const clrAmt = tillClearMatch[1];
+    const bBefore = tillClearMatch[2];
+    const bAfter = tillClearMatch[3];
+    const note = tillClearMatch[4] ? tillClearMatch[4].trim() : '';
+    items.push({ prod: 'Cash Drawer', qty: 'Till clearance / cash handover' });
+    if(bAfter) remaining.push({ prod: 'Cash in Till', balance: bAfter.trim() });
+    financials.push({
+      type: 'warn',
+      label: '-' + clrAmt + ' Till Handover',
+      sub: bBefore && bAfter ? `Cash: ${bBefore} → ${bAfter}${note ? ' (' + note + ')' : ''}` : (note || 'Deducted from drawer')
+    });
+  }
+
+  // 7. POS transaction format: "₦10,000 cash given, ₦10,200 received, kept ₦200"
+  const posMatch = str.match(/([₦0-9,.]+)\s+cash\s+(given|received),\s*([₦0-9,.]+)\s+(?:received|sent)(?:,\s*kept\s+([₦0-9,.]+))?/i);
+  if(posMatch){
+    const amt = posMatch[1];
+    const dir = posMatch[2].toLowerCase();
+    const counterAmt = posMatch[3];
+    const charge = posMatch[4] || '₦0';
+    items.push({ prod: 'Agency Banking', qty: dir === 'given' ? 'Cash Out (Withdrawal)' : 'Cash In (Deposit)' });
+    financials.push({
+      type: 'pos',
+      label: '+' + charge.replace(/,\s*kept\s*/, '') + ' Fee Earned',
+      sub: dir === 'given' ? `Cash out ${amt} · Bank in ${counterAmt}` : `Cash in ${amt} · Bank out ${counterAmt}`
+    });
+  }
+
+  // 8. Financials & Store Valuation Shift Extraction
+  const mStoreVal = str.match(/store\s+value\s+(?:is\s+)?([₦0-9,.]+)\s*→\s*([₦0-9,.]+)(?:\s*\(([^)]+)\))?/i);
+  const mStoreValAdd = str.match(/store\s+value\s+([+-][₦0-9,.]+)/i);
+
+  if(mStoreVal){
+    const vBefore = mStoreVal[1], vAfter = mStoreVal[2];
+    const diff = parseNum(vAfter) - parseNum(vBefore);
+    if(diff < 0){
+      financials.push({
+        type: 'neg',
+        label: '-' + money(Math.abs(diff)) + ' Shrinkage Loss',
+        sub: `Store value: ${vBefore} → ${vAfter}`
+      });
+    } else if(diff > 0){
+      financials.push({
+        type: 'pos',
+        label: '+' + money(diff) + (action === 'restock_added' ? ' Stock Added' : ' Valuation Gain'),
+        sub: `Store value: ${vBefore} → ${vAfter}`
+      });
+    } else {
+      financials.push({
+        type: 'neutral',
+        label: '₦0 Stock Verified',
+        sub: `Store value unchanged (${vBefore})`
+      });
+    }
+  } else if(mStoreValAdd){
+    const amt = mStoreValAdd[1];
+    const isPos = amt.startsWith('+');
+    financials.push({
+      type: isPos ? 'pos' : 'neg',
+      label: amt + ' Store Valuation',
+      sub: 'Inventory valuation shift'
+    });
+  } else if(action === 'reconciliation_recorded'){
+    const isShort = /short|less|deficit|-/i.test(str);
+    const isExtra = /extra|more|surplus|\+/i.test(str);
+    const varMatch = str.match(/\(([^)]*variance[^)]*)\)/i) || str.match(/,\s*([^,)]*variance)/i);
+    const varText = varMatch ? varMatch[1].trim() : '';
+    if(isShort){
+      financials.push({
+        type: 'neg',
+        label: 'Inventory Shrinkage (Loss)',
+        sub: (varText || 'Count short of expected') + ' · Store value decreased'
+      });
+    } else if(isExtra){
+      financials.push({
+        type: 'pos',
+        label: 'Inventory Surplus (Gain)',
+        sub: (varText || 'Count exceeded expected') + ' · Store value increased'
+      });
+    } else {
+      financials.push({
+        type: 'neutral',
+        label: '₦0 Count Verified',
+        sub: 'No shrinkage · Stock balanced'
+      });
+    }
+  }
+
+  // Restock cost extraction if no store value line
+  if(action === 'restock_added' && !mStoreVal){
+    const mCost = str.match(/\(cost\s+([₦0-9,.]+)\)/i);
+    if(mCost){
+      financials.push({
+        type: 'pos',
+        label: '+' + mCost[1] + ' Stock Added',
+        sub: 'Restock inventory investment'
+      });
+    }
+  }
+
+  // Sales revenue & till updates
   const mReceived = str.match(/(₦?[0-9,.]+\s+(?:received|added)[^.]+?)(?:\.\s*|$)/i);
-  if(mReceived) financials.push(mReceived[1].trim());
-
-  // Till shift
   const mTill = str.match(/((?:Cash|Transfer|till)[^.]+?in till[^.]+?)(?:\.\s*|$)/i);
-  if(mTill) financials.push(mTill[1].trim());
+  const mTotalSold = str.match(/total\s+sold\s+([₦0-9,.]+)→([₦0-9,.]+)/i);
 
-  // Credit shift
-  const mCredit = str.match(/((?:Total\s+)?credit[^.]+?)(?:\.\s*|$)/i);
-  if(mCredit && (!mTill || action === 'credit_added')) financials.push(mCredit[1].trim());
+  if(action === 'sale_completed' || action === 'credit_added' || action === 'credit_payment_recorded'){
+    if(mReceived){
+      const rec = mReceived[1].trim();
+      const isCredit = action === 'credit_added' || /credit/i.test(rec);
+      financials.push({
+        type: isCredit ? 'warn' : 'pos',
+        label: (isCredit ? '+ Credit: ' : '+ Revenue: ') + rec.split('by')[0].trim(),
+        sub: mTill ? mTill[1].trim() : (mTotalSold ? 'Sales: ' + mTotalSold[1] + ' → ' + mTotalSold[2] : '')
+      });
+    }
+  }
 
-  // If no items were parsed but there's a detail string, keep it readable
+  // Operating expense
+  if(action === 'expenditure_added' || action === 'expenditure_approved'){
+    const mExp = str.match(/([₦0-9,.]+)(?:[^,]*,\s*category:\s*([^.]+))?/i);
+    if(mExp){
+      financials.push({
+        type: 'neg',
+        label: '-' + mExp[1] + ' Store Expense',
+        sub: (mExp[2] ? 'Category: ' + mExp[2].trim() : 'Operating cost') + ' · Profit reduced'
+      });
+    }
+  }
+
   const fallbackDetail = (!items.length && !remaining.length && !financials.length) ? str : '';
 
   return {
@@ -4127,26 +4357,173 @@ function parseAuditRecord(action, detail, staffName){
   };
 }
 
+let _auActiveFilter = 'all';
+
+function filterAuditLedger(group){
+  if(group){
+    _auActiveFilter = group;
+    $$('#auFilterRow .presetBtn').forEach(b=>{
+      if(b.id&&b.id.startsWith('auFilt-')) b.classList.remove('active');
+    });
+    const act = $('#auFilt-'+group);
+    if(act) act.classList.add('active');
+  }
+  renderAuditTable();
+}
+
+function renderAuditTable(){
+  const container = $('#auTableContainer');
+  if(!container) return;
+  const logs = S._auditLogs || [];
+  const memberMap = S._auditMemberMap || {};
+  const query = ($('#auSearch')?.value || '').trim().toLowerCase();
+  const filter = _auActiveFilter || 'all';
+
+  const fmt = t => new Date(t).toLocaleString('en-NG', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+
+  const filtered = logs.filter(a => {
+    const meta = auditMeta(a.action);
+    const staffFallback = memberMap[a.user_id] || 'Staff';
+    const p = parseAuditRecord(a.action, a.detail, staffFallback);
+
+    if(filter !== 'all' && p.actionGroup !== filter){
+      if(filter === 'expense' && (p.actionGroup === 'expense' || a.action === 'till_cleared')) {}
+      else return false;
+    }
+
+    if(query){
+      const haystack = (String(a.detail||'') + ' ' + p.staff + ' ' + meta.label + ' ' + (a.created_at || '')).toLowerCase();
+      if(!haystack.includes(query)) return false;
+    }
+    return true;
+  });
+
+  if(!filtered.length){
+    container.innerHTML = `<div class="empty">${logs.length ? 'No audit entries match the current filter or search criteria.' : 'No security or activity events recorded yet.'}</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+  <table class="auditTable" id="auTable">
+    <thead>
+      <tr>
+        <th style="min-width:115px">TIMESTAMP</th>
+        <th style="min-width:110px">ACTION</th>
+        <th style="min-width:120px">STAFF</th>
+        <th style="min-width:200px">ACTIVITY / ITEMS</th>
+        <th style="min-width:170px">STOCK BALANCE IMPACT</th>
+        <th style="min-width:190px">FINANCIAL IMPLICATION / STORE VALUE</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filtered.map(a => {
+        const meta = auditMeta(a.action);
+        const staffFallback = memberMap[a.user_id] || 'Staff';
+        const p = parseAuditRecord(a.action, a.detail, staffFallback);
+
+        let itemsHtml = '';
+        if(p.items.length){
+          itemsHtml = `<ul class="auditItemsList">
+            ${p.items.map(it => `
+              <li class="auditItemTag">
+                <span class="auditItemBullet">●</span>
+                <span><b>${esc(it.prod)}</b>: ${esc(it.qty)}</span>
+              </li>
+            `).join('')}
+          </ul>`;
+        } else if(p.fallbackDetail){
+          itemsHtml = `<span style="color:var(--ink);font-size:12.5px">${esc(p.fallbackDetail)}</span>`;
+        } else {
+          itemsHtml = `<span class="hint">—</span>`;
+        }
+
+        let stockHtml = '';
+        if(p.remaining.length){
+          stockHtml = `<ul class="auditStockList">
+            ${p.remaining.map(rem => {
+              const isShort = rem.balance.includes('0') || rem.balance.toLowerCase().includes('out') || rem.balance.toLowerCase().includes('short');
+              return `
+                <li>
+                  <span class="auditStockBadge ${isShort ? 'auditStockShort' : ''}">
+                    <span>📦</span>
+                    <span><b>${esc(rem.prod)}:</b> ${esc(rem.balance)}</span>
+                  </span>
+                </li>
+              `;
+            }).join('')}
+          </ul>`;
+        } else {
+          stockHtml = `<span class="hint" style="font-size:12px">No stock affected</span>`;
+        }
+
+        let finHtml = '';
+        if(p.financials.length){
+          finHtml = `<div class="auditFinCol">
+            ${p.financials.map(f => {
+              const cls = f.type === 'neg' ? 'auditFinNeg' : f.type === 'pos' ? 'auditFinPos' : f.type === 'warn' ? 'auditFinWarn' : 'auditFinNeutral';
+              return `
+                <div class="auditFinItem">
+                  <span class="auditFinBadge ${cls}">${esc(f.label)}</span>
+                  ${f.sub ? `<span class="auditFinSub">${esc(f.sub)}</span>` : ''}
+                </div>
+              `;
+            }).join('')}
+          </div>`;
+        } else {
+          finHtml = `<span class="hint">—</span>`;
+        }
+
+        return `<tr>
+          <td class="auditTimeCol">${fmt(a.created_at)}</td>
+          <td><span class="auditActionBadge ${p.actionGroup}">${esc(meta.label)}</span></td>
+          <td class="auditStaffCol">
+            <div style="display:flex;align-items:center;gap:6px">
+              <span style="font-size:13px">👤</span>
+              <b>${esc(p.staff)}</b>
+            </div>
+          </td>
+          <td>${itemsHtml}</td>
+          <td class="auditStockCol">${stockHtml}</td>
+          <td>${finHtml}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
 async function vAudit(v){
   v.innerHTML=`
   <div class="pageHero">
     <div>
       <div class="phTitle">${icon('shield','lg')} Security & Activity Audit Log</div>
-      <div class="phSubtitle">Real-time structured ledger tracking all transactions, staff actions, and stock balances immediately after sales.</div>
+      <div class="phSubtitle">Real-time structured ledger tracking all transactions, staff actions, stock balances, and financial valuation impacts.</div>
     </div>
   </div>
   
   <div class="card">
     <div class="hd" style="flex-wrap:wrap;gap:10px">
       <div>
-        <h2>Activity Journal</h2>
-        <span class="desc">Structured multi-column ledger tracking inventory shifts and remaining balances</span>
+        <h2>Activity Ledger & Store Valuation Shifts</h2>
+        <span class="desc">Structured multi-column ledger tracking inventory movements, shrinkage audits, and store value impact</span>
       </div>
       <div class="spacer"></div>
       <button class="btn ghost sm" onclick="vAudit($('#view'))">${icon('refresh')} Refresh Logs</button>
     </div>
-    <div class="bd tight auditTableWrap" id="auTableContainer">
-      <div id="auList" class="empty">Scanning audit trail & stock movements…</div>
+    <div class="bd">
+      <div class="presetRow" id="auFilterRow" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <button class="presetBtn active" id="auFilt-all" onclick="filterAuditLedger('all')">All Events</button>
+        <button class="presetBtn" id="auFilt-sale" onclick="filterAuditLedger('sale')">Sales & Payments</button>
+        <button class="presetBtn" id="auFilt-restock" onclick="filterAuditLedger('restock')">Restocks & Items</button>
+        <button class="presetBtn" id="auFilt-adjust" onclick="filterAuditLedger('adjust')">Reconciliations</button>
+        <button class="presetBtn" id="auFilt-expense" onclick="filterAuditLedger('expense')">Expenses & Till</button>
+        <button class="presetBtn" id="auFilt-pos" onclick="filterAuditLedger('pos')">Agency Banking</button>
+      </div>
+      <div style="margin-bottom:14px">
+        <input id="auSearch" placeholder="Search product, staff member, or action note…" oninput="filterAuditLedger()" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg)">
+      </div>
+      <div class="auditTableWrap" id="auTableContainer">
+        <div id="auList" class="empty">Scanning audit trail & stock movements…</div>
+      </div>
     </div>
   </div>`;
 
@@ -4154,13 +4531,12 @@ async function vAudit(v){
     let logs = [];
     let members = [];
     if(S._isSandbox){
-      // Rich mock audit records demonstrating the multi-column layout with immediate remaining stock
       const t = today();
       logs = [
         { id:'sb_a1', action:'sale_completed', user_id:'sb_u1', created_at: t + 'T14:32:00', detail:'₦18,000 received (Cash) from Walk-in by Marketer Trainee (You). Peak Milk: 2 Packs sold, 18 Packs remaining; Milo 500g: 1 Tin sold, 9 Tins remaining. total sold ₦0→₦18,000. Cash in till ₦0→₦18,000' },
         { id:'sb_a2', action:'credit_added', user_id:'sb_u1', created_at: t + 'T13:45:00', detail:'₦1,900 added to Alhaji Musa\'s credit balance by Marketer Trainee (You), not yet received. Golden Penny Sugar: 5 Packs sold, 25 Packs remaining. total sold ₦18,000→₦19,900. Total credit ₦0→₦1,900' },
         { id:'sb_a3', action:'restock_added', user_id:'sb_u1', created_at: t + 'T12:15:00', detail:'Peak Milk: 10 Packs restocked (cost ₦62,500), now 20 Packs, store value ₦120,000→₦182,500' },
-        { id:'sb_a4', action:'reconciliation_recorded', user_id:'sb_u1', created_at: t + 'T11:00:00', detail:'Milo 500g: expected 12 Tins, counted 10 Tins (-2 Tins variance), stock corrected to 10 Tins. Discrepancy logged' },
+        { id:'sb_a4', action:'reconciliation_recorded', user_id:'sb_u1', created_at: t + 'T11:00:00', detail:'Milo 500g: expected 12 Tins, counted 10 Tins (-2 Tins variance), stock corrected to 10 Tins, store value ₦54,000→₦45,000 (decreased). Discrepancy logged' },
         { id:'sb_a5', action:'credit_payment_recorded', user_id:'sb_u1', created_at: t + 'T10:15:00', detail:'₦4,500 received (Cash) from Alhaji Musa, credit balance reduced ₦4,500→₦0. Cash in till ₦18,000→₦22,500' },
         { id:'sb_a6', action:'till_cleared', user_id:'sb_u1', created_at: t + 'T09:30:00', detail:'₦15,000 cash cleared, cash balance ₦22,500→₦7,500. Note: Bank deposit GTBank' }
       ];
@@ -4178,107 +4554,13 @@ async function vAudit(v){
     const memberMap = {};
     members.forEach(m => { memberMap[m.user_id] = m.full_name || 'Staff'; });
 
-    const fmt = t => new Date(t).toLocaleString('en-NG', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
-
-    const listEl = $('#auList');
-    if(!listEl) return;
-
-    if(!logs.length){
-      listEl.outerHTML = '<div id="auList" class="empty">No security or activity events recorded yet.</div>';
-      return;
-    }
-
-    listEl.outerHTML = `
-    <table class="auditTable rtable" id="auList">
-      <thead>
-        <tr>
-          <th style="width:130px">TIMESTAMP</th>
-          <th style="width:120px">ACTION</th>
-          <th style="width:130px">STAFF</th>
-          <th>ITEMS SOLD / ACTION DETAILS</th>
-          <th style="width:230px" class="auditStockColHead">REMAINING STOCK (AFTER SALE)</th>
-          <th style="width:220px">FINANCIALS / TILL UPDATE</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${logs.map(a => {
-          const meta = auditMeta(a.action);
-          const staffFallback = memberMap[a.user_id] || 'Staff';
-          const p = parseAuditRecord(a.action, a.detail, staffFallback);
-
-          // Items sold / action column
-          let itemsHtml = '';
-          if(p.items.length){
-            itemsHtml = `<ul class="auditItemsList">
-              ${p.items.map(it => `
-                <li class="auditItemTag">
-                  <span class="auditItemBullet">●</span>
-                  <span><b>${esc(it.prod)}</b>: ${esc(it.qty)}</span>
-                </li>
-              `).join('')}
-            </ul>`;
-          } else if(p.fallbackDetail){
-            itemsHtml = `<span style="color:var(--ink);font-size:12.5px">${esc(p.fallbackDetail)}</span>`;
-          } else {
-            itemsHtml = `<span class="hint">—</span>`;
-          }
-
-          // Remaining stock column (distinct standout column)
-          let stockHtml = '';
-          if(p.remaining.length){
-            stockHtml = `<ul class="auditStockList">
-              ${p.remaining.map(rem => {
-                const isShort = rem.balance.includes('0') || rem.balance.toLowerCase().includes('out');
-                return `
-                  <li>
-                    <span class="auditStockBadge ${isShort ? 'auditStockShort' : ''}">
-                      <span>📦</span>
-                      <span><b>${esc(rem.prod)}:</b> ${esc(rem.balance)}</span>
-                    </span>
-                  </li>
-                `;
-              }).join('')}
-            </ul>`;
-          } else {
-            stockHtml = `<span class="hint" style="font-size:12px">No stock affected</span>`;
-          }
-
-          // Financials column
-          let finHtml = '';
-          if(p.financials.length){
-            finHtml = `<div class="auditFinCol">
-              ${p.financials.map((f, idx) => {
-                const isTill = f.toLowerCase().includes('till');
-                return `<span class="${isTill ? 'auditFinTill' : 'auditFinHighlight'}">${esc(f)}</span>`;
-              }).join('')}
-            </div>`;
-          } else {
-            finHtml = `<span class="hint">—</span>`;
-          }
-
-          return `<tr>
-            <td class="auditTimeCol" data-label="Timestamp">${fmt(a.created_at)}</td>
-            <td data-label="Action">
-              <span class="auditActionBadge ${p.actionGroup}">${esc(meta.label)}</span>
-            </td>
-            <td class="auditStaffCol" data-label="Staff">
-              <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:13px">👤</span>
-                <b>${esc(p.staff)}</b>
-              </div>
-            </td>
-            <td data-label="Items / Action Details">${itemsHtml}</td>
-            <td class="auditStockCol" data-label="Remaining Stock">${stockHtml}</td>
-            <td data-label="Financials">${finHtml}</td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>
-    `;
+    S._auditLogs = logs;
+    S._auditMemberMap = memberMap;
+    renderAuditTable();
   } catch(e) {
     console.error('Failed to render audit log:', e);
-    const listEl = $('#auList');
-    if(listEl) listEl.outerHTML = `<div id="auList" class="empty" style="color:var(--red)">Failed to load activity logs: ${esc((e&&e.message)||e)}</div>`;
+    const container = $('#auTableContainer');
+    if(container) container.innerHTML = `<div class="empty" style="color:var(--red)">Failed to load activity logs: ${esc((e&&e.message)||e)}</div>`;
   }
 }
 
@@ -4375,9 +4657,17 @@ function renderApprovalHistoryRow(c,nameOf){
   const fmt=t=>t?new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'';
   const approved=c.status==='approved';
   return `<tr>
-    <td class="itemname">${label}<div class="cat">${esc(pendingChangeText(c))}</div>
-      <div class="cat">requested by ${esc(nameOf(c.requested_by))} · ${approved?'approved':'rejected'} by ${esc(nameOf(c.reviewed_by))}, ${fmt(c.reviewed_at)}${c.review_note?` — ${esc(c.review_note)}`:''}</div></td>
-    <td class="r"><span class="badge ${approved?'ok':'neg'}">${c.status}</span></td>
+    <td class="itemname">
+      <div style="font-weight:700;color:var(--ink)">${label}</div>
+      <div class="cat" style="font-size:12px;color:var(--text);margin-top:2px">${esc(pendingChangeText(c))}</div>
+    </td>
+    <td>
+      <div style="font-size:12px;font-weight:600">Req: ${esc(nameOf(c.requested_by))}</div>
+      <div class="cat" style="font-size:11px;margin-top:2px">${approved?'Approved':'Reviewed'} by ${esc(nameOf(c.reviewed_by))} · ${fmt(c.reviewed_at)}${c.review_note?`<br><em>${esc(c.review_note)}</em>`:''}</div>
+    </td>
+    <td class="r">
+      <span class="badge ${approved?'ok':'neg'}">${c.status}</span>
+    </td>
   </tr>`;
 }
 function renderApprovalCard(c){
@@ -6358,9 +6648,9 @@ const SANDBOX_TASKS = [
   {
     id: 'pos_agency',
     title: '9. Agency Banking POS Transaction',
-    tab: 'till',
+    tab: 'agency',
     objective: 'Handle cash-in / cash-out agency banking swaps with fee retention.',
-    instruction: 'Go to Till, select Agency Banking (Cash Out or Cash In), enter amount and fee kept, and record.',
+    instruction: 'Go to Agency Banking, select transaction type (Cash Out or Cash In), enter amount and fee kept, and record.',
     checkKey: 'pos_agency'
   },
   {

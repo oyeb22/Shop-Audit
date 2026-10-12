@@ -239,7 +239,7 @@ tr:last-child td{border-bottom:none}
 td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .itemname{font-weight:600}
 .cat{font-size:12px;color:var(--muted)}
-.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:99px;white-space:nowrap}
 /* a capsule shape only reads well for short single-line content (e.g. "+5");
    a multi-part breakdown like "-2 Crates + 1 Half Crate + 12 Single" needs
    this instead — plain rounded rectangle, left-aligned, lets text wrap
@@ -488,14 +488,35 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 
 
 
-/* ===== REFACTORED AUDIT ACTIVITY LOG MULTI-COLUMN STYLES ===== */
-.auditTableWrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px}
-.auditTable{width:100%;border-collapse:collapse;font-size:13px;table-layout:auto}
-.auditTable th{background:#FAF7F0;color:var(--muted);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
-.auditTable td{padding:14px;border-bottom:1px solid var(--line);vertical-align:top;background:var(--card)}
-.auditTable tr:hover td{background:#FAF7F0}
-.auditTimeCol{white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:12px;color:var(--muted)}
-.auditStaffCol{white-space:nowrap;font-weight:600;color:var(--ink)}
+/* ===== AUDIT ACTIVITY LOG — timeline-row layout, not a wide table ==========
+   each entry is one self-contained row: a colour-coded timeline dot, a head
+   line (action badge + staff + time), then a 3-column grid of what happened
+   / stock effect / money effect. The grid collapses to a single stacked
+   column under 860px, so the same markup reads cleanly on desktop and
+   mobile — no horizontal scrolling, no columns competing for width. */
+.auditLog{display:flex;flex-direction:column}
+.auditEntry{display:flex;gap:12px;padding:16px 6px;border-bottom:1px solid var(--line);border-radius:10px;transition:background .1s}
+.auditEntry:last-child{border-bottom:none}
+.auditEntry:hover{background:#FAF7F0}
+.auditEntryDot{width:10px;height:10px;border-radius:50%;margin-top:7px;flex:0 0 auto}
+.auditEntryDot.sale{background:#137333}
+.auditEntryDot.restock{background:#1A73E8}
+.auditEntryDot.adjust{background:#B06000}
+.auditEntryDot.expense{background:#C5221F}
+.auditEntryDot.pos{background:#7B1FA2}
+.auditEntryDot.neutral{background:#9AA0A6}
+.auditEntryBody{flex:1;min-width:0}
+.auditEntryHead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.auditEntryStaff{font-weight:700;font-size:13.5px;color:var(--ink);display:flex;align-items:center;gap:6px;white-space:nowrap}
+.auditEntryTime{font-size:12px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;margin-left:auto;white-space:nowrap}
+.auditEntryGrid{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:20px}
+.auditEntryCol{min-width:0}
+.auditEntryColLabel{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:7px}
+@media(max-width:860px){
+  .auditEntryGrid{grid-template-columns:1fr;gap:14px}
+  .auditEntryTime{margin-left:0;flex-basis:100%;order:3}
+  .auditEntry{padding:14px 4px}
+}
 .auditActionBadge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .auditActionBadge.sale{background:#E6F4EA;color:#137333;border:1px solid #CEEAD6}
 .auditActionBadge.restock{background:#E8F0FE;color:#1A73E8;border:1px solid #D2E3FC}
@@ -506,7 +527,6 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
 .auditItemsList{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .auditItemTag{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
 .auditItemBullet{color:var(--muted);font-size:9px}
-.auditStockCol{padding:12px 14px}
 .auditStockList{display:flex;flex-direction:column;gap:4px;margin:0;padding:0;list-style:none}
 .auditStockBadge{display:inline-flex;align-items:center;gap:6px;font-weight:700;color:#0D652D;font-size:12px;background:#F0F5F1;border:1px solid #CEEAD6;padding:4px 8px;border-radius:6px}
 .auditStockShort{color:#D93025;background:#FCE8E6;border-color:#F5C2C7}
@@ -4469,92 +4489,90 @@ function renderAuditTable(){
     return;
   }
 
-  container.innerHTML = `
-  <table class="auditTable" id="auTable">
-    <thead>
-      <tr>
-        <th style="min-width:115px">TIMESTAMP</th>
-        <th style="min-width:110px">ACTION</th>
-        <th style="min-width:120px">STAFF</th>
-        <th style="min-width:200px">ACTIVITY / ITEMS</th>
-        <th style="min-width:170px">STOCK BALANCE IMPACT</th>
-        <th style="min-width:190px">FINANCIAL IMPLICATION / STORE VALUE</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${filtered.map(a => {
-        const meta = auditMeta(a.action);
-        const staffFallback = memberMap[a.user_id] || 'Staff';
-        const p = parseAuditRecord(a.action, a.detail, staffFallback);
+  container.innerHTML = `<div class="auditLog">
+    ${filtered.map(a => {
+      const meta = auditMeta(a.action);
+      const staffFallback = memberMap[a.user_id] || 'Staff';
+      const p = parseAuditRecord(a.action, a.detail, staffFallback);
 
-        let itemsHtml = '';
-        if(p.items.length){
-          itemsHtml = `<ul class="auditItemsList">
-            ${p.items.map(it => `
-              <li class="auditItemTag">
-                <span class="auditItemBullet">●</span>
-                <span><b>${esc(it.prod)}</b>: ${esc(it.qty)}</span>
+      let itemsHtml = '';
+      if(p.items.length){
+        itemsHtml = `<ul class="auditItemsList">
+          ${p.items.map(it => `
+            <li class="auditItemTag">
+              <span class="auditItemBullet">●</span>
+              <span><b>${esc(it.prod)}</b>: ${esc(it.qty)}</span>
+            </li>
+          `).join('')}
+        </ul>`;
+      } else if(p.fallbackDetail){
+        itemsHtml = `<span style="color:var(--ink);font-size:12.5px">${esc(p.fallbackDetail)}</span>`;
+      } else {
+        itemsHtml = `<span class="hint">—</span>`;
+      }
+
+      let stockHtml = '';
+      if(p.remaining.length){
+        stockHtml = `<ul class="auditStockList">
+          ${p.remaining.map(rem => {
+            const isShort = rem.balance.includes('0') || rem.balance.toLowerCase().includes('out') || rem.balance.toLowerCase().includes('short');
+            return `
+              <li>
+                <span class="auditStockBadge ${isShort ? 'auditStockShort' : ''}">
+                  <span>📦</span>
+                  <span><b>${esc(rem.prod)}:</b> ${esc(rem.balance)}</span>
+                </span>
               </li>
-            `).join('')}
-          </ul>`;
-        } else if(p.fallbackDetail){
-          itemsHtml = `<span style="color:var(--ink);font-size:12.5px">${esc(p.fallbackDetail)}</span>`;
-        } else {
-          itemsHtml = `<span class="hint">—</span>`;
-        }
+            `;
+          }).join('')}
+        </ul>`;
+      } else {
+        stockHtml = `<span class="hint" style="font-size:12px">No stock affected</span>`;
+      }
 
-        let stockHtml = '';
-        if(p.remaining.length){
-          stockHtml = `<ul class="auditStockList">
-            ${p.remaining.map(rem => {
-              const isShort = rem.balance.includes('0') || rem.balance.toLowerCase().includes('out') || rem.balance.toLowerCase().includes('short');
-              return `
-                <li>
-                  <span class="auditStockBadge ${isShort ? 'auditStockShort' : ''}">
-                    <span>📦</span>
-                    <span><b>${esc(rem.prod)}:</b> ${esc(rem.balance)}</span>
-                  </span>
-                </li>
-              `;
-            }).join('')}
-          </ul>`;
-        } else {
-          stockHtml = `<span class="hint" style="font-size:12px">No stock affected</span>`;
-        }
+      let finHtml = '';
+      if(p.financials.length){
+        finHtml = `<div class="auditFinCol">
+          ${p.financials.map(f => {
+            const cls = f.type === 'neg' ? 'auditFinNeg' : f.type === 'pos' ? 'auditFinPos' : f.type === 'warn' ? 'auditFinWarn' : 'auditFinNeutral';
+            return `
+              <div class="auditFinItem">
+                <span class="auditFinBadge ${cls}">${esc(f.label)}</span>
+                ${f.sub ? `<span class="auditFinSub">${esc(f.sub)}</span>` : ''}
+              </div>
+            `;
+          }).join('')}
+        </div>`;
+      } else {
+        finHtml = `<span class="hint">—</span>`;
+      }
 
-        let finHtml = '';
-        if(p.financials.length){
-          finHtml = `<div class="auditFinCol">
-            ${p.financials.map(f => {
-              const cls = f.type === 'neg' ? 'auditFinNeg' : f.type === 'pos' ? 'auditFinPos' : f.type === 'warn' ? 'auditFinWarn' : 'auditFinNeutral';
-              return `
-                <div class="auditFinItem">
-                  <span class="auditFinBadge ${cls}">${esc(f.label)}</span>
-                  ${f.sub ? `<span class="auditFinSub">${esc(f.sub)}</span>` : ''}
-                </div>
-              `;
-            }).join('')}
-          </div>`;
-        } else {
-          finHtml = `<span class="hint">—</span>`;
-        }
-
-        return `<tr>
-          <td class="auditTimeCol">${fmt(a.created_at)}</td>
-          <td><span class="auditActionBadge ${p.actionGroup}">${esc(meta.label)}</span></td>
-          <td class="auditStaffCol">
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:13px">👤</span>
-              <b>${esc(p.staff)}</b>
+      return `<div class="auditEntry">
+        <div class="auditEntryDot ${p.actionGroup}"></div>
+        <div class="auditEntryBody">
+          <div class="auditEntryHead">
+            <span class="auditActionBadge ${p.actionGroup}">${esc(meta.label)}</span>
+            <span class="auditEntryStaff">${icon('user')} ${esc(p.staff)}</span>
+            <span class="auditEntryTime">${fmt(a.created_at)}</span>
+          </div>
+          <div class="auditEntryGrid">
+            <div class="auditEntryCol">
+              <div class="auditEntryColLabel">Activity</div>
+              ${itemsHtml}
             </div>
-          </td>
-          <td>${itemsHtml}</td>
-          <td class="auditStockCol">${stockHtml}</td>
-          <td>${finHtml}</td>
-        </tr>`;
-      }).join('')}
-    </tbody>
-  </table>`;
+            <div class="auditEntryCol">
+              <div class="auditEntryColLabel">Stock Impact</div>
+              ${stockHtml}
+            </div>
+            <div class="auditEntryCol">
+              <div class="auditEntryColLabel">Financial Impact</div>
+              ${finHtml}
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 async function vAudit(v){
@@ -4562,15 +4580,15 @@ async function vAudit(v){
   <div class="pageHero">
     <div>
       <div class="phTitle">${icon('shield','lg')} Security & Activity Audit Log</div>
-      <div class="phSubtitle">Real-time structured ledger tracking all transactions, staff actions, stock balances, and financial valuation impacts.</div>
+      <div class="phSubtitle">A timeline of every transaction and staff action, with what it did to stock and to money, in one glance.</div>
     </div>
   </div>
-  
+
   <div class="card">
     <div class="hd" style="flex-wrap:wrap;gap:10px">
       <div>
-        <h2>Activity Ledger & Store Valuation Shifts</h2>
-        <span class="desc">Structured multi-column ledger tracking inventory movements, shrinkage audits, and store value impact</span>
+        <h2>Activity Timeline</h2>
+        <span class="desc">Inventory movements, shrinkage audits and store value impact, newest first</span>
       </div>
       <div class="spacer"></div>
       <button class="btn ghost sm" onclick="vAudit($('#view'))">${icon('refresh')} Refresh Logs</button>
@@ -4587,7 +4605,7 @@ async function vAudit(v){
       <div style="margin-bottom:14px">
         <input id="auSearch" placeholder="Search product, staff member, or action note…" oninput="filterAuditLedger()" style="width:100%;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg)">
       </div>
-      <div class="auditTableWrap" id="auTableContainer">
+      <div id="auTableContainer">
         <div id="auList" class="empty">Scanning audit trail & stock movements…</div>
       </div>
     </div>

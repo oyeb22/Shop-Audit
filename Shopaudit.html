@@ -808,6 +808,13 @@ function toast(msg,isErr){ const t=$('#toast'); t.textContent=msg; t.className='
 // show the upgrade screen instead of leaving them to puzzle out a raw error
 function err(e){
   console.error(e);
+  // a dead connection surfaces here as a raw, technical fetch/TypeError
+  // message by default ("Failed to fetch" etc) — say plainly what's
+  // actually wrong instead of showing that to a shop owner or cashier
+  if(isNetworkError(e)){
+    toast('No internet connection — check your network and try again.',true);
+    return;
+  }
   const looksLikeRls = e && (e.code==='42501' || /row-level security/i.test(e.message||''));
   if(looksLikeRls && S.biz){
     refreshPlanStatus().then(()=>{
@@ -1131,6 +1138,7 @@ async function idbQueueRemove(qid){
 function isNetworkError(e){
   return (typeof TypeError!=='undefined' && e instanceof TypeError) || /network|fetch|failed to fetch/i.test(String(e?.message||e||''));
 }
+function genQid(){ return 'q_'+Date.now()+'_'+Math.random().toString(36).slice(2); }
 async function queuedSaleCount(){ try{ return (await idbQueueAll()).length; }catch(e){ return 0; } }
 async function updateOfflineIndicator(){
   const n=await queuedSaleCount();
@@ -1153,12 +1161,21 @@ async function flushOfflineQueue(){
     items.sort((a,b)=>new Date(a.occurredAt)-new Date(b.occurredAt)); // real event order, not queue/sync order
     for(const entry of items){
       try{
-        await performSale(entry.ctx,{isOfflineReplay:true,occurredAt:entry.occurredAt,deviceId:entry.deviceId});
+        const opts={isOfflineReplay:true,occurredAt:entry.occurredAt,deviceId:entry.deviceId};
+        if(entry.kind==='pos_transaction'){
+          const c=entry.ctx;
+          await applyPosTransaction(c.type,c.amount,c.charge,c.note,c.actorId,opts);
+        } else if(entry.kind==='debt_payment'){
+          const c=entry.ctx;
+          await applyCustomerTx(c.custId,c.type,c.amount,c.method,c.note,c.actorId,opts);
+        } else {
+          await performSale(entry.ctx,opts);
+        }
         await idbQueueRemove(entry.qid);
       }catch(e){
         if(isNetworkError(e)) break; // lost connection again mid-flush — stop, leave the rest queued
-        console.error('offline sale replay failed:',e);
-        toast('A queued offline sale failed to sync: '+(e?.message||e),true);
+        console.error('offline item replay failed:',e);
+        toast('A queued offline item failed to sync: '+(e?.message||e),true);
       }
     }
   } finally{
@@ -3398,16 +3415,34 @@ function posInfo(){
     ? `<span style="color:var(--ink)">Customer pays <b>${money(amt+charge)}</b> by transfer/card. You dispense <b>${money(amt)}</b> cash. ${charge ? `<span class="badge ok" style="margin-left:6px">+${money(charge)} fee kept</span>` : ''}</span>`
     : `<span style="color:var(--ink)">Customer gives <b>${money(amt)}</b> cash. You transfer <b>${money(Math.max(amt-charge,0))}</b>. ${charge ? `<span class="badge ok" style="margin-left:6px">+${money(charge)} fee kept</span>` : ''}</span>`;
 }
-// shared by the immediate path (recordPosTransaction) and the approval path (approveChange)
-async function applyPosTransaction(type,amount,charge,note,actorId){
-  const {error}=await sb.from('pos_transactions').insert({business_id:S.biz.id,type,amount,charge:charge||0,note:note||null,created_by:actorId});
-  if(error) return {error};
+// shared by the immediate path (recordPosTransaction), the offline-queue
+// replay (flushOfflineQueue), and the approval path (approveChange) — opts
+// carries occurredAt/deviceId/isOfflineReplay for the offline-queue case;
+// every other caller omits opts and this behaves exactly as before
+// (occurredAt defaults to now, never flagged). Throws on failure instead of
+// returning {error}, same pattern as performSale/applyCustomerTx, so a
+// network failure propagates to whichever caller wraps this in try/catch.
+async function applyPosTransaction(type,amount,charge,note,actorId,opts={}){
+  const occurredAt=opts.occurredAt||new Date().toISOString();
+  const deviceId=opts.deviceId||null;
+  const isOfflineReplay=!!opts.isOfflineReplay;
+  let timingFlagged=false;
+  if(isOfflineReplay){
+    const occ=new Date(occurredAt).getTime();
+    if(deviceOfflineAnchor && occ < new Date(deviceOfflineAnchor).getTime()) timingFlagged=true;
+    if(occ > Date.now()) timingFlagged=true;
+  }
+  const {error}=await sb.from('pos_transactions').insert({business_id:S.biz.id,type,amount,charge:charge||0,note:note||null,created_by:actorId,
+    occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged});
+  if(error) throw error;
+  const offlineNote=isOfflineReplay?' (synced from offline queue)':'';
   const detail=type==='cash_out'
-    ? `${money(amount)} cash given, ${money(amount+(charge||0))} received by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}`
-    : `${money(amount)} cash received, ${money(Math.max(amount-(charge||0),0))} sent by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}`;
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'pos_transaction',detail});
+    ? `${money(amount)} cash given, ${money(amount+(charge||0))} received by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}${offlineNote}`
+    : `${money(amount)} cash received, ${money(Math.max(amount-(charge||0),0))} sent by transfer/card${charge?` (₦${charge} charge kept)`:''}${note?'. '+note:''}${offlineNote}`;
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'pos_transaction',detail,
+    occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
-  return {error:null,auditErr,detail};
+  return {auditErr,detail};
 }
 async function recordPosTransaction(){
   const type=$('#pType')?.value, amount=+($('#pAmt')?.value||0), charge=+($('#pCharge')?.value||0), note=($('#pNote')?.value||'').trim();
@@ -3422,6 +3457,9 @@ async function recordPosTransaction(){
       return;
     }
     if(needsApproval('pos')){
+      // deliberately online-only: if this fails for lack of connection, say
+      // so plainly via err() rather than queuing it as a direct transaction,
+      // which would silently skip the approval this manager's business requires
       const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
         action_type:'pos_transaction',item_id:null,payload:{type,amount,charge,note}});
       if(error) return err(error);
@@ -3429,11 +3467,20 @@ async function recordPosTransaction(){
       if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
       return;
     }
-    const {error,auditErr}=await applyPosTransaction(type,amount,charge,note,S.user.id);
-    if(error) return err(error);
-    if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
-    else toast('POS agency transaction recorded');
-    if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
+    const occurredAt=new Date().toISOString(), deviceId=getDeviceId();
+    try{
+      const {auditErr}=await applyPosTransaction(type,amount,charge,note,S.user.id,{occurredAt,deviceId});
+      if(auditErr) toast('Recorded, but audit log entry failed: '+auditErr.message,true);
+      else toast('POS agency transaction recorded');
+      if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
+    }catch(e){
+      if(isNetworkError(e)){
+        await idbQueueAdd({qid:genQid(),kind:'pos_transaction',ctx:{type,amount,charge,note,actorId:S.user.id},occurredAt,deviceId});
+        toast('No internet connection — transaction saved offline, will sync automatically');
+        updateOfflineIndicator();
+        if(S.tab==='agency') vAgency($('#view')); else vTill($('#view'));
+      } else { err(e); }
+    }
   } finally {
     if(btn) btn.disabled=false;
   }
@@ -4993,8 +5040,7 @@ async function approveChange(id,silent){
       applyDetail=detail;
     }else if(c.action_type==='pos_transaction'){
       const p=c.payload;
-      const {error,detail}=await applyPosTransaction(p.type,p.amount,p.charge,p.note,c.requested_by);
-      if(error) throw error;
+      const {detail}=await applyPosTransaction(p.type,p.amount,p.charge,p.note,c.requested_by);
       applyDetail=detail;
     }
     const {error:e1}=await sb.from('pending_changes').update({status:'approved',reviewed_by:S.user.id,reviewed_at:new Date().toISOString()}).eq('id',id);
@@ -5865,12 +5911,12 @@ async function checkout(){
       // Stock/balance updates below are optimistic (local only) so the Sell
       // page still looks right immediately; the server gets the real,
       // authoritative numbers once this syncs.
-      await idbQueueAdd({qid:'q_'+Date.now()+'_'+Math.random().toString(36).slice(2),ctx,occurredAt,deviceId});
+      await idbQueueAdd({qid:genQid(),kind:'sale',ctx,occurredAt,deviceId});
       ctx.cart.forEach(l=>{ S.stock[l.itemId]=Math.max(0,(Number(S.stock[l.itemId])||0)-l.baseUnits*l.qty); });
       if(onCredit && custId) S.balances[custId]=(Number(S.balances[custId])||0)+total;
       S.cart=[]; S.saleCustId=null;
       if(S.saleTabs){ const t=S.saleTabs[S.activeSaleIdx]; t.cart=S.cart; t.custId=null; t.custName=''; t.custPhone=''; }
-      toast('No connection — sale saved offline, will sync automatically');
+      toast('No internet connection — sale saved offline, will sync automatically');
       render();
       showReceipt(receiptSnap);
       updateOfflineIndicator();
@@ -6383,6 +6429,46 @@ async function openCustomer(id){
     </div></div>`);
   window.scrollTo({top:0,behavior:'smooth'});
 }
+// shared by the immediate path (custTx) and the offline-queue replay
+// (flushOfflineQueue) — same opts pattern as performSale/applyPosTransaction.
+// No approval concept exists for customer debt, so unlike agency banking
+// there's no online-only branch to worry about here — both 'payment' and
+// 'credit' are always safe to queue.
+async function applyCustomerTx(custId,type,amount,method,note,actorId,opts={}){
+  const occurredAt=opts.occurredAt||new Date().toISOString();
+  const deviceId=opts.deviceId||null;
+  const isOfflineReplay=!!opts.isOfflineReplay;
+  let timingFlagged=false;
+  if(isOfflineReplay){
+    const occ=new Date(occurredAt).getTime();
+    if(deviceOfflineAnchor && occ < new Date(deviceOfflineAnchor).getTime()) timingFlagged=true;
+    if(occ > Date.now()) timingFlagged=true;
+  }
+  const {error}=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type,amount,method,note,created_by:actorId,
+    occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged});
+  if(error) throw error;
+  const cname=(S.customers.find(c=>c.id===custId)||{}).name||'';
+  const creditBefore=totalOwed();
+  const offlineNote=isOfflineReplay?' (synced from offline queue)':'';
+  let detail;
+  if(type==='payment'){
+    const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
+    if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
+    const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
+    // till_summary is queried after the customer_transactions insert above, so it
+    // already reflects this payment — that's the "after" state, subtract this
+    // payment's own amount to get "before" instead of double-adding it
+    const balAfter=method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
+    const methodLabel=method==='transfer'?'Transfer':'Cash';
+    detail=`${money(amount)} received (${methodLabel}) from ${cname}, credit balance reduced ${money(creditBefore)}→${money(Math.max(0,creditBefore-amount))}. ${methodLabel} in till ${money(balAfter-amount)}→${money(balAfter)}${offlineNote}`;
+  }else{
+    detail=`${money(amount)} added to ${cname}'s credit balance, not yet received. Total credit ${money(creditBefore)}→${money(creditBefore+amount)}${offlineNote}`;
+  }
+  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:type==='payment'?'credit_payment_recorded':'credit_added',detail,
+    occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged});
+  if(auditErr) console.error('audit_log insert failed:',auditErr);
+  return {auditErr,detail};
+}
 async function custTx(id,type){
   const amount=+$('#ctxAmt').value;
   if(!amount||amount<=0) return toast('Enter an amount',true);
@@ -6399,28 +6485,24 @@ async function custTx(id,type){
     return;
   }
   const method=type==='payment'?($('#ctxMethod').value||'cash'):null;
-  const {error}=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:id,type,amount,method,note:$('#ctxNote').value.trim()||null,created_by:S.user.id});
-  if(error) return err(error);
-  const cname=(S.customers.find(c=>c.id===id)||{}).name||'';
-  const creditBefore=totalOwed();
-  let detail;
-  if(type==='payment'){
-    const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
-    if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
-    const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
-    // till_summary is queried after the customer_transactions insert above, so it
-    // already reflects this payment — that's the "after" state, subtract this
-    // payment's own amount to get "before" instead of double-adding it
-    const balAfter=method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
-    const methodLabel=method==='transfer'?'Transfer':'Cash';
-    detail=`${money(amount)} received (${methodLabel}) from ${cname}, credit balance reduced ${money(creditBefore)}→${money(Math.max(0,creditBefore-amount))}. ${methodLabel} in till ${money(balAfter-amount)}→${money(balAfter)}`;
-  }else{
-    detail=`${money(amount)} added to ${cname}'s credit balance, not yet received. Total credit ${money(creditBefore)}→${money(creditBefore+amount)}`;
+  const note=$('#ctxNote').value.trim()||null;
+  const occurredAt=new Date().toISOString(), deviceId=getDeviceId();
+  try{
+    const {auditErr}=await applyCustomerTx(id,type,amount,method,note,S.user.id,{occurredAt,deviceId});
+    if(auditErr) toast((type==='payment'?'Payment recorded':'Credit added')+', but audit log entry failed: '+auditErr.message,true);
+    else toast(type==='payment'?'Payment recorded':'Credit added');
+    await loadData(); render(); setTimeout(()=>openCustomer(id),60);
+  }catch(e){
+    if(isNetworkError(e)){
+      await idbQueueAdd({qid:genQid(),kind:'debt_payment',ctx:{custId:id,type,amount,method,note,actorId:S.user.id},occurredAt,deviceId});
+      if(type==='payment') S.balances[id]=Math.max(0,(Number(S.balances[id])||0)-amount);
+      else S.balances[id]=(Number(S.balances[id])||0)+amount;
+      toast('No internet connection — '+(type==='payment'?'payment':'credit')+' saved offline, will sync automatically');
+      updateOfflineIndicator();
+      document.getElementById('custCard')?.remove();
+      vCustomers($('#view'));
+    } else { err(e); }
   }
-  const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:type==='payment'?'credit_payment_recorded':'credit_added',detail});
-  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast((type==='payment'?'Payment recorded':'Credit added')+', but audit log entry failed: '+auditErr.message,true); }
-  else toast(type==='payment'?'Payment recorded':'Credit added');
-  await loadData(); render(); setTimeout(()=>openCustomer(id),60);
 }
 async function delCtx(txId){
   if(!confirm('Delete this transaction?')) return;

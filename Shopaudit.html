@@ -517,6 +517,10 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
   .auditEntryTime{margin-left:0;flex-basis:100%;order:3}
   .auditEntry{padding:14px 4px}
 }
+.auditOfflineBadge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:99px;background:#E8EEF7;color:#1A4FA0;white-space:nowrap}
+.auditFlagBadge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:99px;background:#FDECEA;color:#C5221F;white-space:nowrap}
+.offlineQueueBanner{position:fixed;left:16px;right:16px;bottom:16px;z-index:60;background:#17150F;color:#FBF8F1;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;box-shadow:0 4px 16px rgba(0,0,0,.25);max-width:420px;margin:0 auto}
+.offlineQueueBanner svg{flex:0 0 auto;width:16px;height:16px;color:#E9B949}
 .auditActionBadge{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:99px;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;white-space:nowrap}
 .auditActionBadge.sale{background:#E6F4EA;color:#137333;border:1px solid #CEEAD6}
 .auditActionBadge.restock{background:#E8F0FE;color:#1A73E8;border:1px solid #D2E3FC}
@@ -984,6 +988,8 @@ async function switchBiz(id){
   subscribeRealtime();
   registerPush();
   maybeStartTour();
+  touchDeviceSession().then(flushOfflineQueue);
+  updateOfflineIndicator();
 }
 
 /* ---------- push notifications (native only, no-op on the plain website) ----------
@@ -1052,6 +1058,116 @@ async function doRealtimeRefresh(){
   if(S.tab==='dashboard'||S.tab==='stocklist') render();
   else if(S.tab==='sell'){ const grid=$('#prodGrid'); if(grid) grid.innerHTML=productCards(); }
 }
+/* ---------- offline-first sell: device identity ----------
+   Every device gets a stable id, persisted locally, independent of who's
+   logged in on it. touchDeviceSession() tells the server "this exact
+   device is online right now" and gets back the PREVIOUS last_seen_at for
+   THIS device (never another device the same staff member might also use —
+   see migration-offline-sync.sql for why that distinction matters). That
+   previous value is the real boundary any queued sale's occurred_at gets
+   checked against once this device reconnects. Refreshed every 5 minutes
+   while online so the boundary never drifts far behind reality during a
+   long session, not just at login. */
+function getDeviceId(){
+  let id = localStorage.getItem('tm_device_id');
+  if(!id){
+    id = (window.crypto?.randomUUID?.() || ('dev_'+Date.now()+'_'+Math.random().toString(36).slice(2)));
+    localStorage.setItem('tm_device_id', id);
+  }
+  return id;
+}
+let deviceOfflineAnchor = null;
+async function touchDeviceSession(){
+  if(!S.biz) return;
+  try{
+    const {data,error} = await sb.rpc('touch_device_session',{p_device_id:getDeviceId(),p_business_id:S.biz.id});
+    if(!error) deviceOfflineAnchor = data || S.user?.created_at || null;
+  }catch(e){ /* offline right now — keep whatever anchor we already had */ }
+}
+setInterval(()=>{ if(S.biz && navigator.onLine) touchDeviceSession(); }, 5*60*1000);
+
+/* ---------- offline queue (IndexedDB) ----------
+   Holds sales a device couldn't reach the server with. Each queued entry
+   stores exactly what performSale() needs to replay it later, plus the
+   occurred_at this device captured at the moment the sale actually
+   happened — not when it eventually syncs. */
+const OFFLINE_DB='tm_offline_v1', OFFLINE_STORE='queued_sales';
+function idbOpen(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(OFFLINE_DB,1);
+    req.onupgradeneeded=()=>{ if(!req.result.objectStoreNames.contains(OFFLINE_STORE)) req.result.createObjectStore(OFFLINE_STORE,{keyPath:'qid'}); };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function idbQueueAdd(entry){
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(OFFLINE_STORE,'readwrite');
+    tx.objectStore(OFFLINE_STORE).put(entry);
+    tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);
+  });
+}
+async function idbQueueAll(){
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(OFFLINE_STORE,'readonly');
+    const req=tx.objectStore(OFFLINE_STORE).getAll();
+    req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error);
+  });
+}
+async function idbQueueRemove(qid){
+  const db=await idbOpen();
+  return new Promise((resolve,reject)=>{
+    const tx=db.transaction(OFFLINE_STORE,'readwrite');
+    tx.objectStore(OFFLINE_STORE).delete(qid);
+    tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error);
+  });
+}
+// a dead connection throws before Supabase ever gets a structured response
+// back — that's the one case we queue for. Anything else (a real validation
+// or permission error) must still surface to the user normally, not queue
+// silently and hide it.
+function isNetworkError(e){
+  return (typeof TypeError!=='undefined' && e instanceof TypeError) || /network|fetch|failed to fetch/i.test(String(e?.message||e||''));
+}
+async function queuedSaleCount(){ try{ return (await idbQueueAll()).length; }catch(e){ return 0; } }
+async function updateOfflineIndicator(){
+  const n=await queuedSaleCount();
+  document.getElementById('offlineQueueBanner')?.remove();
+  if(!n) return;
+  const banner=document.createElement('div');
+  banner.id='offlineQueueBanner';
+  banner.className='offlineQueueBanner';
+  banner.innerHTML=`${icon('alert')} <span>${n} sale${n>1?'s':''} saved offline, waiting to sync${navigator.onLine?' — syncing…':' — will sync once back online'}</span>`;
+  document.body.appendChild(banner);
+}
+let flushingOfflineQueue=false;
+async function flushOfflineQueue(){
+  if(flushingOfflineQueue || !S.biz || !navigator.onLine) return;
+  flushingOfflineQueue=true;
+  try{
+    await touchDeviceSession(); // fresh anchor + proves this device is actually back
+    await loadData(); // fresh customers/items before resolving/recording queued sales
+    const items=await idbQueueAll();
+    items.sort((a,b)=>new Date(a.occurredAt)-new Date(b.occurredAt)); // real event order, not queue/sync order
+    for(const entry of items){
+      try{
+        await performSale(entry.ctx,{isOfflineReplay:true,occurredAt:entry.occurredAt,deviceId:entry.deviceId});
+        await idbQueueRemove(entry.qid);
+      }catch(e){
+        if(isNetworkError(e)) break; // lost connection again mid-flush — stop, leave the rest queued
+        console.error('offline sale replay failed:',e);
+        toast('A queued offline sale failed to sync: '+(e?.message||e),true);
+      }
+    }
+  } finally{
+    flushingOfflineQueue=false;
+    updateOfflineIndicator();
+  }
+}
+window.addEventListener('online', flushOfflineQueue);
+
 async function loadData(){
   if(!S.biz) return;
   const [it,stk,cu,cb,aps,rs,exp,pp]=await Promise.all([
@@ -4466,6 +4582,7 @@ function renderAuditTable(){
   const filter = _auActiveFilter || 'all';
 
   const fmt = t => new Date(t).toLocaleString('en-NG', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+  const whenOf = a => a.occurred_at || a.created_at;
 
   const filtered = logs.filter(a => {
     const meta = auditMeta(a.action);
@@ -4483,6 +4600,7 @@ function renderAuditTable(){
     }
     return true;
   });
+  filtered.sort((a,b)=>new Date(whenOf(b))-new Date(whenOf(a)));
 
   if(!filtered.length){
     container.innerHTML = `<div class="empty">${logs.length ? 'No audit entries match the current filter or search criteria.' : 'No security or activity events recorded yet.'}</div>`;
@@ -4553,7 +4671,9 @@ function renderAuditTable(){
           <div class="auditEntryHead">
             <span class="auditActionBadge ${p.actionGroup}">${esc(meta.label)}</span>
             <span class="auditEntryStaff">${icon('user')} ${esc(p.staff)}</span>
-            <span class="auditEntryTime">${fmt(a.created_at)}</span>
+            ${a.is_offline_sync ? `<span class="auditOfflineBadge">Synced offline</span>` : ''}
+            ${a.timing_flagged ? `<span class="auditFlagBadge">⚠ Unverified timing</span>` : ''}
+            <span class="auditEntryTime">${fmt(whenOf(a))}</span>
           </div>
           <div class="auditEntryGrid">
             <div class="auditEntryCol">
@@ -4627,7 +4747,7 @@ async function vAudit(v){
       members = [{ user_id:'sb_u1', full_name:'Marketer Trainee (You)' }];
     } else {
       const [logRes, memRes] = await Promise.all([
-        sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:false}).limit(200),
+        sb.from('audit_log').select('*').eq('business_id',S.biz.id).order('occurred_at',{ascending:false}).limit(200),
         sb.rpc('list_members',{b:S.biz.id})
       ]);
       if(logRes.error) return err(logRes.error);
@@ -5726,60 +5846,114 @@ async function checkout(){
     render();
     return;
   }
+  const ctx={bizId:S.biz.id, staffId:S.user.id, staffName:S.user.user_metadata?.full_name||S.user.email,
+    cart:[...S.cart], onCredit, typedName, typedPhone, custId, payMode:S.payMode, total, cnt, shownName};
+  const occurredAt=new Date().toISOString(), deviceId=getDeviceId();
+  const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,isPack:l.isPack,qty:l.qty,price:l.price})),
+    total,custName:shownName,method:onCredit?'credit':S.payMode};
   try{
-    // resolve customer: chosen → existing by name/phone → create new
-    if(!custId && typedName){
-      const lc=typedName.toLowerCase();
-      const match=S.customers.find(c=>c.name.toLowerCase()===lc || (typedPhone&&String(c.phone||'')===typedPhone));
-      if(match){ custId=match.id; if(typedPhone&&!match.phone){ await sb.from('customers').update({phone:typedPhone}).eq('id',match.id); } }
-      else{
-        const ins=await sb.from('customers').insert({business_id:S.biz.id,name:typedName,phone:typedPhone||null}).select().single();
-        if(ins.error) throw ins.error; custId=ins.data.id;
-      }
-    }
-    const method=onCredit?'credit':S.payMode;
-    const rows=S.cart.map(l=>({business_id:S.biz.id,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
-      base_units:l.baseUnits*l.qty,unit_price:l.price,unit_cost:l.cost,customer_id:custId,payment_method:method,created_by:S.user.id}));
-    const {error}=await sb.from('sales').insert(rows);
-    if(error) throw error;
-    // stock moves are computed from local state before loadData() refreshes it, and
-    // spelled out via breakdownQty() (e.g. "3 Bags + 1 Mudu") rather than a bare
-    // decimal, both for how much moved and what's left, in the item's own unit word
-    const deductByItem={}; S.cart.forEach(l=>{deductByItem[l.itemId]=(deductByItem[l.itemId]||0)+l.baseUnits*l.qty;});
-    const stockMoves=Object.keys(deductByItem).map(id=>{
-      const item=S.items.find(i=>i.id===id); if(!item) return 'item sold';
-      const after=onHand(id)-deductByItem[id];
-      return `${item.name}: ${breakdownQty(item,deductByItem[id])} sold, ${breakdownQty(item,after)} remaining`;
-    }).join('; ');
-    const staffName=S.user.user_metadata?.full_name||S.user.email;
-    const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:S.biz.id});
-    if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
-    const ts=(tsData&&tsData[0])||{total_sold:0,cash_balance:0,transfer_balance:0};
-    // till_summary is queried after the sales insert above, so its numbers already
-    // reflect this sale — they're the "after" state, not "before"; subtract this
-    // sale's own amount to get "before" instead of double-adding it
-    const soldLine=`total sold ${money(Number(ts.total_sold)-total)}→${money(ts.total_sold)}`;
-    let auditErr;
-    if(onCredit){
-      const r=await sb.from('customer_transactions').insert({business_id:S.biz.id,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:S.user.id});
-      if(r.error) throw r.error;
-      const creditBefore=totalOwed();
-      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'credit_added',detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received. ${stockMoves}. ${soldLine}. Total credit ${money(creditBefore)}→${money(creditBefore+total)}`}));
-    }else{
-      const methodLabel={cash:'Cash',transfer:'Transfer'}[S.payMode]||S.payMode;
-      const balAfter=S.payMode==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
-      const tillLine=`${methodLabel} in till ${money(balAfter-total)}→${money(balAfter)}`;
-      ({error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:S.user.id,action:'sale_completed',detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName}. ${stockMoves}. ${soldLine}. ${tillLine}`}));
-    }
-    if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Sale saved, but audit log entry failed: '+auditErr.message,true); }
-    const receiptSnap={bizName:S.biz.name,date:new Date(),lines:S.cart.map(l=>({name:l.name,mode:l.mode,isPack:l.isPack,qty:l.qty,price:l.price})),
-      total,custName:shownName,method:onCredit?'credit':S.payMode};
+    await performSale(ctx,{isOfflineReplay:false,occurredAt,deviceId});
     S.cart=[]; S.saleCustId=null;
     if(S.saleTabs){ const t=S.saleTabs[S.activeSaleIdx]; t.cart=S.cart; t.custId=null; t.custName=''; t.custPhone=''; }
-    if(!auditErr) toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
+    toast(onCredit?`Credit sale: ${money(total)}`:`Sale complete: ${money(total)}`);
     await loadData(); render();
     showReceipt(receiptSnap);
-  }catch(e){ err(e); $('#checkoutBtn').disabled=false; }
+  }catch(e){
+    if(isNetworkError(e)){
+      // no connection at all — queue the whole sale for replay once this
+      // device reconnects, rather than losing it or blocking the cashier.
+      // Stock/balance updates below are optimistic (local only) so the Sell
+      // page still looks right immediately; the server gets the real,
+      // authoritative numbers once this syncs.
+      await idbQueueAdd({qid:'q_'+Date.now()+'_'+Math.random().toString(36).slice(2),ctx,occurredAt,deviceId});
+      ctx.cart.forEach(l=>{ S.stock[l.itemId]=Math.max(0,(Number(S.stock[l.itemId])||0)-l.baseUnits*l.qty); });
+      if(onCredit && custId) S.balances[custId]=(Number(S.balances[custId])||0)+total;
+      S.cart=[]; S.saleCustId=null;
+      if(S.saleTabs){ const t=S.saleTabs[S.activeSaleIdx]; t.cart=S.cart; t.custId=null; t.custName=''; t.custPhone=''; }
+      toast('No connection — sale saved offline, will sync automatically');
+      render();
+      showReceipt(receiptSnap);
+      updateOfflineIndicator();
+    } else { err(e); }
+    $('#checkoutBtn').disabled=false;
+  }
+}
+// everything a sale actually needs to persist, parameterized on who/what/when
+// so it works identically whether called live (online, occurredAt==now) or
+// later as an offline-queue replay (occurredAt==whenever the device actually
+// made the sale, deviceId==that device, isOfflineReplay==true). This is the
+// ONE place sale-writing logic lives — the offline queue calls this same
+// function rather than duplicating what checkout() used to do inline.
+async function performSale(ctx, opts){
+  const occurredAt=opts.occurredAt, deviceId=opts.deviceId, isOfflineReplay=!!opts.isOfflineReplay;
+  const {bizId, staffId, staffName, cart, onCredit, typedName, typedPhone, payMode, total, cnt, shownName}=ctx;
+  let custId=ctx.custId||null;
+  // resolve customer: chosen → existing by name/phone → create new
+  if(!custId && typedName){
+    const lc=typedName.toLowerCase();
+    const match=S.customers.find(c=>c.name.toLowerCase()===lc || (typedPhone&&String(c.phone||'')===typedPhone));
+    if(match){ custId=match.id; if(typedPhone&&!match.phone){ await sb.from('customers').update({phone:typedPhone}).eq('id',match.id); } }
+    else{
+      const ins=await sb.from('customers').insert({business_id:bizId,name:typedName,phone:typedPhone||null}).select().single();
+      if(ins.error) throw ins.error; custId=ins.data.id;
+    }
+  }
+  // a replayed sale's occurred_at predating what THIS device last proved to
+  // the server is a logical impossibility (it would already have synced
+  // live then) — flagged, never blocked, so the sale is never lost over it;
+  // see migration-offline-sync.sql / device_sessions for the anchor itself
+  let timingFlagged=false;
+  if(isOfflineReplay){
+    const occ=new Date(occurredAt).getTime();
+    if(deviceOfflineAnchor && occ < new Date(deviceOfflineAnchor).getTime()) timingFlagged=true;
+    if(occ > Date.now()) timingFlagged=true;
+  }
+  const entryDate=localIso(new Date(occurredAt));
+  const method=onCredit?'credit':payMode;
+  const rows=cart.map(l=>({business_id:bizId,item_id:l.itemId,quantity:l.qty,sold_as:l.mode,
+    base_units:l.baseUnits*l.qty,unit_price:l.price,unit_cost:l.cost,customer_id:custId,payment_method:method,created_by:staffId,
+    entry_date:entryDate,occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged}));
+  const {error}=await sb.from('sales').insert(rows);
+  if(error) throw error;
+  // stock moves are computed from local state before loadData() refreshes it, and
+  // spelled out via breakdownQty() (e.g. "3 Bags + 1 Mudu") rather than a bare
+  // decimal, both for how much moved and what's left, in the item's own unit word.
+  // For an offline replay this reads CURRENT stock, not stock as of occurredAt —
+  // the narrative "now X remaining" text is approximate when sync was delayed;
+  // the actual ledger (item_stock, till_summary) is still exactly correct either
+  // way since those are computed from row sums, not from this text.
+  const deductByItem={}; cart.forEach(l=>{deductByItem[l.itemId]=(deductByItem[l.itemId]||0)+l.baseUnits*l.qty;});
+  const stockMoves=Object.keys(deductByItem).map(id=>{
+    const item=S.items.find(i=>i.id===id); if(!item) return 'item sold';
+    const after=onHand(id)-deductByItem[id];
+    return `${item.name}: ${breakdownQty(item,deductByItem[id])} sold, ${breakdownQty(item,after)} remaining`;
+  }).join('; ');
+  const {data:tsData,error:tsErr}=await sb.rpc('till_summary',{b:bizId});
+  if(tsErr) console.error('till_summary rpc failed (run migration-till.sql?):',tsErr);
+  const ts=(tsData&&tsData[0])||{total_sold:0,cash_balance:0,transfer_balance:0};
+  // till_summary is queried after the sales insert above, so its numbers already
+  // reflect this sale — they're the "after" state, not "before"; subtract this
+  // sale's own amount to get "before" instead of double-adding it
+  const soldLine=`total sold ${money(Number(ts.total_sold)-total)}→${money(ts.total_sold)}`;
+  const offlineNote=isOfflineReplay?' (synced from offline queue)':'';
+  let auditErr;
+  if(onCredit){
+    const r=await sb.from('customer_transactions').insert({business_id:bizId,customer_id:custId,type:'credit',amount:total,note:`${cnt} item(s) on credit`,created_by:staffId,
+      occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged});
+    if(r.error) throw r.error;
+    const creditBefore=totalOwed();
+    ({error:auditErr}=await sb.from('audit_log').insert({business_id:bizId,user_id:staffId,action:'credit_added',
+      detail:`${money(total)} added to ${shownName}'s credit balance by ${staffName}, not yet received. ${stockMoves}. ${soldLine}. Total credit ${money(creditBefore)}→${money(creditBefore+total)}${offlineNote}`,
+      occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged}));
+  }else{
+    const methodLabel={cash:'Cash',transfer:'Transfer'}[payMode]||payMode;
+    const balAfter=payMode==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
+    const tillLine=`${methodLabel} in till ${money(balAfter-total)}→${money(balAfter)}`;
+    ({error:auditErr}=await sb.from('audit_log').insert({business_id:bizId,user_id:staffId,action:'sale_completed',
+      detail:`${money(total)} received (${methodLabel}) from ${shownName} by ${staffName}. ${stockMoves}. ${soldLine}. ${tillLine}${offlineNote}`,
+      occurred_at:occurredAt,device_id:deviceId,is_offline_sync:isOfflineReplay,timing_flagged:timingFlagged}));
+  }
+  if(auditErr){ console.error('audit_log insert failed:',auditErr); toast('Sale saved, but audit log entry failed: '+auditErr.message,true); }
 }
 let lastReceipt=null;
 function showReceipt(snap){

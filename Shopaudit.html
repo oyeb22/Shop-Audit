@@ -298,12 +298,12 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .prod .pprice{font-weight:700;color:var(--green);font-size:14px;white-space:nowrap}
 .prod.disabled{opacity:.45;pointer-events:none}
 .prod .opts{display:flex;flex-direction:column;gap:6px;cursor:default}
-.prod .opt{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer}
+.prod .opt{display:flex;flex-direction:column;align-items:stretch;gap:4px;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink);background:#FCFAF5;cursor:pointer;text-align:left}
 .prod .opt:hover{border-color:var(--green);background:#F0F5F1;color:var(--green-d)}
-.prod .opt .optName{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.prod .opt .optPrice{flex:0 0 auto;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.prod .opt .optName{width:100%;font-size:12.5px;font-weight:700;white-space:normal;overflow-wrap:break-word;line-height:1.25}
+.prod .opt .optPrice{width:100%;display:flex;align-items:center;justify-content:space-between;gap:6px}
 .prod .opt small{font-weight:600;color:var(--green)}
-.prod .opt .addBtn{font-size:11px;font-weight:700;background:var(--green);color:#fff;padding:3px 8px;border-radius:6px}
+.prod .opt .addBtn{font-size:11px;font-weight:700;background:var(--green);color:#fff;padding:3px 8px;border-radius:6px;flex:0 0 auto}
 .prod .pcat{font-size:11px;color:var(--muted);margin-top:1px}
 .prod .pbadges{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .catHead{display:flex;align-items:center;gap:8px;padding:10px 2px 8px;font-weight:700;font-size:13px;color:var(--ink);text-transform:uppercase;letter-spacing:.03em;cursor:pointer;border-bottom:1px solid var(--line);margin-bottom:2px}
@@ -4669,7 +4669,7 @@ async function vApprovals(v){
     const [{data,error},{data:history,error:histErr},{data:members}]=await Promise.all([
       sb.from('pending_changes').select('*').eq('business_id',S.biz.id).eq('status','pending').order('created_at',{ascending:true}),
       sb.from('pending_changes').select('*').eq('business_id',S.biz.id).in('status',['approved','rejected']).order('reviewed_at',{ascending:false}).limit(50),
-      sb.rpc('list_members',{b:S.biz.id}).catch(()=>({data:[]}))
+      Promise.resolve(sb.rpc('list_members',{b:S.biz.id})).catch(()=>({data:[]}))
     ]);
     if(error) throw error;
     const nameOf=uid=>(members||[]).find(m=>m.user_id===uid)?.full_name||'(staff member)';

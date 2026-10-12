@@ -678,6 +678,7 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
   <div class="navMenu" id="navMenu" onclick="if(event.target===this) closeNavMenu()">
     <div class="panel">
       <div class="grid" id="navGrid"></div>
+      <button class="sandboxPillBtn" style="width:100%;justify-content:center;margin-bottom:12px" onclick="closeNavMenu();openSandboxRolePicker()">Training Sandbox — practice safely, no real data touched</button>
       <button class="signout" onclick="signOut()">Sign out</button>
     </div>
   </div>
@@ -1256,7 +1257,6 @@ function buildNav(){
     {
       title: 'Training & Support',
       items: [
-        ['sandbox', 'Sandbox Profile', 'sparkle'],
         ['support', 'Help & Support', 'chat']
       ]
     }
@@ -1268,12 +1268,12 @@ function buildNav(){
 
   let allowedKeys = [];
   if(S.role==='admin'){
-    allowedKeys = ['dashboard','sell','agency','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','txaudit','sandbox','support'];
+    allowedKeys = ['dashboard','sell','agency','till','restock','expenses','eod','items','additem','reconcile','customers','reports','members','approvals','audit','settings','txaudit','support'];
     if(!S.biz.parent_business_id) allowedKeys.push('branches');
   } else if(S.role==='manager'){
-    allowedKeys = ['dashboard','sell','agency','till','restock','expenses','eod','items','additem','reconcile','customers','txaudit','sandbox','support'];
+    allowedKeys = ['dashboard','sell','agency','till','restock','expenses','eod','items','additem','reconcile','customers','txaudit','support'];
   } else {
-    allowedKeys = ['sell','agency','customers','mysales','stocklist','txaudit','sandbox','support'];
+    allowedKeys = ['sell','agency','customers','mysales','stocklist','txaudit','support'];
   }
   if(TERMINAL_ENABLED) allowedKeys.push('terminal');
 
@@ -1294,7 +1294,7 @@ function buildNav(){
   $('#navCurrent').textContent = currentLabel;
   $('#navGrid').innerHTML = html;
 }
-function go(t){ if(t==='sandbox'){ startSandbox(); return; } S.tab=t; buildNav(); closeNavMenu(); render(); }
+function go(t){ S.tab=t; buildNav(); closeNavMenu(); render(); }
 function toggleNavMenu(){ $('#navMenu').classList.toggle('show'); }
 function closeNavMenu(){ $('#navMenu').classList.remove('show'); }
 
@@ -1544,9 +1544,6 @@ async function render(){
     if(!S.biz){ renderNoBiz(); return; }
     const v=$('#view');
     if(!v) return;
-    if(S._isSandbox && !document.getElementById('sandboxTopBanner')){
-      renderSandboxBanner();
-    }
     // trial expired (or paid plan lapsed past grace) and never paid — hard
     // block, not the old soft 15-item/owner-only downgrade. Checked on every
     // render (not just on business switch) so it also catches a trial ending
@@ -1559,6 +1556,10 @@ async function render(){
     const map={dashboard:vDashboard,additem:vAddItem,items:vItems,restock:vRestock,customers:vCustomers,reconcile:vReconcile,till:vTill,agency:vAgency,reports:vReports,expenses:vExpenses,members:vMembers,settings:vSettings,audit:vAudit,sell:vSell,mysales:vMySales,stocklist:vStockList,terminal:vTerminal,approvals:vApprovals,branches:vBranches,eod:vEndOfDay,txaudit:vTxAudit,support:vSupport};
     const fn = map[S.tab]||vDashboard;
     await fn(v);
+    // every view function fully replaces v.innerHTML, which would wipe a
+    // banner inserted before this point — only safe to add it after the
+    // tab's own render has finished
+    if(S._isSandbox) renderSandboxBanner();
   } catch(e) {
     console.error('Fatal render error:', e);
     const v=$('#view');
@@ -5007,7 +5008,7 @@ async function vBranches(v){
       </table>
     </div>
   </div>`:''}`;
-  loadBranchBreakdown();
+  loadBranchBreakdown([S.biz, ...branches]);
 }
 function switchToBranch(id){ const sel=$('#bizSelect'); if(sel) sel.value=id; switchBiz(id); }
 async function createBranch(){
@@ -6447,10 +6448,10 @@ function vSettings(v){
       </div>
 
       <div class="formSection" style="margin-bottom:0">
-        <div class="fsTitle">🧪 Sandbox Profile</div>
-        <p class="hint" style="margin-bottom:12px">Practice every feature of TheMonishop on an isolated demo store without touching real data. Complete 12 core tasks and generate a verified certificate screenshot for your supervisor.</p>
-        <button class="btn primary sm" onclick="startSandbox()" style="display:inline-flex;align-items:center;gap:6px">
-          ${icon('sparkle')} Launch Sandbox Profile
+        <div class="fsTitle">🧪 Training Sandbox</div>
+        <p class="hint" style="margin-bottom:12px">Train admins, managers or receptionists on an isolated demo shop without touching real data — each role practices exactly the everyday tasks that role actually does, and generates a verified certificate screenshot at the end.</p>
+        <button class="btn primary sm" onclick="openSandboxRolePicker()" style="display:inline-flex;align-items:center;gap:6px">
+          ${icon('sparkle')} Open Training Sandbox
         </button>
       </div>
     </div>
@@ -6617,104 +6618,115 @@ async function sendWhatsAppSummary(){
    every feature of TheMonishop with 0 risk to live database.
    ============================================================ */
 
-const SANDBOX_TASKS = [
-  {
-    id: 'explore_dash',
-    title: '1. Explore Dashboard & Today\'s Pulse',
-    tab: 'dashboard',
+// training is scoped to the role actually being practiced — each list only
+// uses tasks that role can genuinely reach in the real app (e.g. a
+// receptionist curriculum never includes Restock or Reports, since a real
+// receptionist account has no nav access to those tabs either), so the
+// sandbox teaches the job someone will actually be doing, not a generic tour
+const SANDBOX_TASK_LIBRARY = {
+  explore_dash: {
+    id: 'explore_dash', tab: 'dashboard',
     objective: 'Understand real-time store revenue, gross profit, and stock alerts.',
-    instruction: 'Go to the Dashboard and switch between tabs (e.g. tap "Top Selling" or "Catalog") to inspect sales trends.',
-    checkKey: 'explore_dash'
+    instruction: 'Go to the Dashboard and switch between tabs (e.g. tap "Top Selling" or "Catalog") to inspect sales trends.'
   },
-  {
-    id: 'add_item',
-    title: '2. Add Product with Selling Modes',
-    tab: 'additem',
+  add_item: {
+    id: 'add_item', tab: 'additem',
     objective: 'Master Nigerian multi-unit retail pricing (Pack vs Tin, Bottle, or Piece).',
-    instruction: 'Go to Add Item, create a new product (e.g. "Peak Milk"), give it a Pack price, tap "+ Add Mode" to add a sub-mode price, and save.',
-    checkKey: 'add_item'
+    instruction: 'Go to Add Item, create a new product (e.g. "Peak Milk"), give it a Pack price, tap "+ Add Mode" to add a sub-mode price, and save.'
   },
-  {
-    id: 'restock',
-    title: '3. Restock Inventory with Cost Price',
-    tab: 'restock',
+  restock: {
+    id: 'restock', tab: 'restock',
     objective: 'Learn weighted-average cost recalculation and batch expiry tracking.',
-    instruction: 'Go to Restock, select any product, enter quantity added (e.g. 5) and cost price, then record restock.',
-    checkKey: 'restock'
+    instruction: 'Go to Restock, select any product, enter quantity added (e.g. 5) and cost price, then record restock.'
   },
-  {
-    id: 'cash_sale',
-    title: '4. High-Speed Cash Sale at POS',
-    tab: 'sell',
+  cash_sale: {
+    id: 'cash_sale', tab: 'sell',
     objective: 'Demonstrate fast checkout for walk-in cash customers.',
-    instruction: 'Go to Sell, tap an item to add it to cart, select Cash, and tap "Complete Sale".',
-    checkKey: 'cash_sale'
+    instruction: 'Go to Sell, tap an item to add it to cart, select Cash, and tap "Complete Sale".'
   },
-  {
-    id: 'transfer_sale',
-    title: '5. Bank Transfer & Multi-Cart Tabs',
-    tab: 'sell',
+  transfer_sale: {
+    id: 'transfer_sale', tab: 'sell',
     objective: 'Handle customer bank transfers without blocking waiting customers.',
-    instruction: 'In Sell, tap "+" to open a second cart tab, add an item, choose "Transfer", and complete checkout.',
-    checkKey: 'transfer_sale'
+    instruction: 'In Sell, tap "+" to open a second cart tab, add an item, choose "Transfer", and complete checkout.'
   },
-  {
-    id: 'credit_sale',
-    title: '6. Record a Credit Sale to a Customer',
-    tab: 'sell',
+  credit_sale: {
+    id: 'credit_sale', tab: 'sell',
     objective: 'Prevent debt leakage: attach unpaid sales directly to a customer ledger.',
-    instruction: 'In Sell, add an item, choose "Credit", select or add a customer, and complete checkout.',
-    checkKey: 'credit_sale'
+    instruction: 'In Sell, add an item, choose "Credit", select or add a customer, and complete checkout.'
   },
-  {
-    id: 'settle_debt',
-    title: '7. Customer Debt Repayment',
-    tab: 'customers',
-    objective: 'Show shop owners how to record debt recovery and balance clearing.',
-    instruction: 'Go to Customers, tap on an owing customer (e.g. Mama Chidi), and record a payment towards their debt.',
-    checkKey: 'settle_debt'
+  settle_debt: {
+    id: 'settle_debt', tab: 'customers',
+    objective: 'Record debt recovery and balance clearing correctly.',
+    instruction: 'Go to Customers, tap on an owing customer (e.g. Mama Chidi), and record a payment towards their debt.'
   },
-  {
-    id: 'reconcile',
-    title: '8. Stock Reconciliation (Shrinkage Audit)',
-    tab: 'reconcile',
+  reconcile: {
+    id: 'reconcile', tab: 'reconcile',
     objective: 'Detect missing stock and theft by comparing physical count to system balance.',
-    instruction: 'Go to Reconcile, pick any item, enter a physical count, and record audit count with auto-correction.',
-    checkKey: 'reconcile'
+    instruction: 'Go to Reconcile, pick any item, enter a physical count, and record audit count with auto-correction.'
   },
-  {
-    id: 'pos_agency',
-    title: '9. Agency Banking POS Transaction',
-    tab: 'agency',
+  pos_agency: {
+    id: 'pos_agency', tab: 'agency',
     objective: 'Handle cash-in / cash-out agency banking swaps with fee retention.',
-    instruction: 'Go to Agency Banking, select transaction type (Cash Out or Cash In), enter amount and fee kept, and record.',
-    checkKey: 'pos_agency'
+    instruction: 'Go to Agency Banking, select transaction type (Cash Out or Cash In), enter amount and fee kept, and record.'
   },
-  {
-    id: 'clear_till',
-    title: '10. Clear the Till (Register Bank Deposit)',
-    tab: 'till',
+  clear_till: {
+    id: 'clear_till', tab: 'till',
     objective: 'Document money physically removed from the drawer for bank deposits or restock.',
-    instruction: 'In Till, scroll to "Clear the Till", enter amount (e.g. ₦10,000) with a note (e.g. "Bank deposit"), and record.',
-    checkKey: 'clear_till'
+    instruction: 'In Till, scroll to "Clear the Till", enter amount (e.g. ₦10,000) with a note (e.g. "Bank deposit"), and record.'
   },
-  {
-    id: 'expense',
-    title: '11. Record Operating Expense',
-    tab: 'expenses',
+  expense: {
+    id: 'expense', tab: 'expenses',
     objective: 'Separate overhead costs (fuel, transport, electricity) from inventory purchases.',
-    instruction: 'Go to Expenses, enter an expenditure (e.g. ₦3,000 for "Generator Fuel"), and save.',
-    checkKey: 'expense'
+    instruction: 'Go to Expenses, enter an expenditure (e.g. ₦3,000 for "Generator Fuel"), and save.'
   },
-  {
-    id: 'reports',
-    title: '12. Financial Reports & CSV Export',
-    tab: 'reports',
+  reports: {
+    id: 'reports', tab: 'reports',
     objective: 'Demonstrate executive profit reporting and data export.',
-    instruction: 'Go to Reports, view the profit breakdown for This Month, and tap "Export CSV".',
-    checkKey: 'reports'
+    instruction: 'Go to Reports, view the profit breakdown for This Month, and tap "Export CSV".'
   }
-];
+};
+// builds a numbered task list for one role from the shared library above —
+// numbering is per-role (every curriculum starts at "1."), not a shared index
+function buildSandboxCurriculum(ids){
+  return ids.map((id,idx)=>({...SANDBOX_TASK_LIBRARY[id], title:`${idx+1}. ${SANDBOX_TASK_TITLES[id]}`}));
+}
+const SANDBOX_TASK_TITLES = {
+  explore_dash:  'Explore Dashboard & Today\'s Pulse',
+  add_item:      'Add Product with Selling Modes',
+  restock:       'Restock Inventory with Cost Price',
+  cash_sale:     'High-Speed Cash Sale at POS',
+  transfer_sale: 'Bank Transfer & Multi-Cart Tabs',
+  credit_sale:   'Record a Credit Sale to a Customer',
+  settle_debt:   'Customer Debt Repayment',
+  reconcile:     'Stock Reconciliation (Shrinkage Audit)',
+  pos_agency:    'Agency Banking POS Transaction',
+  clear_till:    'Clear the Till (Register Bank Deposit)',
+  expense:       'Record Operating Expense',
+  reports:       'Financial Reports & CSV Export'
+};
+// everyday duties per role, matching exactly what that role can reach in the
+// real app's nav (see allowedKeys in buildNav()) — a receptionist curriculum
+// never touches Restock/Reconcile/Reports since a real receptionist account
+// has no tab for them either, so the training never teaches a permission
+// that role won't actually have
+const SANDBOX_ROLES = {
+  admin: {
+    label: 'Admin / Owner',
+    blurb: 'Full daily operations: selling, restocking, reconciling, agency banking, till clearing, expenses and reports.',
+    taskIds: ['explore_dash','add_item','restock','cash_sale','transfer_sale','credit_sale','settle_debt','reconcile','pos_agency','clear_till','expense','reports']
+  },
+  manager: {
+    label: 'Manager',
+    blurb: 'Everyday running of the shop floor: stock, sales, reconciliation, agency banking and expenses (no financial reports — managers don\'t have that tab).',
+    taskIds: ['explore_dash','add_item','restock','cash_sale','transfer_sale','credit_sale','settle_debt','reconcile','pos_agency','clear_till','expense']
+  },
+  receptionist: {
+    label: 'Receptionist / Cashier',
+    blurb: 'Exactly what a cashier does all day: selling in cash, transfer and credit, collecting debt payments, and agency banking.',
+    taskIds: ['cash_sale','transfer_sale','credit_sale','settle_debt','pos_agency']
+  }
+};
+function sandboxTasks(){ return buildSandboxCurriculum(SANDBOX_ROLES[S.role]?.taskIds || SANDBOX_ROLES.admin.taskIds); }
 
 function getSandboxDemoData(){
   return {
@@ -6750,26 +6762,56 @@ function getSandboxDemoData(){
   };
 }
 
-let sandboxProgress = {
-  currentIdx: 0,
-  completed: {},
-  completedCount: 0,
-  certCode: null,
-  marketerName: 'Marketer Trainee'
-};
-
+function defaultSandboxProgress(){
+  return { currentIdx: 0, completed: {}, completedCount: 0, certCode: null, marketerName: 'Trainee' };
+}
+let sandboxProgress = defaultSandboxProgress();
+// progress is tracked separately per role — completing the Admin curriculum
+// shouldn't mark the Receptionist curriculum as done too, and vice versa
+function sandboxProgressKey(){ return 'tm_sandbox_progress_'+(S.role||'admin'); }
 function loadSandboxProgress(){
+  sandboxProgress = defaultSandboxProgress();
   try{
-    const saved = localStorage.getItem('tm_sandbox_progress');
+    const saved = localStorage.getItem(sandboxProgressKey());
     if(saved) sandboxProgress = Object.assign(sandboxProgress, JSON.parse(saved));
   }catch{}
 }
 function saveSandboxProgress(){
-  try{ localStorage.setItem('tm_sandbox_progress', JSON.stringify(sandboxProgress)); }catch{}
+  try{ localStorage.setItem(sandboxProgressKey(), JSON.stringify(sandboxProgress)); }catch{}
 }
 
-function startSandbox(){
+// entry point for the Training Sandbox — deliberately reached from the nav
+// menu's own standalone button (see the static #navMenu markup), not from
+// inside the categorized tab grid, so it never reads as "just another
+// business tab" a trainee could confuse with real data. Picking a role here
+// both picks the task curriculum AND the real nav permissions that role
+// gets (buildNav() keys off S.role the same way it does outside sandbox),
+// so the practice run matches what that person will actually see on the job.
+function openSandboxRolePicker(){
+  if(!S.user){ toast('Sign in first to access training mode',true); return; }
+  document.getElementById('sandboxRoleModal')?.remove();
+  const modal=document.createElement('div');
+  modal.id='sandboxRoleModal';
+  modal.className='taskModalBg';
+  modal.onclick=e=>{ if(e.target===modal) modal.remove(); };
+  modal.innerHTML=`<div class="taskModalBox" style="max-width:480px">
+    <div class="taskHead"><div><h2>Training Sandbox</h2><div class="hint">Pick the role you want to practice — a fully isolated demo shop, your real data is never touched.</div></div>
+    <button class="btn ghost sm" onclick="document.getElementById('sandboxRoleModal').remove()">✕</button></div>
+    ${Object.entries(SANDBOX_ROLES).map(([key,r])=>`
+      <button class="taskRow" style="width:100%;text-align:left;cursor:pointer" onclick="document.getElementById('sandboxRoleModal').remove();startSandbox('${key}')">
+        <div class="taskInfo">
+          <div class="taskTitle">${esc(r.label)}</div>
+          <div class="taskDesc">${esc(r.blurb)}</div>
+        </div>
+        <div style="flex-shrink:0;align-self:center"><span class="badge blue">${r.taskIds.length} tasks</span></div>
+      </button>`).join('')}
+  </div>`;
+  document.body.appendChild(modal);
+}
+// role: 'admin' | 'manager' | 'receptionist' — picked via openSandboxRolePicker()
+function startSandbox(role){
   if(S._isSandbox) return;
+  role = SANDBOX_ROLES[role] ? role : 'admin';
   // Backup real store state
   window._REAL_S_STATE = {
     biz: S.biz,
@@ -6781,6 +6823,7 @@ function startSandbox(){
     tab: S.tab
   };
 
+  S.role = role;
   loadSandboxProgress();
   let demo = null;
   try{
@@ -6792,24 +6835,22 @@ function startSandbox(){
   window._SANDBOX_STORE = demo;
   S._isSandbox = true;
   S.biz = demo.biz;
-  S.role = 'admin';
   S.items = demo.items;
   S.stock = demo.stock;
   S.customers = demo.customers;
   S.balances = demo.balances;
   S.cart = [];
-  S.tab = 'dashboard';
+  S.tab = (role==='admin'||role==='manager')?'dashboard':'sell';
 
   const rolePill = document.getElementById('rolePill');
-  if(rolePill) rolePill.textContent = 'SANDBOX';
+  if(rolePill) rolePill.textContent = 'SANDBOX · '+SANDBOX_ROLES[role].label;
   const navCurrent = document.getElementById('navCurrent');
   if(navCurrent) navCurrent.textContent = 'Sandbox';
 
   buildNav();
-  renderSandboxBanner();
   renderSandboxHud();
-  render();
-  toast('🧪 Entered Sandbox Profile. Live store is 100% safe.');
+  render(); // render() adds the sandbox banner itself, after the tab's own content is in place
+  toast(`🧪 Entered ${SANDBOX_ROLES[role].label} training. Live store is 100% safe.`);
 }
 
 function exitSandbox(){
@@ -6873,7 +6914,8 @@ function completeSandboxTask(taskId){
   if(!S._isSandbox) return;
   if(sandboxProgress.completed[taskId]) return; // already done
   
-  const task = SANDBOX_TASKS.find(t => t.id === taskId);
+  const tasks = sandboxTasks();
+  const task = tasks.find(t => t.id === taskId);
   sandboxProgress.completed[taskId] = {
     at: new Date().toISOString(),
     name: task ? task.title : taskId
@@ -6881,8 +6923,8 @@ function completeSandboxTask(taskId){
   sandboxProgress.completedCount = Object.keys(sandboxProgress.completed).length;
 
   // Advance current index if it matches
-  if(SANDBOX_TASKS[sandboxProgress.currentIdx]?.id === taskId){
-    sandboxProgress.currentIdx = Math.min(SANDBOX_TASKS.length - 1, sandboxProgress.currentIdx + 1);
+  if(tasks[sandboxProgress.currentIdx]?.id === taskId){
+    sandboxProgress.currentIdx = Math.min(tasks.length - 1, sandboxProgress.currentIdx + 1);
   }
 
   saveSandboxProgress();
@@ -6890,7 +6932,7 @@ function completeSandboxTask(taskId){
   toast(`🎉 Task Passed: ${task ? task.title : 'Task Completed'} (100% Correct)!`);
   updateSandboxHud();
 
-  if(sandboxProgress.completedCount === SANDBOX_TASKS.length){
+  if(sandboxProgress.completedCount === tasks.length){
     if(!sandboxProgress.certCode){
       sandboxProgress.certCode = 'TM-MKT-' + Math.random().toString(36).substring(2,7).toUpperCase() + '-PASS';
       saveSandboxProgress();
@@ -6899,34 +6941,14 @@ function completeSandboxTask(taskId){
   }
 }
 
-function checkSandboxTask(type, payload){
+// type is a task id from SANDBOX_TASK_LIBRARY — only completes it if it's
+// actually part of the CURRENT role's curriculum, so e.g. a receptionist
+// practicing a credit sale never accidentally ticks off 'reports', which
+// isn't on their list (and isn't on their real nav either)
+function checkSandboxTask(type){
   if(!S._isSandbox) return;
-  const curr = SANDBOX_TASKS[sandboxProgress.currentIdx];
-  if(type === 'explore_dash' && (curr?.id === 'explore_dash' || !sandboxProgress.completed.explore_dash)){
-    completeSandboxTask('explore_dash');
-  } else if(type === 'add_item' && (curr?.id === 'add_item' || !sandboxProgress.completed.add_item)){
-    completeSandboxTask('add_item');
-  } else if(type === 'restock' && (curr?.id === 'restock' || !sandboxProgress.completed.restock)){
-    completeSandboxTask('restock');
-  } else if(type === 'cash_sale' && (curr?.id === 'cash_sale' || !sandboxProgress.completed.cash_sale)){
-    completeSandboxTask('cash_sale');
-  } else if(type === 'transfer_sale' && (curr?.id === 'transfer_sale' || !sandboxProgress.completed.transfer_sale)){
-    completeSandboxTask('transfer_sale');
-  } else if(type === 'credit_sale' && (curr?.id === 'credit_sale' || !sandboxProgress.completed.credit_sale)){
-    completeSandboxTask('credit_sale');
-  } else if(type === 'settle_debt' && (curr?.id === 'settle_debt' || !sandboxProgress.completed.settle_debt)){
-    completeSandboxTask('settle_debt');
-  } else if(type === 'reconcile' && (curr?.id === 'reconcile' || !sandboxProgress.completed.reconcile)){
-    completeSandboxTask('reconcile');
-  } else if(type === 'pos_agency' && (curr?.id === 'pos_agency' || !sandboxProgress.completed.pos_agency)){
-    completeSandboxTask('pos_agency');
-  } else if(type === 'clear_till' && (curr?.id === 'clear_till' || !sandboxProgress.completed.clear_till)){
-    completeSandboxTask('clear_till');
-  } else if(type === 'expense' && (curr?.id === 'expense' || !sandboxProgress.completed.expense)){
-    completeSandboxTask('expense');
-  } else if(type === 'reports' && (curr?.id === 'reports' || !sandboxProgress.completed.reports)){
-    completeSandboxTask('reports');
-  }
+  if(!sandboxTasks().some(t=>t.id===type)) return;
+  completeSandboxTask(type);
 }
 
 function renderSandboxBanner(){
@@ -6937,10 +6959,10 @@ function renderSandboxBanner(){
   banner.innerHTML = `
     <div class="sbLeft">
       <span class="sbBadge">🧪 SANDBOX</span>
-      <span class="sbText">Training Mode · Isolated Demo Store (Real shop data is safe)</span>
+      <span class="sbText">${esc(SANDBOX_ROLES[S.role]?.label||'Training')} Mode · Isolated Demo Store (Real shop data is safe)</span>
     </div>
     <div class="sbRight">
-      <button class="sbTaskBtn" onclick="openSandboxChecklist()">📋 Checklist: <span id="sbTaskCount">${sandboxProgress.completedCount}/12</span></button>
+      <button class="sbTaskBtn" onclick="openSandboxChecklist()">📋 Checklist: <span id="sbTaskCount">${sandboxProgress.completedCount}/${sandboxTasks().length}</span></button>
       <button class="sbExitBtn" onclick="exitSandbox()">✕ Exit Sandbox</button>
     </div>
   `;
@@ -6963,7 +6985,7 @@ function renderSandboxHud(){
         <span>🎯</span>
         <div>
           <b id="hudTaskTitle">Loading task...</b>
-          <div class="hudProgressText"><span id="hudCount">0</span>/12 Tasks Completed (<span id="hudPct">0%</span>)</div>
+          <div class="hudProgressText"><span id="hudCount">0</span>/${sandboxTasks().length} Tasks Completed (<span id="hudPct">0%</span>)</div>
         </div>
       </div>
       <div class="hudToggleIcon" style="font-size:12px;color:var(--muted);transition:transform .2s">▼</div>
@@ -6987,20 +7009,22 @@ function updateSandboxHud(){
   const titleEl = document.getElementById('hudTaskTitle');
   const instEl = document.getElementById('hudInstruction');
 
+  const tasks = sandboxTasks();
   const count = sandboxProgress.completedCount || 0;
-  const pct = Math.round((count / SANDBOX_TASKS.length) * 100);
+  const pct = Math.round((count / tasks.length) * 100);
+  const allDone = count === tasks.length;
 
   if(countEl) countEl.textContent = count;
-  if(sbTaskCount) sbTaskCount.textContent = `${count}/12`;
+  if(sbTaskCount) sbTaskCount.textContent = `${count}/${tasks.length}`;
   if(pctEl) pctEl.textContent = `${pct}%`;
 
-  const curr = SANDBOX_TASKS[sandboxProgress.currentIdx] || SANDBOX_TASKS[0];
-  if(titleEl) titleEl.textContent = count === 12 ? '🎉 All 12 Tasks Completed!' : curr.title;
-  if(instEl) instEl.textContent = count === 12 ? 'Excellent job! Tap below to open your official qualification certificate and screenshot it.' : curr.instruction;
+  const curr = tasks[sandboxProgress.currentIdx] || tasks[0];
+  if(titleEl) titleEl.textContent = allDone ? `🎉 All ${tasks.length} Tasks Completed!` : curr.title;
+  if(instEl) instEl.textContent = allDone ? 'Excellent job! Tap below to open your official qualification certificate and screenshot it.' : curr.instruction;
 
   const actionBtn = document.getElementById('hudActionBtn');
   if(actionBtn){
-    if(count === 12){
+    if(allDone){
       actionBtn.textContent = '🏆 View Certificate';
       actionBtn.onclick = openSandboxCertificate;
     } else {
@@ -7015,7 +7039,7 @@ function toggleSandboxHud(){
 }
 
 function sandboxGoCurrentTask(){
-  const curr = SANDBOX_TASKS[sandboxProgress.currentIdx];
+  const curr = sandboxTasks()[sandboxProgress.currentIdx];
   if(curr){
     go(curr.tab);
     toast(`Switched to ${curr.title}. Follow instructions!`);
@@ -7029,18 +7053,19 @@ function openSandboxChecklist(){
   modal.className = 'taskModalBg';
   modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
 
+  const tasks = sandboxTasks();
   modal.innerHTML = `
     <div class="taskModalBox">
       <div class="taskHead">
         <div>
-          <h2>Sandbox Training Checklist</h2>
-          <div class="hint">Completed ${sandboxProgress.completedCount} of 12 Tasks (${Math.round((sandboxProgress.completedCount/12)*100)}% Proficiency)</div>
+          <h2>${esc(SANDBOX_ROLES[S.role]?.label||'Training')} Checklist</h2>
+          <div class="hint">Completed ${sandboxProgress.completedCount} of ${tasks.length} Tasks (${Math.round((sandboxProgress.completedCount/tasks.length)*100)}% Proficiency)</div>
         </div>
         <button class="btn ghost sm" onclick="document.getElementById('taskModalBg').remove()">✕</button>
       </div>
 
       <div class="taskList">
-        ${SANDBOX_TASKS.map((t, idx) => {
+        ${tasks.map((t, idx) => {
           const isDone = !!sandboxProgress.completed[t.id];
           const isCurrent = idx === sandboxProgress.currentIdx && !isDone;
           const statusCls = isDone ? 'completed' : isCurrent ? 'active' : 'pending';
@@ -7062,7 +7087,7 @@ function openSandboxChecklist(){
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;border-top:1px solid var(--line);padding-top:14px;flex-wrap:wrap;gap:8px">
         <button class="btn ghost sm" onclick="resetSandboxTasks()">Reset Checklist</button>
         <div style="display:flex;gap:8px">
-          ${sandboxProgress.completedCount === 12 ? `<button class="btn primary sm" onclick="document.getElementById('taskModalBg').remove();openSandboxCertificate()">🏆 View Certificate</button>` : ''}
+          ${sandboxProgress.completedCount === tasks.length ? `<button class="btn primary sm" onclick="document.getElementById('taskModalBg').remove();openSandboxCertificate()">🏆 View Certificate</button>` : ''}
           <button class="btn ghost sm" onclick="document.getElementById('taskModalBg').remove()">Close</button>
         </div>
       </div>
@@ -7072,7 +7097,7 @@ function openSandboxChecklist(){
 }
 
 function resetSandboxTasks(){
-  if(confirm('Are you sure you want to reset your marketer training checklist progress?')){
+  if(confirm('Are you sure you want to reset your training checklist progress?')){
     sandboxProgress = { currentIdx: 0, completed: {}, completedCount: 0, certCode: null, marketerName: sandboxProgress.marketerName };
     saveSandboxProgress();
     updateSandboxHud();
@@ -7094,24 +7119,28 @@ function openSandboxCertificate(){
   }
 
   const todayStr = new Date().toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' });
+  const tasks = sandboxTasks();
+  const roleInfo = SANDBOX_ROLES[S.role] || SANDBOX_ROLES.admin;
+  const qualification = {admin:'Store Owner / Admin',manager:'Shop Manager',receptionist:'Sales Cashier'}[S.role] || 'Store Staff';
+  const skillAreas = tasks.map(t=>SANDBOX_TASK_TITLES[t.id].replace(/ \(.*\)$/,'')).join(', ');
 
   modal.innerHTML = `
     <div class="certModalBox">
-      <div class="certBadgeTop">THEMONISHOP VERIFIED PRODUCT SPECIALIST</div>
+      <div class="certBadgeTop">THEMONISHOP VERIFIED ${esc(qualification.toUpperCase())}</div>
       <div class="certTitle">Certificate of Operational Mastery</div>
-      <div class="certSub">OFFICIAL MARKETER QUALIFICATION PROOF</div>
-      
+      <div class="certSub">${esc(roleInfo.label.toUpperCase())} TRAINING — OFFICIAL PROOF</div>
+
       <p style="font-size:13px;color:var(--muted);margin-bottom:6px">This certifies that</p>
       <div class="certRecipient" contenteditable="true" id="certNameInput" oninput="sandboxProgress.marketerName=this.textContent.trim();saveSandboxProgress();" title="Tap to type your full name">${esc(sandboxProgress.marketerName || 'Your Full Name')}</div>
-      
+
       <p class="certStatement">
-        has successfully executed all 12 core retail operations in the sandbox training profile, demonstrating 100% operational competency across Inventory Modes, POS Checkout, Split Payments, Customer Credit Ledgers, Till Clearing, Agency POS Banking, and Financial Reports.
+        has successfully executed all ${tasks.length} core ${esc(roleInfo.label.toLowerCase())} operations in the sandbox training profile, demonstrating 100% operational competency across ${esc(skillAreas)}.
       </p>
 
       <div class="certStatsGrid">
         <div class="certStatItem">
           <span>Curriculum Score</span>
-          <b style="color:var(--green)">12 / 12 TASKS PASSED (100%)</b>
+          <b style="color:var(--green)">${tasks.length} / ${tasks.length} TASKS PASSED (100%)</b>
         </div>
         <div class="certStatItem">
           <span>Verification Code</span>
@@ -7123,7 +7152,7 @@ function openSandboxCertificate(){
         </div>
         <div class="certStatItem">
           <span>Qualification</span>
-          <b>Store Onboarding Specialist</b>
+          <b>${esc(qualification)}</b>
         </div>
       </div>
 
@@ -7141,9 +7170,11 @@ function openSandboxCertificate(){
 }
 
 function shareCertWhatsApp(){
-  const name = sandboxProgress.marketerName || 'Marketer';
+  const name = sandboxProgress.marketerName || 'Trainee';
   const code = sandboxProgress.certCode || 'TM-MKT-PASS';
-  const text = encodeURIComponent(`Hello Admin, I (${name}) have completed all 12 tasks in TheMonishop Sandbox Profile with a 100% score (Cert ID: ${code}). I am now conversant with all inventory, POS, credit, till, and report features and ready to onboard merchants!`);
+  const roleInfo = SANDBOX_ROLES[S.role] || SANDBOX_ROLES.admin;
+  const tasks = sandboxTasks();
+  const text = encodeURIComponent(`Hello Admin, I (${name}) have completed all ${tasks.length} tasks in TheMonishop's ${roleInfo.label} training sandbox with a 100% score (Cert ID: ${code}). I'm ready to use TheMonishop in this role!`);
   window.open(`https://wa.me/?text=${text}`, '_blank');
 }
 
@@ -7713,7 +7744,7 @@ function vSupport(v){
       <div class="formSection">
         <div class="fsTitle">${icon('sparkle')} 2. How Do I Train My Staff or Test the App Safely?</div>
         <p class="hint" style="line-height:1.55;color:var(--ink)">
-          Open the <b>Sandbox Profile</b> from the menu. It loads a 100% isolated simulated store with 12 structured tasks (adding products, checkout sales, debt recovery, till clearings, and profit reports). Your staff can practice freely without altering or touching your real inventory or balances.
+          Open the menu and tap <b>Training Sandbox</b>, then pick the role you want to train (Admin, Manager or Receptionist) — each one gets its own curriculum of everyday tasks for that job, on a 100% isolated demo store. Your staff can practice freely without altering or touching your real inventory or balances.
         </p>
       </div>
 

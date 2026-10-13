@@ -1194,6 +1194,30 @@ function isNetworkError(e){
   return (typeof TypeError!=='undefined' && e instanceof TypeError) || /network|fetch|failed to fetch/i.test(String(e?.message||e||''));
 }
 function genQid(){ return 'q_'+Date.now()+'_'+Math.random().toString(36).slice(2); }
+// Paginates past Supabase/PostgREST's default 1000-row cap on an unbounded
+// select. Use this ONLY when the correct answer genuinely needs EVERY
+// historical row (a running total since the business began, like lifetime
+// stock movements or lifetime customer spend) — for a "today"/"this month"
+// figure, a tightly-scoped date query is cheaper and is what vDashboard
+// itself uses (see the comment there for the full story of why this class
+// of bug matters: a busy shop's `sales` table has one row per cart line
+// item, so it crosses 1000 rows fast, and an unordered/unpaginated select
+// silently drops whichever rows didn't make the cut — which is exactly what
+// once zeroed out a shop owner's Dashboard).
+// buildQuery: a function returning a FRESH query builder each call (so
+// .range() can be applied per page) — e.g. () => sb.from('sales').select('x').eq('business_id',id)
+async function fetchAllRows(buildQuery){
+  const PAGE=1000;
+  let offset=0, all=[];
+  while(true){
+    const {data,error}=await buildQuery().range(offset,offset+PAGE-1);
+    if(error) return {data:null,error};
+    all=all.concat(data||[]);
+    if(!data || data.length<PAGE) break;
+    offset+=PAGE;
+  }
+  return {data:all,error:null};
+}
 async function queuedSaleCount(){ try{ return (await idbQueueAll()).length; }catch(e){ return 0; } }
 async function updateOfflineIndicator(){
   const n=await queuedSaleCount();
@@ -1281,10 +1305,14 @@ async function loadData(){
 }
 async function computeStockFallback(){
   const bid=S.biz.id;
+  // this computes actual stock QUANTITIES from full lifetime history — unlike
+  // a dashboard revenue figure, there's no "recent is good enough" tradeoff
+  // here, so this needs every row, paginated past the 1000-row cap, not just
+  // an ordering safety net (see fetchAllRows() for why this matters)
   const [p,s,a]=await Promise.all([
-    sb.from('purchases').select('item_id,base_units,quantity').eq('business_id',bid),
-    sb.from('sales').select('item_id,base_units,quantity').eq('business_id',bid),
-    sb.from('adjustments').select('item_id,quantity_delta').eq('business_id',bid)
+    fetchAllRows(()=>sb.from('purchases').select('item_id,base_units,quantity').eq('business_id',bid)),
+    fetchAllRows(()=>sb.from('sales').select('item_id,base_units,quantity').eq('business_id',bid)),
+    fetchAllRows(()=>sb.from('adjustments').select('item_id,quantity_delta').eq('business_id',bid))
   ]);
   const add=(arr,sign,f)=>{(arr.data||[]).forEach(r=>{S.stock[r.item_id]=(S.stock[r.item_id]||0)+sign*f(r);});};
   add(p,+1,r=>Number(r.base_units||r.quantity||0));
@@ -5343,13 +5371,19 @@ async function refreshBusinessList(){
 async function loadBranchBreakdown(list){
   const t=today(), m=monthStart();
   const rows=await Promise.all(list.map(async b=>{
-    const [salesRes,itemsRes,stockRes,custRes]=await Promise.all([
-      sb.from('sales').select('quantity,unit_price,entry_date').eq('business_id',b.id).gte('entry_date',m),
+    // today's revenue gets its own tightly-scoped query rather than being
+    // derived by filtering the month-wide fetch below — the exact same
+    // truncation risk as the main Dashboard (see vDashboard's comment):
+    // a busy branch's sales rows can exceed Supabase's 1000-row cap well
+    // within a month, and without this, today's figure could silently drop
+    const [salesRes,todayRes,itemsRes,stockRes,custRes]=await Promise.all([
+      sb.from('sales').select('quantity,unit_price,entry_date').eq('business_id',b.id).gte('entry_date',m).order('created_at',{ascending:false}),
+      sb.from('sales').select('quantity,unit_price,entry_date').eq('business_id',b.id).eq('entry_date',t),
       sb.from('items').select('id,cost_price,low_stock_threshold').eq('business_id',b.id),
       sb.from('item_stock').select('item_id,on_hand').eq('business_id',b.id),
       sb.from('customer_balances').select('balance').eq('business_id',b.id)
     ]);
-    const sales=salesRes.data||[], dayS=sales.filter(s=>s.entry_date===t);
+    const sales=salesRes.data||[], dayS=todayRes.data||[];
     const rev=arr=>arr.reduce((a,s)=>a+s.quantity*Number(s.unit_price),0);
     const items=itemsRes.data||[];
     const onHand={}; (stockRes.data||[]).forEach(r=>onHand[r.item_id]=Number(r.on_hand||0));
@@ -6399,7 +6433,10 @@ function filterStockTable(q){ stockListQuery=q; $('#stockTableBody').innerHTML=s
    ============================================================ */
 async function vCustomers(v){
   v.innerHTML='<div class="empty">Loading customer records…</div>';
-  sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id).then(({data:sales})=>{
+  // lifetime spend/visits/last-visit per customer needs every sale row ever
+  // made, not just recent ones — paginated past the 1000-row cap rather than
+  // ordered-and-truncated, same reasoning as computeStockFallback()
+  fetchAllRows(()=>sb.from('sales').select('customer_id,quantity,unit_price,entry_date').eq('business_id',S.biz.id)).then(({data:sales})=>{
     S._spend={}; S._visits={}; S._last={};
     const visitDays={};
     (sales||[]).forEach(s=>{ if(!s.customer_id) return;
@@ -7135,7 +7172,7 @@ async function saveReminderSettings(){
 }
 async function sendWhatsAppSummary(){
   const t=today(); const d8=new Date(t+'T00:00:00'); d8.setDate(d8.getDate()-7);
-  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',d8.toISOString().slice(0,10)).lte('entry_date',t);
+  const {data:sales,error}=await sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',d8.toISOString().slice(0,10)).lte('entry_date',t).order('created_at',{ascending:false});
   if(error) return err(error);
   const story=todayStory(sales||[]);
   const lines=[

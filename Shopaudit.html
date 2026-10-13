@@ -1945,28 +1945,44 @@ function filterDashStockTable(q){
 
 async function vDashboard(v){
   v.innerHTML='<div class="empty">Loading…</div>';
-  const windowStart=(()=>{const d=new Date();d.setDate(d.getDate()-120);return d.toISOString().slice(0,10);})();
-  let salesRes, expRes;
+  const t=today(), m=monthStart();
+  const windowStart=(()=>{const d=new Date();d.setDate(d.getDate()-120);return localIso(d);})();
+  let salesRes, expRes, todayRes, monthRes;
   if(S._isSandbox){
-    const t=today();
     salesRes = { data: [
       { id:'sb_s1', item_id:'sb_1', quantity:8, unit_price:800, unit_cost:625, payment_method:'cash', entry_date:t, created_at:new Date().toISOString() },
       { id:'sb_s2', item_id:'sb_2', quantity:5, unit_price:800, unit_cost:625, payment_method:'transfer', entry_date:t, created_at:new Date().toISOString() },
       { id:'sb_s3', item_id:'sb_3', quantity:10, unit_price:380, unit_cost:287, payment_method:'credit', customer_id:'sb_c2', entry_date:t, created_at:new Date().toISOString() }
     ]};
     expRes = { data: [{ amount:3000, entry_date:t }] };
+    todayRes = salesRes; monthRes = salesRes;
   } else {
-    [salesRes,expRes]=await Promise.all([
-      sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',windowStart),
-      sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',windowStart)
+    // Today's and this-month's figures are fetched with their OWN tightly-scoped
+    // queries, not derived by filtering the 120-day window fetch below.
+    // Supabase/PostgREST caps an unbounded select at 1000 rows by default, and
+    // `sales` has one row per cart line item (not per transaction) — a genuinely
+    // busy shop can blow past 1000 rows well within a 120-day window. With no
+    // ORDER BY, a truncated result can silently drop today's own rows while
+    // keeping older ones, which is exactly what a shop owner hit: Reports'
+    // "Today" filter (one day, few rows) stayed correct while Dashboard's wide
+    // window silently lost today's sales. The 120-day fetch is kept (ordered
+    // so the most recent rows survive first if it's ever truncated) only for
+    // the 30-day history table and top-items ranking, where best-effort is an
+    // acceptable tradeoff — the actual money figures never depend on it.
+    [salesRes,expRes,todayRes,monthRes]=await Promise.all([
+      sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',windowStart).order('created_at',{ascending:false}),
+      sb.from('expenditures').select('amount,entry_date').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',windowStart),
+      sb.from('sales').select('*').eq('business_id',S.biz.id).eq('entry_date',t),
+      sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',m)
     ]);
   }
   if(salesRes.error) return err(salesRes.error);
+  if(todayRes.error) return err(todayRes.error);
+  if(monthRes.error) return err(monthRes.error);
   const sales=salesRes.data, exps=expRes.data||[];
-  const t=today(), m=monthStart();
   const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const dayS=sales.filter(s=>s.entry_date===t), monS=sales.filter(s=>s.entry_date>=m);
+  const dayS=todayRes.data, monS=monthRes.data;
   const dayExp=sum(exps.filter(e=>e.entry_date===t),e=>Number(e.amount));
   const monExp=sum(exps.filter(e=>e.entry_date>=m),e=>Number(e.amount));
   const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
@@ -2002,7 +2018,7 @@ async function vDashboard(v){
   const todayCusts=todayCustIds.map(id=>S.customers.find(c=>c.id===id)).filter(Boolean);
   S._todayCusts=todayCusts;
 
-  const story=todayStory(sales);
+  const story=todayStory(sales,dayS);
   const isMgr=S.role==='manager';
 
   // Greeting & date
@@ -3720,11 +3736,16 @@ async function runReport(){
       purRes = { data: [{ unit_cost: 15000, base_units: 5, quantity: 5 }] };
       posRes = { data: [{ charge: 1500 }] };
     } else {
+      // ordered so that if a wide range (This Year/All Time) ever exceeds
+      // Supabase's default 1000-row cap on an unbounded select, the most
+      // RECENT rows survive the truncation rather than an arbitrary/oldest
+      // slice — see the comment in vDashboard for the full story on this class
+      // of bug (it's what silently zeroed out a shop owner's Dashboard once).
       [salesRes,expRes,purRes,posRes]=await Promise.all([
-        sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
+        sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to).order('created_at',{ascending:false}),
         sb.from('expenditures').select('amount').eq('business_id',S.biz.id).eq('status','approved').gte('entry_date',from).lte('entry_date',to),
-        sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to),
-        sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to))
+        sb.from('purchases').select('unit_cost,base_units,quantity').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to).order('created_at',{ascending:false}),
+        sb.from('pos_transactions').select('charge').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to)).order('created_at',{ascending:false})
       ]);
     }
     if(salesRes.error) return err(salesRes.error);
@@ -3988,12 +4009,18 @@ function modeUnitPriceRange(i){
 // one shared "how did today go" computation used by both the Dashboard
 // card and the WhatsApp summary, so the two never say different things.
 // `sales` just needs to cover today + the trailing 7 days at minimum.
-function todayStory(sales){
+// dayS: optionally a trusted, already-correct "today" sales array (see
+// vDashboard's dedicated today query) — when provided, today's own numbers
+// never depend on re-filtering `sales`, which can be a truncated 1000-row
+// Supabase result for a busy shop and would otherwise silently drop today's
+// rows. `sales` is still used for the 7-day trailing average, where
+// best-effort is an acceptable tradeoff.
+function todayStory(sales,dayS){
   const t=today();
   const dNow=new Date(t+'T00:00:00');
   const days7=[]; for(let i=1;i<=7;i++){ const x=new Date(dNow); x.setDate(dNow.getDate()-i); days7.push(x.toISOString().slice(0,10)); }
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const dayS=sales.filter(s=>s.entry_date===t);
+  dayS = dayS || sales.filter(s=>s.entry_date===t);
   const trailing=sales.filter(s=>days7.includes(s.entry_date));
   const todayRev=dayS.reduce((a,s)=>a+rev(s),0);
   const todayProf=dayS.reduce((a,s)=>a+prof(s),0);

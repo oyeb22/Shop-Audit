@@ -252,12 +252,13 @@ let BIZ_ROWS=[];
 function renderBusinesses(rows){
   BIZ_ROWS=rows;
   $('#bizTable').innerHTML = rows.length ? `<table><thead><tr>
-    <th>Name</th><th>Admin</th><th>Status</th><th>Joined</th><th>Referral code</th><th>Members</th><th>Items</th><th></th>
+    <th>Name</th><th>Admin</th><th>Phone</th><th>Status</th><th>Joined</th><th>Referral code</th><th>Members</th><th>Items</th><th></th>
   </tr></thead><tbody>${rows.map(b=>{
     const s=bizStatus(b);
     return `<tr>
     <td>${b.parent_business_id?'↳ ':''}${esc(b.business_name)}${b.parent_business_id?`<div class="hint">Branch of ${esc(b.parent_business_name||'—')}</div>`:''}</td>
     <td>${esc(b.admin_name||b.admin_email||'')}</td>
+    <td>${b.admin_phone?esc(b.admin_phone):'<span class="hint">—</span>'}</td>
     <td><span class="badge ${s.cls}">${s.label}</span>${s.detail?`<div class="hint">${esc(s.detail)}</div>`:''}</td>
     <td>${fmtD(b.created_at)}</td>
     <td>${esc(b.referral_code||'')}</td>

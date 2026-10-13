@@ -4561,6 +4561,31 @@ function parseAuditRecord(action, detail, staffName){
     });
   }
 
+  // 7b. Supplier payment/payable format: "₦5,000 paid to 808 (Transfer),
+  // payable reduced ₦80,000→₦75,000" / "₦80,000 owed to 808 added as
+  // payable, not yet paid. Total payable ₦0→₦80,000"
+  const supPaidMatch = str.match(/([₦0-9,.]+)\s+paid to\s+([^(]+?)\s*\(([^)]+)\),\s*payable reduced\s+([₦0-9,.]+)→([₦0-9,.]+)/i);
+  const supOwedMatch = str.match(/([₦0-9,.]+)\s+owed to\s+([^,]+?)\s+added as payable,\s*not yet paid\.\s*Total payable\s+([₦0-9,.]+)→([₦0-9,.]+)/i);
+  if(supPaidMatch){
+    const amt = supPaidMatch[1], supplierName = supPaidMatch[2].trim(), method = supPaidMatch[3].trim();
+    const before = supPaidMatch[4], after = supPaidMatch[5];
+    items.push({ prod: 'Supplier Payment', qty: `Paid ${supplierName} (${method})` });
+    financials.push({
+      type: 'warn',
+      label: '-' + amt + ' Paid to Supplier',
+      sub: `${supplierName} payable: ${before} → ${after}`
+    });
+  } else if(supOwedMatch){
+    const amt = supOwedMatch[1], supplierName = supOwedMatch[2].trim();
+    const before = supOwedMatch[3], after = supOwedMatch[4];
+    items.push({ prod: 'Supplier Payable', qty: `Owed to ${supplierName}` });
+    financials.push({
+      type: 'warn',
+      label: '+' + amt + ' Added as Payable',
+      sub: `${supplierName} total payable: ${before} → ${after}`
+    });
+  }
+
   // 8. Financials & Store Valuation Shift Extraction
   const mStoreVal = str.match(/store\s+value\s+(?:is\s+)?([₦0-9,.]+)\s*→\s*([₦0-9,.]+)(?:\s*\(([^)]+)\))?/i);
   const mStoreValAdd = str.match(/store\s+value\s+([+-][₦0-9,.]+)/i);

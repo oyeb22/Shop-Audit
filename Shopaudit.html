@@ -657,6 +657,23 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
       <button id="tabSignup" onclick="setAuthMode('signup')">Create account</button>
     </div>
     <div id="refBanner" class="hidden" style="margin-bottom:14px"></div>
+    <div id="trustBox" class="hidden" style="margin-bottom:14px">
+      <button type="button" onclick="toggleTrustInfo()" style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--green)">
+        Why can I trust TheMonishop with my shop? <span id="trustChevron">▾</span>
+      </button>
+      <div id="trustDetails" class="hidden hint" style="margin-top:8px;line-height:1.55">
+        <ul style="margin:0;padding-left:18px">
+          <li style="margin-bottom:6px">We don't have your password, so nobody on our side can sign in to your account.</li>
+          <li style="margin-bottom:6px">We make our money from subscriptions, not from your shop's numbers. Your sales and profit aren't worth anything to us.</li>
+          <li style="margin-bottom:6px">If someone wanted to know what you sell, they could just walk into your shop and look. Nobody needs to register you, give you a free trial, and set up your whole inventory just to find out you stock rice and oil.</li>
+          <li style="margin-bottom:6px">We run many shops on this platform. Our job is keeping it running, not watching any one shop's profit.</li>
+          <li>We don't process your shop's sales or hold your shop's money. The only money that ever moves through TheMonishop is your own subscription fee.</li>
+        </ul>
+      </div>
+      <div style="margin-top:10px;padding:10px 12px;background:#FEF7E0;border:1px solid #FEEFC3;border-radius:9px;font-size:12.5px;color:#7A5200;font-weight:600;line-height:1.5">
+        Only pay your subscription inside the app. Never pay cash or transfer to a marketer or anyone claiming to represent TheMonishop. A payment made outside the app is at your own risk.
+      </div>
+    </div>
     <div id="nameField" class="field hidden">
       <label>Full name</label><input id="auName" placeholder="e.g. Amaka O.">
     </div>
@@ -948,9 +965,15 @@ function setAuthMode(m){ authMode=m;
   $('#tabSignup').classList.toggle('active',m==='signup');
   $('#nameField').classList.toggle('hidden',m!=='signup');
   $('#phoneField').classList.toggle('hidden',m!=='signup');
+  $('#trustBox').classList.toggle('hidden',m!=='signup');
   $('#forgotLink').classList.toggle('hidden',m!=='signin');
   $('#auBtn').textContent = m==='signin'?'Sign in':'Create account';
   $('#authMsg').textContent='';
+}
+function toggleTrustInfo(){
+  const d=$('#trustDetails');
+  d.classList.toggle('hidden');
+  $('#trustChevron').textContent = d.classList.contains('hidden') ? '▾' : '▴';
 }
 // shows, right on the signup form itself (before an account even exists),
 // whether a captured ?ref= code is real — so a new sign-up (and the
@@ -1013,7 +1036,15 @@ async function doAuth(){
     if(authMode==='signup'){
       const {data,error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,phone}}});
       if(error) throw error;
-      if(!data.session){ $('#authMsg').textContent='Account created. Check your email to confirm, then sign in.'; setAuthMode('signin'); $('#auBtn').disabled=false; return; }
+      if(!data.session){
+        // setAuthMode() clears #authMsg as part of switching tabs — call it
+        // FIRST, then set the message, or the confirmation instruction gets
+        // wiped in the same tick before it's ever painted (a real bug that
+        // shipped: new sign-ups never saw "check your email" at all)
+        setAuthMode('signin');
+        $('#authMsg').innerHTML='<b style="color:var(--green)">Account created!</b> We sent a confirmation link to '+esc(email)+'. Check your inbox, and your spam folder too just in case, then tap the link before signing in.';
+        $('#auBtn').disabled=false; return;
+      }
       S.user=data.user; afterLogin();
     }else{
       const {data,error}=await sb.auth.signInWithPassword({email,password:pass});
@@ -1028,6 +1059,7 @@ async function signOut(){ await sb.auth.signOut(); S.user=null; location.reload(
 /* ---------- after login: load businesses ---------- */
 async function afterLogin(){
   $('#authScreen').classList.add('hidden'); $('#app').classList.remove('hidden');
+  recordLoginAndShowLastSeen(); // fire and forget, never blocks getting into the app
   await loadBusinesses();
 }
 async function loadBusinesses(){
@@ -1137,6 +1169,44 @@ function getDeviceId(){
     localStorage.setItem('tm_device_id', id);
   }
   return id;
+}
+/* ---------- login history: "last seen" trust/security signal ----------
+   This app never persists a session (see persistSession:false above), so
+   showing the previous sign-in time and device right after a fresh sign-in
+   is the only real way someone could notice "I didn't sign in just now,
+   someone else might have my password." Needs migration-login-history.sql;
+   fails silently (console only) if that hasn't been run yet, since this
+   should never be allowed to block someone from getting into the app. */
+function deviceLabel(){
+  const ua=navigator.userAgent||'';
+  let os='Unknown device';
+  if(/android/i.test(ua)) os='Android';
+  else if(/iphone|ipad|ipod/i.test(ua)) os='iPhone/iPad';
+  else if(/windows/i.test(ua)) os='Windows';
+  else if(/mac os/i.test(ua)) os='Mac';
+  else if(/linux/i.test(ua)) os='Linux';
+  let browser='';
+  if(/edg\//i.test(ua)) browser='Edge';
+  else if(/chrome\//i.test(ua) && !/edg\//i.test(ua)) browser='Chrome';
+  else if(/firefox\//i.test(ua)) browser='Firefox';
+  else if(/safari\//i.test(ua) && !/chrome/i.test(ua)) browser='Safari';
+  return browser ? `${os} · ${browser}` : os;
+}
+const fmtLoginTime = t => new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+async function recordLoginAndShowLastSeen(){
+  if(!S.user) return;
+  try{
+    const {data:prev}=await sb.from('login_history').select('created_at,device_id,device_label')
+      .eq('user_id',S.user.id).order('created_at',{ascending:false}).limit(1);
+    const device_id=getDeviceId(), device_label=deviceLabel();
+    await sb.from('login_history').insert({user_id:S.user.id,device_id,device_label});
+    const last=prev && prev[0];
+    if(last){
+      const sameDevice=last.device_id===device_id;
+      const whereText=sameDevice?'from this device':'from '+(last.device_label||'another device');
+      toast(`Last signed in ${fmtLoginTime(last.created_at)} ${whereText}. If that was not you, change your password now.`, !sameDevice);
+    }
+  }catch(e){ console.error('login history failed (run migration-login-history.sql?):',e); }
 }
 let deviceOfflineAnchor = null;
 async function touchDeviceSession(){
@@ -8328,7 +8398,23 @@ function vProfile(v){
       <div class="field"><label>Email (sign-in only, can't be changed here)</label><input value="${esc(S.user.email)}" readonly style="background:#F3EFE3"></div>
       <button class="btn primary" onclick="saveProfile()">Save</button>
     </div>
+  </div>
+  <div class="card">
+    <div class="hd"><h2>Recent Sign-Ins</h2><span class="desc">If you see a time or device you do not recognize, change your password right away.</span></div>
+    <div class="bd tight" id="loginHistoryList"><div class="empty">Loading…</div></div>
   </div>`;
+  loadLoginHistory();
+}
+async function loadLoginHistory(){
+  const box=$('#loginHistoryList'); if(!box) return;
+  const {data,error}=await sb.from('login_history').select('*').eq('user_id',S.user.id).order('created_at',{ascending:false}).limit(8);
+  if(error){ box.innerHTML=`<div class="empty">Could not load sign-in history (run migration-login-history.sql if this persists).</div>`; return; }
+  if(!data||!data.length){ box.innerHTML=`<div class="empty">No sign-in history recorded yet.</div>`; return; }
+  const deviceId=getDeviceId();
+  box.innerHTML=`<table><tbody>${data.map(r=>`<tr>
+    <td class="num hint">${fmtLoginTime(r.created_at)}</td>
+    <td>${esc(r.device_label||'Unknown device')}${r.device_id===deviceId?' <span class="badge ok" style="margin-left:6px">This device</span>':''}</td>
+  </tr>`).join('')}</tbody></table>`;
 }
 async function saveProfile(){
   const full_name=$('#profName').value.trim();

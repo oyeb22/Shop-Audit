@@ -349,7 +349,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .custHit{text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:13.5px}
 .custHit:hover{border-color:var(--green);background:#F0F5F1}
 .custChosen{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid var(--green);background:#EFF5F1;border-radius:10px}
-.fab{position:fixed;right:18px;bottom:18px;z-index:95;background:var(--green);color:#fff;border-radius:99px;padding:12px 18px;font-weight:700;box-shadow:0 8px 24px -4px rgba(31,90,65,.6);display:none;align-items:center;gap:8px;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));z-index:95;background:var(--green);color:#fff;border-radius:99px;padding:12px 18px;font-weight:700;box-shadow:0 8px 24px -4px rgba(31,90,65,.6);display:none;align-items:center;gap:8px;cursor:pointer;transition:transform .12s,box-shadow .12s}
 .fab:active{transform:scale(.96)}
 .sandboxTaskHud{position:fixed;bottom:16px;left:16px;right:auto;z-index:90;width:min(340px,calc(100vw - 32px));background:var(--card);border:2px solid var(--gold);border-radius:16px;box-shadow:0 8px 30px rgba(23,21,15,.22);overflow:hidden;transition:all .2s ease}
 @media(max-width:860px){.fab.show{display:inline-flex}}
@@ -1094,6 +1094,13 @@ async function switchBiz(id){
 let pushInitDone=false, pushToken=null;
 async function savePushToken(){
   if(!pushToken||!S.biz||!S.user) return;
+  // only the most-recently-registered device should get push notifications
+  // for this user — drop any OTHER device's token first (same device
+  // registering for a second business keeps the same token, so this never
+  // touches that row), so switching phones stops notifying the old one
+  // instead of silently piling up every device ever signed in on
+  const {error:delErr}=await sb.from('push_tokens').delete().eq('user_id',S.user.id).neq('token',pushToken);
+  if(delErr) console.error('old push token cleanup failed:',delErr);
   const {error}=await sb.from('push_tokens').upsert(
     {business_id:S.biz.id,user_id:S.user.id,token:pushToken,platform:'android'},
     {onConflict:'user_id,token'});
@@ -1817,9 +1824,13 @@ function renderTourField(s,steps){
   el.scrollIntoView({block:'center'});
   const r=el.getBoundingClientRect();
   document.body.insertAdjacentHTML('beforeend',`<div class="tourSpot" id="tourSpot" style="top:${Math.max(0,r.top-6)}px;left:${Math.max(0,r.left-6)}px;width:${r.width+12}px;height:${r.height+12}px"></div>`);
-  const top=Math.min((window.innerHeight||800)-170,r.bottom+12);
   const isLastField=tourFieldIdx===s.fields.length-1;
-  document.body.insertAdjacentHTML('beforeend',`<div class="tourCallout" id="tourCallout" style="top:${Math.max(8,top)}px">
+  // placed at a rough guess first, then re-measured below once its real
+  // rendered height is known — a fixed "~170px tall" guess used to be hard-
+  // coded here, which routinely underestimated a long field explanation on
+  // a short phone screen, pushing the Next/Skip buttons off the bottom of
+  // the viewport entirely, unreachable (a real bug that shipped)
+  document.body.insertAdjacentHTML('beforeend',`<div class="tourCallout" id="tourCallout" style="top:${Math.max(8,r.bottom+12)}px">
     <div class="tourStepNum">${esc(s.title)} · field ${tourFieldIdx+1} of ${s.fields.length}</div>
     <p>${esc(f.text)}</p>
     <div class="tourBtns">
@@ -1830,6 +1841,16 @@ function renderTourField(s,steps){
       </div>
     </div>
   </div>`);
+  const callout=$('#tourCallout');
+  const maxTop=window.innerHeight-callout.offsetHeight-8;
+  callout.style.top=Math.max(8,Math.min(r.bottom+12,maxTop))+'px';
+  // even pinned to the very top, a very long explanation on a very short
+  // screen could still be taller than the viewport — cap it and let the
+  // text scroll internally instead of pushing the buttons off-screen again
+  if(callout.offsetHeight>window.innerHeight-16){
+    callout.style.maxHeight=(window.innerHeight-16)+'px';
+    callout.style.overflowY='auto';
+  }
 }
 function tourNext(){
   const s=tourSteps()[tourIdx];
@@ -2077,10 +2098,19 @@ async function vDashboard(v){
   if(salesRes.error) return err(salesRes.error);
   if(todayRes.error) return err(todayRes.error);
   if(monthRes.error) return err(monthRes.error);
-  const sales=salesRes.data, exps=expRes.data||[];
+  const exps=expRes.data||[];
   const sum=(arr,f)=>arr.reduce((a,x)=>a+f(x),0);
   const rev=s=>s.quantity*Number(s.unit_price), prof=s=>s.quantity*(Number(s.unit_price)-Number(s.unit_cost));
-  const dayS=todayRes.data, monS=monthRes.data;
+  // an admin can choose (Settings → Manager dashboard visibility) to hide
+  // shop-wide sales totals from managers — when that's on, every
+  // sales-derived figure below (today/month revenue, the 30-day history,
+  // top-items ranking) is scoped down to just what THIS manager personally
+  // sold, not the whole shop's. Net profit was already hidden from
+  // managers regardless of this setting (see the isMgr checks further down).
+  const scopeToOwn = S.role==='manager' && S.biz.hide_manager_totals;
+  const ownOnly = arr => scopeToOwn ? arr.filter(s=>s.created_by===S.user.id) : arr;
+  const sales=ownOnly(salesRes.data);
+  const dayS=ownOnly(todayRes.data), monS=ownOnly(monthRes.data);
   const dayExp=sum(exps.filter(e=>e.entry_date===t),e=>Number(e.amount));
   const monExp=sum(exps.filter(e=>e.entry_date>=m),e=>Number(e.amount));
   const lowItems=S.items.filter(i=>onHand(i.id)<=i.low_stock_threshold);
@@ -2169,7 +2199,7 @@ async function vDashboard(v){
       <div class="heroCard">
         <div>
           <div class="heroTop">
-            <span class="heroLabel">Today's Revenue</span>
+            <span class="heroLabel">${scopeToOwn?"Your Sales Today":"Today's Revenue"}</span>
             ${trendBadgeHtml}
           </div>
           <div class="heroAmount num">${money(todayRevenue)}</div>
@@ -2228,7 +2258,7 @@ async function vDashboard(v){
     <div class="dashGrid">
       <div class="dashStatCard">
         <div class="dashStatHead">
-          <span class="dashStatLabel">This Month</span>
+          <span class="dashStatLabel">${scopeToOwn?"Your Sales This Month":"This Month"}</span>
           <span class="dashStatIcon green">${icon('trend_up')}</span>
         </div>
         <div class="dashStatVal num">${money(monthRevenue)}</div>
@@ -2340,7 +2370,7 @@ async function vDashboard(v){
     <!-- Interactive Analytics & Performance Hub (Segmented Tabs) -->
     <div class="card" style="margin-top:20px">
       <div class="hd" style="flex-wrap:wrap;gap:12px">
-        <h2>Store Activity & Performance</h2>
+        <h2>${scopeToOwn?"Your Activity":"Store Activity &amp; Performance"}</h2>
         <div class="spacer"></div>
         <div class="dashNavTabs">
           <button class="dashNavBtn ${dashTab==='sales'?'active':''}" data-tab="sales" onclick="setDashTab('sales')">Daily Sales</button>
@@ -3929,6 +3959,32 @@ async function runReport(){
 
       <div class="card">
         <div class="hd">
+          <h2>Live Warehouse Inventory Valuation</h2>
+          <span class="desc">Current total value of stock currently on your shelves</span>
+        </div>
+        <div class="bd">
+          <div class="stats" style="margin-bottom:0">
+            <div class="stat">
+              <div class="label">At Purchase Cost</div>
+              <div class="value num">${money(stockCost)}</div>
+              <div class="sub">capital tied up in stock</div>
+            </div>
+            <div class="stat">
+              <div class="label">Conservative Retail Value</div>
+              <div class="value num">${money(stockLow)}</div>
+              <div class="sub">if sold at lowest tier mode</div>
+            </div>
+            <div class="stat good">
+              <div class="label">Max Potential Realization</div>
+              <div class="value num">${money(stockHigh)}</div>
+              <div class="sub">if sold at single unit retail</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="hd">
           <h2>Product Sales & Profit Contribution</h2>
           <span class="desc">${from} → ${to}</span>
           <div class="spacer"></div>
@@ -3960,32 +4016,6 @@ async function runReport(){
             </tbody>
           </table>`
           : '<div class="empty">No sales recorded during this date window.</div>'}
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="hd">
-          <h2>Live Warehouse Inventory Valuation</h2>
-          <span class="desc">Current total value of stock currently on your shelves</span>
-        </div>
-        <div class="bd">
-          <div class="stats" style="margin-bottom:0">
-            <div class="stat">
-              <div class="label">At Purchase Cost</div>
-              <div class="value num">${money(stockCost)}</div>
-              <div class="sub">capital tied up in stock</div>
-            </div>
-            <div class="stat">
-              <div class="label">Conservative Retail Value</div>
-              <div class="value num">${money(stockLow)}</div>
-              <div class="sub">if sold at lowest tier mode</div>
-            </div>
-            <div class="stat good">
-              <div class="label">Max Potential Realization</div>
-              <div class="value num">${money(stockHigh)}</div>
-              <div class="sub">if sold at single unit retail</div>
-            </div>
-          </div>
         </div>
       </div>`;
   } finally {
@@ -7131,6 +7161,12 @@ function vSettings(v){
       <input id="apPos" type="checkbox" ${S.approvalSettings?.pos!==false?'checked':''} style="width:auto"> POS transactions need approval</label>
     <button class="btn primary" onclick="saveApprovalSettings()">Save</button>
   </div></div>
+  <div class="card"><div class="hd"><h2>Manager dashboard visibility</h2><span class="desc">how much of the shop's numbers a manager sees</span></div><div class="bd">
+    <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
+      <input id="setHideManagerTotals" type="checkbox" ${S.biz.hide_manager_totals?'checked':''} style="width:auto"> Hide shop-wide sales totals from managers</label>
+    <p class="hint" style="margin-bottom:14px">Net profit is already hidden from managers by default. Turn this on and their Dashboard will only ever show what they personally sold, not the whole shop's revenue for the day or month.</p>
+    <button class="btn primary" onclick="saveHideManagerTotals()">Save</button>
+  </div></div>
   <div class="card"><div class="hd"><h2>Approval reminders</h2><span class="desc">nudge you again if something's still waiting</span></div><div class="bd">
     <p class="hint" style="margin-bottom:14px">If a manager's request sits unapproved, repeat the push notification at this interval until you respond to it.</p>
     <div class="field"><label>Remind me every</label>
@@ -7230,6 +7266,14 @@ async function saveApprovalSettings(){
   if(error) return err(error);
   S.approvalSettings=settings;
   toast('Approval settings saved');
+}
+async function saveHideManagerTotals(){
+  const hide_manager_totals=$('#setHideManagerTotals').checked;
+  const {error}=await sb.from('businesses').update({hide_manager_totals}).eq('id',S.biz.id);
+  if(error) return err(error);
+  S.biz.hide_manager_totals=hide_manager_totals;
+  const bz=S.businesses.find(b=>b.id===S.biz.id); if(bz) bz.hide_manager_totals=hide_manager_totals;
+  toast('Saved');
 }
 async function saveReminderSettings(){
   const hrsVal=$('#setReminderHrs').value;

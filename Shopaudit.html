@@ -349,7 +349,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
 .custHit{text-align:left;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--card);font-size:13.5px}
 .custHit:hover{border-color:var(--green);background:#F0F5F1}
 .custChosen{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border:1px solid var(--green);background:#EFF5F1;border-radius:10px}
-.fab{position:fixed;right:calc(18px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));z-index:95;background:var(--green);color:#fff;border-radius:99px;padding:12px 18px;font-weight:700;box-shadow:0 8px 24px -4px rgba(31,90,65,.6);display:none;align-items:center;gap:8px;cursor:pointer;transition:transform .12s,box-shadow .12s}
+.fab{position:fixed;right:calc(18px + env(safe-area-inset-right));bottom:calc(18px + env(safe-area-inset-bottom));z-index:45;background:var(--green);color:#fff;border-radius:99px;padding:12px 18px;font-weight:700;box-shadow:0 8px 24px -4px rgba(31,90,65,.6);display:none;align-items:center;gap:8px;cursor:pointer;transition:transform .12s,box-shadow .12s}
 .fab:active{transform:scale(.96)}
 .sandboxTaskHud{position:fixed;bottom:16px;left:16px;right:auto;z-index:90;width:min(340px,calc(100vw - 32px));background:var(--card);border:2px solid var(--gold);border-radius:16px;box-shadow:0 8px 30px rgba(23,21,15,.22);overflow:hidden;transition:all .2s ease}
 @media(max-width:860px){.fab.show{display:inline-flex}}
@@ -5896,6 +5896,23 @@ function vSell(v){
   const activeTab=S.saleTabs[S.activeSaleIdx];
   const cs=$('#custSearch'); if(cs) cs.value=activeTab.custName||'';
   const cp=$('#custPhone'); if(cp) cp.value=activeTab.custPhone||'';
+  setupCartFabVisibility();
+}
+// the floating "jump to cart" button is pinned bottom-right the whole time
+// the cart has items in it — once you've actually scrolled down to the real
+// Complete Sale button, it sits directly on top of part of it, swallowing
+// taps on whatever it physically covers (a real bug that shipped: "only
+// part of the button works"). Hide it specifically while the real button
+// is in view, instead of trying to guess a position that never overlaps.
+let cartFabObserver=null;
+function setupCartFabVisibility(){
+  if(cartFabObserver){ cartFabObserver.disconnect(); cartFabObserver=null; }
+  const btn=$('#checkoutBtn'), fab=$('#cartFab');
+  if(!btn || !fab || !window.IntersectionObserver) return;
+  cartFabObserver=new IntersectionObserver(entries=>{
+    fab.style.display = entries[0]?.isIntersecting ? 'none' : '';
+  },{threshold:0.1});
+  cartFabObserver.observe(btn);
 }
 // ---- multiple concurrent in-progress sales ("Sale 1", "Sale 2"...) so a
 // cashier isn't stuck on one customer who's still fumbling for payment —

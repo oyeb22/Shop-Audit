@@ -22,7 +22,7 @@
   --shadow:0 1px 2px rgba(23,21,15,.05),0 8px 24px -12px rgba(23,21,15,.18);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%}
+html,body{height:100%;overflow-x:hidden}
 body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);color:var(--ink);
   font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
   background-image:radial-gradient(circle at 12% -10%,rgba(31,90,65,.06),transparent 40%),radial-gradient(circle at 100% 0,rgba(169,119,46,.05),transparent 35%);}
@@ -374,7 +374,7 @@ td.r,th.r{text-align:right} td.c,th.c{text-align:center}
   .rtable thead{display:none}
   .rtable tr{padding:10px 0;border-bottom:1px solid var(--line)}
   .rtable tr:last-child{border-bottom:none}
-  .rtable td{border:none;padding:3px 10px;display:flex;justify-content:flex-start;align-items:center;gap:10px;text-align:left}
+  .rtable td{border:none;padding:3px 10px;display:flex;justify-content:flex-start;align-items:center;gap:10px;text-align:left;min-width:0}
   .rtable td[data-label]::before{content:attr(data-label);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);flex:0 0 auto;min-width:84px}
   .rtable td.itemname{padding-bottom:6px}
 }
@@ -471,7 +471,8 @@ input:focus,select:focus{outline:none;border-color:var(--green);box-shadow:0 0 0
   .rtable thead{display:none}
   .rtable tr{padding:12px 14px;border-bottom:1px solid var(--line);background:var(--card)}
   .rtable tr:last-child{border-bottom:none}
-  .rtable td{border:none;padding:5px 0;display:flex;justify-content:space-between;align-items:center;text-align:right;font-size:13.5px}
+  .rtable td{border:none;padding:5px 0;display:flex;justify-content:space-between;align-items:center;text-align:right;font-size:13.5px;min-width:0}
+  .rtable td>*{min-width:0;overflow-wrap:break-word}
   .rtable td[data-label]::before{content:attr(data-label);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;flex:0 0 auto;margin-right:12px}
   .rtable td.itemname{display:block;text-align:left;padding-bottom:6px;font-size:15px;border-bottom:1px dashed var(--line);margin-bottom:6px}
   .rtable td.itemname::before{display:none}
@@ -2056,7 +2057,7 @@ function filterDashStockTable(q){
     return `<tr>
       <td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td>
       <td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td>
-      <td class="r" data-label="Stock"><span class="badge ${b}">${stockShort(i)}</span></td>
+      <td class="r" data-label="Stock"><span class="badge wrap ${b}">${stockShort(i)}</span></td>
       <td class="r num" data-label="Sold (120d)">${breakdownQty(i, sold[i.id]||0)}</td>
     </tr>`;
   }).join('');
@@ -2325,7 +2326,7 @@ async function vDashboard(v){
                       <div class="cat">Alert below ${esc(breakdownQty(i, i.low_stock_threshold))}</div>
                     </td>
                     <td class="r">
-                      ${onHand(i.id)<=0 ? '<span class="badge out">Out of stock</span>' : `<span class="badge low">${stockShort(i)} left</span>`}
+                      ${onHand(i.id)<=0 ? '<span class="badge out">Out of stock</span>' : `<span class="badge wrap low">${stockShort(i)} left</span>`}
                     </td>
                     <td class="r" style="width:90px">
                       <button class="btn ghost sm" onclick="quickRestock('${i.id}')">Restock</button>
@@ -2470,7 +2471,7 @@ async function vDashboard(v){
                   <tr>
                     <td class="itemname">${esc(i.name)} <span class="cat">${esc(i.category||'')}</span></td>
                     <td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td>
-                    <td class="r" data-label="Stock"><span class="badge ${b}">${stockShort(i)}</span></td>
+                    <td class="r" data-label="Stock"><span class="badge wrap ${b}">${stockShort(i)}</span></td>
                     <td class="r num" data-label="Sold (120d)">${breakdownQty(i, sold[i.id]||0)}</td>
                   </tr>
                 `;
@@ -2774,7 +2775,7 @@ function rowItem(i){
     <td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${expiryBadge(i.id)}</td>
     <td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td>
     <td class="r" data-label="Modes">${modes.length?`<div class="modePills">${modes.map(m=>`<span class="modePill">${esc(m.name)}</span>`).join('')}</div>`:'<span class="hint">—</span>'}</td>
-    <td class="r" data-label="In stock"><span class="badge ${b}">${stockShort(i)}</span></td>
+    <td class="r" data-label="In stock"><span class="badge wrap ${b}">${stockShort(i)}</span></td>
     <td class="r"><button class="btn ghost sm" onclick='editItem("${i.id}")'>Edit</button></td>
   </tr>`;
 }
@@ -3441,7 +3442,7 @@ async function loadRecon(){
       </td>
       <td class="r num" data-label="Expected">${fmt(r.expected_qty)}</td>
       <td class="r num" data-label="Counted">${fmt(r.counted_qty)}</td>
-      <td class="r" data-label="Variance"><span class="badge ${b}">${esc(varText)}</span></td>
+      <td class="r" data-label="Variance"><span class="badge wrap ${b}">${esc(varText)}</span></td>
     </tr>`;
   }).join('')}</tbody></table>`:'<div class="empty">No audit counts recorded yet.</div>'}</div>`;
 }
@@ -4625,10 +4626,16 @@ function parseAuditRecord(action, detail, staffName){
   };
 
   // 1. Check if staff is mentioned in detail string: e.g. "by Bobo."
+  // Deliberately excludes anything with ₦, (, ) or / — a real staff name
+  // never contains those, but a POS transaction's "...received by
+  // transfer/card (₦100 charge kept)" does, and without this guard that
+  // whole phrase used to get misread as the staff name (a real bug that
+  // shipped: it also overflowed the audit row, since the staff name field
+  // is white-space:nowrap, visibly breaking the row's layout on mobile).
   const mStaff = str.match(/\bby\s+([^.]+?)(?:\.\s*|$|,)/i);
   if(mStaff && mStaff[1]){
     const candidate = mStaff[1].trim();
-    if(candidate.length > 1 && candidate.length < 40 && !/sold|remaining|received|in till|total|cost|counted/i.test(candidate)){
+    if(candidate.length > 1 && candidate.length < 40 && !/[₦()/]/.test(candidate) && !/sold|remaining|received|in till|total|cost|counted/i.test(candidate)){
       staff = candidate;
     }
   }
@@ -6010,7 +6017,7 @@ function productCard(i,showCat){
     <div class="pricerow">
       <div class="pbadges">
         ${showCat?`<span class="pcat">${esc(i.category||'General')}</span>`:''}
-        <span class="badge ${b}" style="font-size:10px;padding:1px 6px">${stockShort(i)}</span>
+        <span class="badge wrap ${b}" style="font-size:10px;padding:1px 6px;max-width:100%">${stockShort(i)}</span>
       </div>
       <div class="pprice num">${money(fullPackPrice(i))}</div>
     </div>
@@ -6509,7 +6516,7 @@ function vStockList(v){
 function stockRow(i){
   const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
   const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
-  return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge ${b}">${stockShort(i)}</span></td></tr>`;
+  return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge wrap ${b}">${stockShort(i)}</span></td></tr>`;
 }
 let stockListQuery='';
 function stockTableRows(){

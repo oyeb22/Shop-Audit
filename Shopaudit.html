@@ -1060,7 +1060,6 @@ async function signOut(){ await sb.auth.signOut(); S.user=null; location.reload(
 /* ---------- after login: load businesses ---------- */
 async function afterLogin(){
   $('#authScreen').classList.add('hidden'); $('#app').classList.remove('hidden');
-  recordLoginAndShowLastSeen(); // fire and forget, never blocks getting into the app
   await loadBusinesses();
 }
 async function loadBusinesses(){
@@ -1085,6 +1084,7 @@ async function switchBiz(id){
   maybeStartTour();
   touchDeviceSession().then(flushOfflineQueue);
   updateOfflineIndicator();
+  recordLoginHistory(); // fire and forget, tags this with the business now actually in view
 }
 
 /* ---------- push notifications (native only, no-op on the plain website) ----------
@@ -1201,20 +1201,16 @@ function deviceLabel(){
   return browser ? `${os} · ${browser}` : os;
 }
 const fmtLoginTime = t => new Date(t).toLocaleString('en-NG',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-async function recordLoginAndShowLastSeen(){
-  if(!S.user) return;
+// no toast to the signed-in user anymore — this quietly records the event
+// (for their own Profile → Recent Sign-Ins list, and for the platform
+// admin's per-business "last seen" on super-admin.html) without surfacing
+// anything to them at sign-in time; they can still check it themselves on
+// their Profile page whenever they want
+async function recordLoginHistory(){
+  if(!S.user || !S.biz) return;
   try{
-    const {data:prev}=await sb.from('login_history').select('created_at,device_id,device_label')
-      .eq('user_id',S.user.id).order('created_at',{ascending:false}).limit(1);
-    const device_id=getDeviceId(), device_label=deviceLabel();
-    await sb.from('login_history').insert({user_id:S.user.id,device_id,device_label});
-    const last=prev && prev[0];
-    if(last){
-      const sameDevice=last.device_id===device_id;
-      const whereText=sameDevice?'from this device':'from '+(last.device_label||'another device');
-      toast(`Last signed in ${fmtLoginTime(last.created_at)} ${whereText}. If that was not you, change your password now.`, !sameDevice);
-    }
-  }catch(e){ console.error('login history failed (run migration-login-history.sql?):',e); }
+    await sb.from('login_history').insert({user_id:S.user.id,business_id:S.biz.id,device_id:getDeviceId(),device_label:deviceLabel()});
+  }catch(e){ console.error('login history failed (run migration-login-history.sql / migration-login-history-business.sql?):',e); }
 }
 let deviceOfflineAnchor = null;
 async function touchDeviceSession(){

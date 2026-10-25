@@ -3735,18 +3735,69 @@ async function loadTillByStaff(){
       <tbody><tr><td class="itemname">Marketer Trainee (You)</td><td class="r num">${money(32000)}</td><td class="r num">${money(58000)}</td></tr></tbody></table>`;
     return;
   }
-  const {data,error}=await sb.rpc('till_breakdown_by_staff',{b:S.biz.id});
+  const [{data,error},{data:tsData,error:tsErr}]=await Promise.all([
+    sb.rpc('till_breakdown_by_staff',{b:S.biz.id}),
+    sb.rpc('till_summary',{b:S.biz.id})
+  ]);
   if(error){ $('#tillByStaff').innerHTML=`<div class="empty">Could not load: ${esc(error.message)}</div>`; return; }
   const rows=(data||[]).filter(r=>r.cash_amount>0||r.transfer_amount>0);
-  $('#tillByStaff').innerHTML = rows.length ? `<table><thead><tr><th>Name</th><th class="r">Cash</th><th class="r">Transfer</th></tr></thead>
-    <tbody>${rows.map(r=>`<tr><td>${esc(r.full_name)}</td><td class="r num">${money(r.cash_amount)}</td><td class="r num">${money(r.transfer_amount)}</td></tr>`).join('')}</tbody></table>`
-    : '<div class="empty">Nothing collected since the last clearing.</div>';
+  // the overall till balance (all-time sales minus all-time clearings, same
+  // number the stat cards above show) can legitimately exceed the sum of
+  // what's shown per staff member here — e.g. cash from a team member who's
+  // since been removed. Surface that gap explicitly instead of letting it
+  // silently vanish, which is exactly what a shop owner flagged as confusing
+  const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
+  const cashSum=rows.reduce((a,r)=>a+Number(r.cash_amount),0);
+  const transferSum=rows.reduce((a,r)=>a+Number(r.transfer_amount),0);
+  const unassignedCash=Math.max(0,Number(ts.cash_balance)-cashSum);
+  const unassignedTransfer=Math.max(0,Number(ts.transfer_balance)-transferSum);
+  const hasUnassigned=unassignedCash>1||unassignedTransfer>1;
+  if(!rows.length && !hasUnassigned){ $('#tillByStaff').innerHTML='<div class="empty">Nothing collected since the last clearing.</div>'; return; }
+  const clearBtn=(r,method,amount)=>amount>0
+    ? `<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap"><span class="num">${money(amount)}</span><button class="btn ghost sm" onclick='clearStaffHolding("${r.user_id}","${esc(r.full_name).replace(/'/g,"\\'")}","${method}",${amount})'>Clear</button></div>`
+    : `<span class="num">${money(0)}</span>`;
+  $('#tillByStaff').innerHTML = `<table class="rtable"><thead><tr><th>Name</th><th class="r">Cash</th><th class="r">Transfer</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td data-label="Name">${esc(r.full_name)}</td>
+      <td class="r" data-label="Cash">${clearBtn(r,'cash',Number(r.cash_amount))}</td>
+      <td class="r" data-label="Transfer">${clearBtn(r,'transfer',Number(r.transfer_amount))}</td>
+    </tr>`).join('')}
+    ${hasUnassigned?`<tr>
+      <td data-label="Name"><b>Unassigned</b><div class="hint">older cash, or from someone no longer on the team</div></td>
+      <td class="r num" data-label="Cash">${money(unassignedCash)}</td>
+      <td class="r num" data-label="Transfer">${money(unassignedTransfer)}</td>
+    </tr>`:''}</tbody></table>`;
 }
-// shared by the immediate path (clearTill) and the approval path (approveChange)
-async function applyTillClear(method,amount,note,before,actorId){
-  const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:note||null,created_by:actorId});
+// clears exactly ONE staff member's currently-shown holding (not a custom
+// amount) — the simplest, least error-prone version of "clear individually":
+// what you see next to their name is exactly what gets cleared and logged
+async function clearStaffHolding(userId,userName,method,amount){
+  if(!confirm(`Clear ${money(amount)} ${method} held by ${userName}?\n\nThis only resets ${userName}'s own count, not anyone else's.`)) return;
+  if(S._isSandbox){ toast('Individual clearing recorded in sandbox'); return; }
+  const note=`Individual clearing: ${userName}`;
+  if(needsApproval('till')){
+    const {error}=await sb.from('pending_changes').insert({business_id:S.biz.id,requested_by:S.user.id,
+      action_type:'till_clear',item_id:null,payload:{method,amount,note,before:amount,targetUserId:userId}});
+    if(error) return err(error);
+    toast('Sent for approval'); vTill($('#view'));
+    return;
+  }
+  const {error,auditErr}=await applyTillClear(method,amount,note,amount,S.user.id,userId);
+  if(error) return err(error);
+  if(auditErr) toast('Clearing recorded, but audit log entry failed: '+auditErr.message,true);
+  else toast('Clearing recorded');
+  vTill($('#view'));
+}
+// shared by the immediate path (clearTill/clearStaffHolding) and the approval
+// path (approveChange). targetUserId is optional — omitted/null clears the
+// whole till (resets every staff member's "since last clearing" clock, the
+// original behavior); set it to scope the clearing to just one person's
+// holding, leaving everyone else's clock untouched (see migration-till-
+// clear-per-person.sql for why this distinction exists).
+async function applyTillClear(method,amount,note,before,actorId,targetUserId){
+  const {error}=await sb.from('till_clearings').insert({business_id:S.biz.id,method,amount,note:note||null,created_by:actorId,user_id:targetUserId||null});
   if(error) return {error};
-  const detail=`${money(amount)} ${method} cleared, ${method} balance ${money(before)}→${money(before-amount)}${note?'. '+note:''}`;
+  const detail=`${money(amount)} ${method} cleared${targetUserId?' (individual)':''}, ${method} balance ${money(before)}→${money(before-amount)}${note?'. '+note:''}`;
   const {error:auditErr}=await sb.from('audit_log').insert({business_id:S.biz.id,user_id:actorId,action:'till_cleared',detail});
   if(auditErr) console.error('audit_log insert failed:',auditErr);
   return {error:null,auditErr,detail};
@@ -5293,8 +5344,14 @@ async function approveChange(id,silent){
       if(tsErr) throw tsErr;
       const ts=(tsData&&tsData[0])||{cash_balance:0,transfer_balance:0};
       const nowBefore=p.method==='cash'?Number(ts.cash_balance):Number(ts.transfer_balance);
+      // the before-balance safety check above is whole-till, even for an
+      // individual clearing (p.targetUserId) — re-checking just one
+      // person's current holding at approval time would need another
+      // till_breakdown_by_staff() round trip; the whole-till amount is
+      // still a meaningful floor (you can never approve clearing more than
+      // physically exists), just not scoped as tightly as the original request
       if(p.amount>nowBefore+1e-6) throw new Error(`Only ${money(nowBefore)} ${p.method} is in the till now`);
-      const {error,detail}=await applyTillClear(p.method,p.amount,p.note,nowBefore,c.requested_by);
+      const {error,detail}=await applyTillClear(p.method,p.amount,p.note,nowBefore,c.requested_by,p.targetUserId);
       if(error) throw error;
       applyDetail=detail;
     }else if(c.action_type==='pos_transaction'){
@@ -8509,25 +8566,45 @@ function vSupport(v){
   <div class="pageHero">
     <div>
       <div class="phTitle">${icon('chat','lg')} Merchant Help & Support</div>
-      <div class="phSubtitle">Direct WhatsApp assistance, helpline contact, and step-by-step troubleshooting for store owners and sales reps.</div>
+      <div class="phSubtitle">Send us a message right here and we'll reply in this same chat.</div>
     </div>
   </div>
 
-  <div class="stats" style="margin-bottom:20px">
-    <div class="stat good" style="cursor:pointer" onclick="window.open('https://wa.me/2348088334592?text=Hello%20TheMonishop%20Support%2C%20I%20need%20assistance%20with%20my%20shop','_blank')">
-      <div class="label">${icon('chat')} WhatsApp Support (Instant)</div>
-      <div class="value" style="font-size:18px;margin-top:8px">Chat on WhatsApp ➔</div>
-      <div class="sub">Average response: under 5 minutes</div>
+  <div class="card">
+    <div class="hd">
+      <h2>Live Chat</h2>
+      <span class="desc">Message TheMonishop support directly</span>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="loadSupportChat()">${icon('refresh')} Refresh</button>
     </div>
-    <div class="stat" style="cursor:pointer" onclick="window.open('tel:+2348088334592')">
-      <div class="label">${icon('settings')} Phone Helpline</div>
-      <div class="value" style="font-size:18px;margin-top:8px">+234 808 833 4592</div>
-      <div class="sub">Call Monday – Saturday 8am to 8pm</div>
+    <div class="bd">
+      <div id="supportChatThread" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:10px;padding:4px 2px;margin-bottom:12px">
+        <div class="empty">Loading…</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <input id="supportChatInput" class="custInput" placeholder="Type your message…" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();sendSupportMessage();}">
+        <button class="btn primary" onclick="sendSupportMessage()">Send</button>
+      </div>
     </div>
-    <div class="stat" style="cursor:pointer" onclick="window.open('mailto:hello@themonishop.com.ng')">
-      <div class="label">${icon('user')} Email Assistance</div>
-      <div class="value" style="font-size:18px;margin-top:8px">hello@themonishop.com.ng</div>
-      <div class="sub">Official support inbox</div>
+  </div>
+
+  <div class="card">
+    <div class="hd"><h2>Other ways to reach us</h2></div>
+    <div class="bd">
+      <div class="stats" style="margin-bottom:0">
+        <div class="stat" style="cursor:pointer" onclick="window.open('https://wa.me/2348088334592?text=Hello%20TheMonishop%20Support%2C%20I%20need%20assistance%20with%20my%20shop','_blank')">
+          <div class="label">${icon('chat')} WhatsApp</div>
+          <div class="value" style="font-size:16px;margin-top:6px">Chat on WhatsApp ➔</div>
+        </div>
+        <div class="stat" style="cursor:pointer" onclick="window.open('tel:+2348088334592')">
+          <div class="label">${icon('settings')} Phone</div>
+          <div class="value" style="font-size:16px;margin-top:6px">+234 808 833 4592</div>
+        </div>
+        <div class="stat" style="cursor:pointer" onclick="window.open('mailto:hello@themonishop.com.ng')">
+          <div class="label">${icon('user')} Email</div>
+          <div class="value" style="font-size:16px;margin-top:6px">hello@themonishop.com.ng</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -8574,6 +8651,37 @@ function vSupport(v){
     </div>
   </div>
   `;
+  loadSupportChat();
+}
+async function loadSupportChat(){
+  const box=$('#supportChatThread'); if(!box || !S.biz) return;
+  const {data,error}=await sb.from('support_messages').select('*').eq('business_id',S.biz.id).order('created_at',{ascending:true});
+  if(error){ box.innerHTML=`<div class="empty">Could not load messages (run migration-support-chat.sql if this persists).</div>`; return; }
+  if(!data||!data.length){
+    box.innerHTML='<div class="empty">No messages yet. Send one below and we\'ll reply right here.</div>';
+  }else{
+    box.innerHTML=data.map(m=>{
+      const mine=m.sender==='user';
+      return `<div style="align-self:${mine?'flex-end':'flex-start'};max-width:80%;background:${mine?'var(--green)':'#EFE8DA'};color:${mine?'#fff':'var(--ink)'};padding:9px 13px;border-radius:14px;${mine?'border-bottom-right-radius:4px':'border-bottom-left-radius:4px'}">
+        <div style="font-size:13.5px;white-space:pre-wrap;overflow-wrap:break-word">${esc(m.message)}</div>
+        <div style="font-size:10.5px;opacity:.75;margin-top:3px">${new Date(m.created_at).toLocaleString('en-NG',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}${mine?'':' · TheMonishop'}</div>
+      </div>`;
+    }).join('');
+    box.scrollTop=box.scrollHeight;
+  }
+  // mark admin replies as read now that the shop owner is actually looking
+  const hasUnread=(data||[]).some(m=>m.sender==='admin' && !m.read_by_user);
+  if(hasUnread) await sb.from('support_messages').update({read_by_user:true}).eq('business_id',S.biz.id).eq('sender','admin').eq('read_by_user',false);
+}
+async function sendSupportMessage(){
+  const input=$('#supportChatInput'); const message=input?.value.trim();
+  if(!message || !S.biz || !S.user) return;
+  input.disabled=true;
+  const {error}=await sb.from('support_messages').insert({business_id:S.biz.id,sender_user_id:S.user.id,sender:'user',message});
+  input.disabled=false;
+  if(error) return err(error);
+  input.value='';
+  loadSupportChat();
 }
 </script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"a1ec090c546840f7936ee948131f1fe8","r":1,"spa":2}' crossorigin="anonymous"></script>

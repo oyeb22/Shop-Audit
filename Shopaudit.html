@@ -30,8 +30,8 @@ body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);c
    Android WebViews (shows as a line through the whole amount) — redirect
    just that one character to a reliable system font, everything else in
    these families is untouched */
-@font-face{font-family:'Hanken Grotesk';src:local('Noto Sans'),local('Roboto'),local('Arial');unicode-range:U+20A6;}
-@font-face{font-family:'Fraunces';src:local('Noto Sans'),local('Roboto'),local('Arial');unicode-range:U+20A6;}
+@font-face{font-family:'Hanken Grotesk';src:local('Noto Sans'),local('Google Sans'),local('Roboto'),local('Droid Sans'),local('Segoe UI'),local('Arial'),local('Helvetica'),local('Liberation Sans'),local('DejaVu Sans');unicode-range:U+20A6;}
+@font-face{font-family:'Fraunces';src:local('Noto Sans'),local('Google Sans'),local('Roboto'),local('Droid Sans'),local('Segoe UI'),local('Arial'),local('Helvetica'),local('Liberation Sans'),local('DejaVu Sans');unicode-range:U+20A6;}
 h1,h2,h3,.brand{font-family:'Fraunces',serif}
 a{color:var(--green);text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
@@ -6541,7 +6541,7 @@ function vStockList(v){
 function stockRow(i){
   const oh=onHand(i.id),b=oh<=0?'out':oh<=i.low_stock_threshold?'low':'ok';
   const modeLines=itemModes(i).map(m=>`<div class="cat">${esc(m.name)}: ${money(m.price)}</div>`).join('');
-  return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num">${money(fullPackPrice(i))}</td><td class="r"><span class="badge wrap ${b}">${stockShort(i)}</span></td></tr>`;
+  return `<tr><td class="itemname">${esc(i.name)}<div class="cat">${esc(i.category||'')}</div>${modeLines}${expiryBadge(i.id)}</td><td class="r num" data-label="Pack price">${money(fullPackPrice(i))}</td><td class="r" data-label="Stock"><span class="badge wrap ${b}">${stockShort(i)}</span></td></tr>`;
 }
 let stockListQuery='';
 function stockTableRows(){

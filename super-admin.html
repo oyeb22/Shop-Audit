@@ -215,6 +215,7 @@ async function afterSignIn(){
   }
   $('#authScreen').classList.add('hidden');
   $('#dash').classList.remove('hidden');
+  loadLastSeen();
   renderBusinesses(bizData||[]);
   loadPricingPlans();
   loadSettings();
@@ -249,18 +250,46 @@ function bizStatus(b){
 }
 
 let BIZ_ROWS=[];
+// keyed by business_id → most recent login_history timestamp across every
+// user on that business's team, so you can spot a dormant shop worth
+// messaging without the shop's own users ever seeing a "last seen" notice
+// themselves (that's deliberately not shown to them — see recordLoginHistory()
+// in latestshopaudit.html). Loaded separately from platform_overview() so a
+// slow/missing migration-login-history-business.sql never blocks the main
+// business list from rendering — it just shows "—" until that catches up.
+let LAST_SEEN={};
+async function loadLastSeen(){
+  const {data,error}=await sb.rpc('platform_business_last_seen');
+  if(error){ console.error('platform_business_last_seen failed (run migration-login-history-business.sql?):',error); return; }
+  LAST_SEEN={};
+  (data||[]).forEach(r=>{ LAST_SEEN[r.business_id]=r.last_seen_at; });
+  renderBusinesses(BIZ_ROWS);
+}
+function lastSeenInfo(bizId){
+  const ts=LAST_SEEN[bizId];
+  if(!ts) return {text:'Never', cls:'zero'};
+  const days=Math.floor((Date.now()-new Date(ts).getTime())/86400000);
+  if(days<1) return {text:'Today', cls:'ok'};
+  if(days===1) return {text:'Yesterday', cls:'ok'};
+  if(days<14) return {text:`${days}d ago`, cls:'ok'};
+  if(days<30) return {text:`${days}d ago`, cls:'gold'};
+  const months=Math.floor(days/30);
+  return {text:`${months}mo ago`, cls:'zero'};
+}
 function renderBusinesses(rows){
   BIZ_ROWS=rows;
   $('#bizTable').innerHTML = rows.length ? `<table><thead><tr>
-    <th>Name</th><th>Admin</th><th>Phone</th><th>Status</th><th>Joined</th><th>Referral code</th><th>Members</th><th>Items</th><th></th>
+    <th>Name</th><th>Admin</th><th>Phone</th><th>Status</th><th>Joined</th><th>Last seen</th><th>Referral code</th><th>Members</th><th>Items</th><th></th>
   </tr></thead><tbody>${rows.map(b=>{
     const s=bizStatus(b);
+    const ls=lastSeenInfo(b.business_id);
     return `<tr>
     <td>${b.parent_business_id?'↳ ':''}${esc(b.business_name)}${b.parent_business_id?`<div class="hint">Branch of ${esc(b.parent_business_name||'—')}</div>`:''}</td>
     <td>${esc(b.admin_name||b.admin_email||'')}</td>
     <td>${b.admin_phone?esc(b.admin_phone):'<span class="hint">—</span>'}</td>
     <td><span class="badge ${s.cls}">${s.label}</span>${s.detail?`<div class="hint">${esc(s.detail)}</div>`:''}</td>
     <td>${fmtD(b.created_at)}</td>
+    <td><span class="badge ${ls.cls}">${ls.text}</span></td>
     <td>${esc(b.referral_code||'')}</td>
     <td>${b.member_count}</td>
     <td>${b.item_count}</td>

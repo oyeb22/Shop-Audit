@@ -1077,7 +1077,7 @@ async function loadBusinesses(){
 async function switchBiz(id){
   S.biz=S.businesses.find(b=>b.id===id); S.role=S.biz._role; localStorage.setItem('lastBiz',id);
   S.cart=[]; S.payMode='cash';
-  $('#rolePill').textContent=S.role; $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':S.role==='manager'?' mgr':'');
+  $('#rolePill').textContent=roleLabel(S.role); $('#rolePill').className='rolepill'+(S.role==='receptionist'?' recept':S.role==='manager'?' mgr':'');
   S.tab = (S.role==='admin'||S.role==='manager')?'dashboard':'sell';
   buildNav(); await loadData(); render();
   subscribeRealtime();
@@ -1516,6 +1516,14 @@ function waNumber(phone){
   else if(n.length===10) n='234'+n;
   return n;
 }
+// 'receptionist' stays the stored role value everywhere internally (RLS,
+// RPC params, join_requests.requested_role, business_members.role) — this
+// only maps it to the display name shown to people ("Sales Rep"), so the
+// data model and every permission check are completely untouched by the
+// rename.
+function roleLabel(role){
+  return role==='receptionist' ? 'Sales Rep' : role==='manager' ? 'Manager' : role==='admin' ? 'Admin' : (role||'');
+}
 
 /* ---------- navigation ---------- */
 function buildNav(){
@@ -1722,7 +1730,7 @@ const TOUR_STEPS={
       'Log rent, transport, repairs, anything that isn\'t stock — this is what makes Dashboard/Reports profit numbers real, not just revenue.'],fields:EXPENSE_FIELDS},
     {tab:'members',title:'Team',points:[
       'Your invite code is here — share it and new staff land as a pending request.',
-      'Approve them as Manager or Receptionist, or promote/demote anyone already on the team.']},
+      'Approve them as Manager or Sales Rep, or promote/demote anyone already on the team.']},
     {tab:'settings',title:'Settings',points:[
       'See your plan/trial status and renew from here.',
       'Set WhatsApp message templates, and choose which manager actions (items, restock, reconcile, till) need your approval versus happen instantly.'],fields:SETTINGS_FIELDS},
@@ -1970,7 +1978,7 @@ async function renderNoBiz(){
     <a class="btn primary" href="marketer.html">Open marketer dashboard</a>
   </div></div>` : '';
   const pendingHtml = (pending&&pending.length) ? `<div class="card"><div class="hd"><h2>Waiting for approval</h2></div><div class="bd">
-    ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(r.requested_role)}</b> is pending. The admin needs to approve it before you get access.</p>`).join('')}
+    ${pending.map(r=>`<p class="hint" style="margin-bottom:8px">Your request to join <b>${esc(r.business?.name||'this business')}</b> as <b>${esc(roleLabel(r.requested_role))}</b> is pending. The admin needs to approve it before you get access.</p>`).join('')}
   </div></div>` : '';
   const refCode=localStorage.getItem('themonishop_ref')||'';
   const referralField = rs?.enabled ? `<div class="field"><label>Referral code (optional)</label><input id="nbRef" value="${esc(refCode)}" placeholder="e.g. 7F3A9C" style="text-transform:uppercase"></div>` : '';
@@ -4443,7 +4451,7 @@ async function vMembers(v){
   <div class="pageHero">
     <div>
       <div class="phTitle">${icon('users','lg')} Team & Access Governance</div>
-      <div class="phSubtitle">Manage cashiers, managers, role permissions, and store access keys.</div>
+      <div class="phSubtitle">Manage sales reps, managers, role permissions, and store access keys.</div>
     </div>
   </div>
 
@@ -4515,12 +4523,12 @@ async function vMembers(v){
         </div>
       </td>
       <td data-label="Role">
-        <span class="rolepill ${m.role==='receptionist'?'recept':m.role==='manager'?'mgr':''}">${m.role}</span>
+        <span class="rolepill ${m.role==='receptionist'?'recept':m.role==='manager'?'mgr':''}">${roleLabel(m.role)}</span>
       </td>
       <td class="r" data-label="Actions">${m.is_owner?'<span class="hint">Primary Admin</span>':`
         <div style="display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
           ${m.role==='receptionist'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","manager")'>Promote to Manager</button>`:''}
-          ${m.role==='manager'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","receptionist")'>Set as Cashier</button>`:''}
+          ${m.role==='manager'?`<button class="btn ghost sm" onclick='setMemberRole("${m.user_id}","receptionist")'>Set as Sales Rep</button>`:''}
           <button class="btn danger sm" onclick='removeMember("${m.user_id}","${esc(m.full_name||'this member')}")'>Revoke Access</button>
         </div>`}
       </td>
@@ -4538,9 +4546,9 @@ async function loadJoinRequests(){
   const box=$('#joinReqList'); if(!box) return;
   box.outerHTML = `<div id="joinReqList">${data.length?`<table><tbody>${data.map(r=>`<tr>
     <td class="itemname">${esc(r.full_name||r.email||'(no name)')}<div class="cat">${esc(r.email||'')}</div></td>
-    <td><span class="rolepill">requested ${esc(r.requested_role)}</span></td>
+    <td><span class="rolepill">requested ${esc(roleLabel(r.requested_role))}</span></td>
     <td class="r"><div style="display:flex;flex-direction:column;gap:6px;align-items:stretch;width:fit-content;margin-left:auto">
-      <button class="btn ghost sm" onclick='approveJoinRequest("${r.id}","receptionist")'>Approve as Receptionist</button>
+      <button class="btn ghost sm" onclick='approveJoinRequest("${r.id}","receptionist")'>Approve as Sales Rep</button>
       <button class="btn primary sm" onclick='approveJoinRequest("${r.id}","manager")'>Approve as Manager</button>
       <button class="btn danger sm" onclick='rejectJoinRequest("${r.id}")'>Reject</button>
     </div></td>
@@ -7060,7 +7068,7 @@ function vSettings(v){
       </div>
       <div class="bd" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:220px">
-          You have full unlimited access: unlimited inventory items, receipt printing, multi-user cashiers, and analytics.
+          You have full unlimited access: unlimited inventory items, receipt printing, multi-user team accounts, and analytics.
         </div>
         <button class="btn primary" onclick="openUpgrade()" style="padding:11px 22px">
           ${icon('sparkle')} Upgrade Plan
@@ -7075,7 +7083,7 @@ function vSettings(v){
       </div>
       <div class="bd" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
         <div style="flex:1;min-width:220px">
-          Free plan limit: ${FREE_ITEM_CAP} items max, single-user only. Upgrading unlocks unlimited products, multi-cashier management, and automated WhatsApp tools.
+          Free plan limit: ${FREE_ITEM_CAP} items max, single-user only. Upgrading unlocks unlimited products, multi-user team management, and automated WhatsApp tools.
         </div>
         <button class="btn primary" onclick="openUpgrade()" style="padding:11px 22px">
           ${icon('sparkle')} Upgrade Now
@@ -7085,7 +7093,7 @@ function vSettings(v){
     if(!S.biz.paid_until) return `
     <div class="card" style="background:rgba(31,90,65,.03)">
       <div class="bd" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <div style="flex:1"><b>TheMonishop Pro (Active)</b><div class="hint">Unlimited products, multi-user cashiers, and continuous cloud backup.</div></div>
+        <div style="flex:1"><b>TheMonishop Pro (Active)</b><div class="hint">Unlimited products, multi-user team accounts, and continuous cloud backup.</div></div>
       </div>
     </div>`;
     if(planActive()) return `
@@ -7149,7 +7157,7 @@ function vSettings(v){
 
       <div class="formSection" style="margin-bottom:0">
         <div class="fsTitle">🧪 Training Sandbox</div>
-        <p class="hint" style="margin-bottom:12px">Train admins, managers or receptionists on an isolated demo shop without touching real data — each role practices exactly the everyday tasks that role actually does, and generates a verified certificate screenshot at the end.</p>
+        <p class="hint" style="margin-bottom:12px">Train admins, managers or sales reps on an isolated demo shop without touching real data — each role practices exactly the everyday tasks that role actually does, and generates a verified certificate screenshot at the end.</p>
         <button class="btn primary sm" onclick="openSandboxRolePicker()" style="display:inline-flex;align-items:center;gap:6px">
           ${icon('sparkle')} Open Training Sandbox
         </button>
@@ -7169,10 +7177,10 @@ function vSettings(v){
     <p class="hint">Sends a push to you and your managers once a tracked batch is within 7 days of its expiry date (checked once a day). Both need the app open at least once so your device is registered.</p>
   </div></div>
   <div class="card"><div class="hd"><h2>Shop</h2></div><div class="bd">
-    <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span>. Share it from the <b>Team</b> tab to add receptionists.</p>
+    <p class="hint">Invite code: <span class="code">${esc(S.biz.invite_code)}</span>. Share it from the <b>Team</b> tab to add sales reps.</p>
   </div></div>
   <div class="card"><div class="hd"><h2>Manager approvals</h2><span class="desc">what a manager can do immediately vs. needs your approval first</span></div><div class="bd">
-    <p class="hint" style="margin-bottom:14px">All on by default. Everything a manager does waits for you. Turn any of these off to let managers do that one thing immediately instead. This never affects admins, and receptionists don't have approvals at all.</p>
+    <p class="hint" style="margin-bottom:14px">All on by default. Everything a manager does waits for you. Turn any of these off to let managers do that one thing immediately instead. This never affects admins, and sales reps don't have approvals at all.</p>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
       <input id="apItems" type="checkbox" ${S.approvalSettings?.items!==false?'checked':''} style="width:auto"> Item changes need approval</label>
     <label style="display:flex;align-items:center;gap:10px;font-weight:600;margin-bottom:10px">
@@ -7435,8 +7443,8 @@ const SANDBOX_ROLES = {
     taskIds: ['explore_dash','add_item','restock','cash_sale','transfer_sale','credit_sale','settle_debt','reconcile','pos_agency','clear_till','expense']
   },
   receptionist: {
-    label: 'Receptionist / Cashier',
-    blurb: 'Exactly what a cashier does all day: selling in cash, transfer and credit, collecting debt payments, and agency banking.',
+    label: 'Sales Rep',
+    blurb: 'Exactly what a Sales Rep does all day: selling in cash, transfer and credit, collecting debt payments, and agency banking.',
     taskIds: ['cash_sale','transfer_sale','credit_sale','settle_debt','pos_agency']
   }
 };
@@ -7598,7 +7606,7 @@ function exitSandbox(){
     window._REAL_S_STATE = null;
   }
   const rolePill = document.getElementById('rolePill');
-  if(rolePill) rolePill.textContent = S.role || '';
+  if(rolePill) rolePill.textContent = roleLabel(S.role);
 
   buildNav();
   loadData().then(()=>render());
@@ -7835,7 +7843,7 @@ function openSandboxCertificate(){
   const todayStr = new Date().toLocaleDateString('en-NG', { day:'2-digit', month:'short', year:'numeric' });
   const tasks = sandboxTasks();
   const roleInfo = SANDBOX_ROLES[S.role] || SANDBOX_ROLES.admin;
-  const qualification = {admin:'Store Owner / Admin',manager:'Shop Manager',receptionist:'Sales Cashier'}[S.role] || 'Store Staff';
+  const qualification = {admin:'Store Owner / Admin',manager:'Shop Manager',receptionist:'Sales Rep'}[S.role] || 'Store Staff';
   const skillAreas = tasks.map(t=>SANDBOX_TASK_TITLES[t.id].replace(/ \(.*\)$/,'')).join(', ');
 
   modal.innerHTML = `
@@ -7934,11 +7942,12 @@ function txAuditRange(range){
 }
 
 async function vTxAudit(v){
+  const ownOnly=S.role==='receptionist';
   v.innerHTML = `
   <div class="pageHero">
     <div>
-      <div class="phTitle">${icon('receipt','lg')} Transaction Audit & Investigation</div>
-      <div class="phSubtitle">When register money does not tally, investigate every transaction across sales, debt payments, clearings, and expenses on a chronological timeline.</div>
+      <div class="phTitle">${icon('receipt','lg')} ${ownOnly?'My Transaction History':'Transaction Audit & Investigation'}</div>
+      <div class="phSubtitle">${ownOnly?'Every sale, debt payment, and agency banking transaction you personally recorded, on a chronological timeline.':'When register money does not tally, investigate every transaction across sales, debt payments, clearings, and expenses on a chronological timeline.'}</div>
     </div>
   </div>
 
@@ -7989,12 +7998,12 @@ async function vTxAudit(v){
       </div>
 
       <div class="formGrid">
-        <div class="field">
+        ${ownOnly?'':`<div class="field">
           <label>Sales Rep / Staff</label>
           <select id="txStaff" onchange="txAuditFilter.staff=this.value;runTxAudit();">
-            <option value="all">All Cashiers & Staff</option>
+            <option value="all">All Sales Reps & Staff</option>
           </select>
-        </div>
+        </div>`}
         <div class="field">
           <label>Sort Order</label>
           <select id="txSort" onchange="txAuditFilter.sort=this.value;runTxAudit();">
@@ -8025,7 +8034,7 @@ async function vTxAudit(v){
   </div>
   `;
 
-  loadTxStaffList();
+  if(!ownOnly) loadTxStaffList();
   runTxAudit();
 }
 
@@ -8039,7 +8048,7 @@ async function loadTxStaffList(){
   }
   const sel = $('#txStaff');
   if(sel){
-    sel.innerHTML = '<option value="all">All Cashiers & Staff</option>' +
+    sel.innerHTML = '<option value="all">All Sales Reps & Staff</option>' +
       members.map(m => `<option value="${m.user_id}">${esc(m.full_name || 'Staff member')}</option>`).join('');
   }
 }
@@ -8076,13 +8085,18 @@ async function runTxAudit(){
     rawSupPay = [];
     members = [{ user_id: 'sb_u1', full_name: 'Marketer Trainee (You)' }];
   } else {
+    // a receptionist only ever sees their OWN transaction history here, never
+    // the whole shop's — scope every source query to created_by before it
+    // ever reaches the client, not just hide it in the UI afterward
+    const ownOnly = S.role==='receptionist';
+    const scope = q => ownOnly ? q.eq('created_by', S.user.id) : q;
     const [sRes, ctxRes, tcRes, expRes, posRes, supPayRes, suppliersRes, memRes] = await Promise.all([
-      sb.from('sales').select('*').eq('business_id', S.biz.id).gte('entry_date', from).lte('entry_date', to).order('created_at', { ascending: false }),
-      sb.from('customer_transactions').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
-      sb.from('till_clearings').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
-      sb.from('expenditures').select('*').eq('business_id', S.biz.id).gte('entry_date', from).lte('entry_date', to).order('created_at', { ascending: false }),
-      sb.from('pos_transactions').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
-      sb.from('supplier_transactions').select('*').eq('business_id', S.biz.id).eq('type','payment').gte('created_at', from).lt('created_at', nextDay(to)).order('created_at', { ascending: false }),
+      scope(sb.from('sales').select('*').eq('business_id', S.biz.id).gte('entry_date', from).lte('entry_date', to)).order('created_at', { ascending: false }),
+      scope(sb.from('customer_transactions').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to))).order('created_at', { ascending: false }),
+      scope(sb.from('till_clearings').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to))).order('created_at', { ascending: false }),
+      scope(sb.from('expenditures').select('*').eq('business_id', S.biz.id).gte('entry_date', from).lte('entry_date', to)).order('created_at', { ascending: false }),
+      scope(sb.from('pos_transactions').select('*').eq('business_id', S.biz.id).gte('created_at', from).lt('created_at', nextDay(to))).order('created_at', { ascending: false }),
+      scope(sb.from('supplier_transactions').select('*').eq('business_id', S.biz.id).eq('type','payment').gte('created_at', from).lt('created_at', nextDay(to))).order('created_at', { ascending: false }),
       sb.from('suppliers').select('id,name').eq('business_id', S.biz.id),
       sb.rpc('list_members', { b: S.biz.id })
     ]);
@@ -8418,7 +8432,7 @@ function openTxAuditReceipt(idx){
 
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap">
         <div>Time: <b>${fmtTime(txn.created_at)}</b></div>
-        <div>Cashier: <b>${esc(staff)}</b></div>
+        <div>Sales Rep: <b>${esc(staff)}</b></div>
       </div>
       <div style="font-size:13px;color:var(--muted);margin-bottom:16px">
         Customer: <b>${esc(custName)}</b>
@@ -8499,7 +8513,7 @@ function vSupport(v){
   <div class="pageHero">
     <div>
       <div class="phTitle">${icon('chat','lg')} Merchant Help & Support</div>
-      <div class="phSubtitle">Direct WhatsApp assistance, helpline contact, and step-by-step troubleshooting for store owners and cashiers.</div>
+      <div class="phSubtitle">Direct WhatsApp assistance, helpline contact, and step-by-step troubleshooting for store owners and sales reps.</div>
     </div>
   </div>
 
@@ -8530,21 +8544,21 @@ function vSupport(v){
       <div class="formSection">
         <div class="fsTitle">${icon('cash')} 1. My Money in Till Does Not Tally with Sales. What Should I Do?</div>
         <p class="hint" style="line-height:1.55;color:var(--ink)">
-          Open the new <b>Transaction Audit</b> tab from the menu. It lists every transaction (Sales, Debt collections, Clearings, and Expenses) chronologically with the responsible cashier attached. Check if money was removed from the drawer for a bank deposit or emergency shop expense without being recorded under <b>Till Clearing</b> or <b>Expenses</b>.
+          Open the new <b>Transaction Audit</b> tab from the menu. It lists every transaction (Sales, Debt collections, Clearings, and Expenses) chronologically with the responsible sales rep attached. Check if money was removed from the drawer for a bank deposit or emergency shop expense without being recorded under <b>Till Clearing</b> or <b>Expenses</b>.
         </p>
       </div>
 
       <div class="formSection">
         <div class="fsTitle">${icon('sparkle')} 2. How Do I Train My Staff or Test the App Safely?</div>
         <p class="hint" style="line-height:1.55;color:var(--ink)">
-          Open the menu and tap <b>Training Sandbox</b>, then pick the role you want to train (Admin, Manager or Receptionist) — each one gets its own curriculum of everyday tasks for that job, on a 100% isolated demo store. Your staff can practice freely without altering or touching your real inventory or balances.
+          Open the menu and tap <b>Training Sandbox</b>, then pick the role you want to train (Admin, Manager or Sales Rep) — each one gets its own curriculum of everyday tasks for that job, on a 100% isolated demo store. Your staff can practice freely without altering or touching your real inventory or balances.
         </p>
       </div>
 
       <div class="formSection">
         <div class="fsTitle">${icon('users')} 3. How Do I Invite Staff and Control Their Access?</div>
         <p class="hint" style="line-height:1.55;color:var(--ink)">
-          Go to the <b>Team & Staff</b> tab, copy your store's 6-digit invite passcode, and give it to your employee. When they create an account and select "Join a Business", approve them as <b>Receptionist / Cashier</b> (who can only sell and view items) or <b>Manager</b>.
+          Go to the <b>Team & Staff</b> tab, copy your store's 6-digit invite passcode, and give it to your employee. When they create an account and select "Join a Business", approve them as <b>Sales Rep</b> (who can only sell and view items) or <b>Manager</b>.
         </p>
       </div>
 

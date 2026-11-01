@@ -6898,17 +6898,32 @@ async function vSuppliers(v){
   S._supplierQ=S._supplierQ||'';
   const owingList=S.suppliers.filter(s=>supplierBalanceOf(s.id)>0);
   const totalPayable=S.suppliers.reduce((a,s)=>a+supplierBalanceOf(s.id),0);
+  let totalPaid=0;
+  {
+    const {data:paidRows}=await sb.from('supplier_transactions').select('amount').eq('business_id',S.biz.id).eq('type','payment');
+    totalPaid=(paidRows||[]).reduce((a,r)=>a+Number(r.amount||0),0);
+  }
 
   v.innerHTML=`
   <div class="pageHero">
     <div>
       <div class="phTitle">${icon('building','lg')} Suppliers & Payables</div>
-      <div class="phSubtitle">Track what the shop owes suppliers for stock bought on credit, and record payments as they're made.</div>
+      <div class="phSubtitle">This is a money ledger for stock bought on credit — it does not touch your actual stock counts.</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:18px;background:#F7F3E9">
+    <div class="bd" style="font-size:14px;line-height:1.6">
+      <strong>How this page works:</strong><br>
+      "Add payable" just records that you now owe a supplier money — it does <strong>not</strong> add stock to your inventory. If you actually received goods, go restock those items separately on the Stock page as well.<br>
+      "Record payment" records money you paid that supplier — it reduces what you owe them, and it also reduces your Till's cash/transfer balance (same as any other money leaving the shop).<br>
+      Every payable and payment you add here shows up in that supplier's own History below, and in Transaction Audit / Reports.
     </div>
   </div>
 
   <div class="stats" style="margin-bottom:16px">
     <div class="stat ${totalPayable>0?'bad':''}"><div class="label">Total Payable</div><div class="value num">${money(totalPayable)}</div><div class="sub">${owingList.length} supplier(s) owed</div></div>
+    <div class="stat good"><div class="label">Total Paid (all time)</div><div class="value num">${money(totalPaid)}</div><div class="sub">across every supplier</div></div>
     <div class="stat"><div class="label">Total Suppliers</div><div class="value num">${S.suppliers.length}</div><div class="sub">on file</div></div>
     <div class="stat good"><div class="label">Settled Suppliers</div><div class="value num">${S.suppliers.length-owingList.length}</div><div class="sub">zero balance</div></div>
   </div>
@@ -6991,6 +7006,7 @@ async function openSupplier(id){
           <button class="btn primary" onclick="supplierTx('${id}','payment')">Record payment</button>
         </div>
       </div>
+      <div class="hint" style="margin-top:-4px;margin-bottom:10px">"Add payable" = you now owe this supplier more (does not change stock — restock separately). "Record payment" = money you paid them (also reduces your Till balance).</div>
       <div class="card" style="margin-top:6px;box-shadow:none"><div class="hd"><h2 style="font-size:15px">History</h2></div><div class="bd tight">
         ${data.length?`<table><tbody>${data.map(t=>`<tr><td class="num hint">${fmt(t.created_at)}</td><td>${t.type==='payable'?'<span class="badge neg">payable</span>':'<span class="badge pos">payment'+(t.method?' · '+(t.method==='transfer'?'Transfer':'Cash'):'')+'</span>'} ${esc(t.note||'')}</td><td class="r num">${money(t.amount)}</td>${isAdmin?`<td class="r"><button class="btn danger sm" onclick='delSupplierTx("${t.id}","${id}")'>${icon('x')}</button></td>`:''}</tr>`).join('')}</tbody></table>`:'<div class="empty">No transactions yet.</div>'}
       </div></div>

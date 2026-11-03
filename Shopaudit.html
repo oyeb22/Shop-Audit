@@ -13,7 +13,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316432F'/%3E%3Ctext x='32' y='43' font-family='Arial,sans-serif' font-weight='700' font-size='26' fill='white' text-anchor='middle'%3ETM%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -23,16 +23,17 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
-body{font-family:'Hanken Grotesk',system-ui,sans-serif;background:var(--paper);color:var(--ink);
+body{font-family:'Hanken Grotesk','Noto Sans',system-ui,sans-serif;background:var(--paper);color:var(--ink);
   font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;
   background-image:radial-gradient(circle at 12% -10%,rgba(31,90,65,.06),transparent 40%),radial-gradient(circle at 100% 0,rgba(169,119,46,.05),transparent 35%);}
-/* the Naira sign (U+20A6) renders broken in Fraunces/Hanken Grotesk on some
-   Android WebViews (shows as a line through the whole amount) — redirect
-   just that one character to a reliable system font, everything else in
-   these families is untouched */
-@font-face{font-family:'Hanken Grotesk';src:local('Noto Sans'),local('Google Sans'),local('Roboto'),local('Droid Sans'),local('Segoe UI'),local('Arial'),local('Helvetica'),local('Liberation Sans'),local('DejaVu Sans');unicode-range:U+20A6;}
-@font-face{font-family:'Fraunces';src:local('Noto Sans'),local('Google Sans'),local('Roboto'),local('Droid Sans'),local('Segoe UI'),local('Arial'),local('Helvetica'),local('Liberation Sans'),local('DejaVu Sans');unicode-range:U+20A6;}
-h1,h2,h3,.brand{font-family:'Fraunces',serif}
+/* the Naira sign (U+20A6) is missing/broken in Fraunces/Hanken Grotesk's own
+   glyph set (shows as a line through the whole amount) — rather than
+   gambling on whatever font happens to be installed locally (which is what
+   broke this on Windows too, not just Android: local() matched Segoe UI,
+   whose Naira glyph renders badly), fall through to Noto Sans, which this
+   page actually downloads as a web font above and has solid Naira coverage
+   on every platform. Plain CSS font-family fallback, no unicode-range hack. */
+h1,h2,h3,.brand{font-family:'Fraunces','Noto Sans',serif}
 a{color:var(--green);text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,select{font-family:inherit;font-size:15px}
@@ -1395,7 +1396,10 @@ async function computeStockFallback(){
 }
 const onHand = id => S.stock[id]??0;
 const balanceOf = id => S.balances[id]??0;
-const totalOwed = () => S.customers.reduce((a,c)=>a+balanceOf(c.id),0);
+// only sums what customers actually owe (positive balances) — a customer
+// who overpaid/prepaid has a negative balance, which should never cancel
+// out what other customers genuinely owe in this headline total
+const totalOwed = () => S.customers.reduce((a,c)=>a+Math.max(0,balanceOf(c.id)),0);
 
 /* ---------- expiry tracking: opt-in per item, visible to every role ---------- */
 const fmtExpiry=d=>new Date(d+'T00:00:00').toLocaleDateString('en-NG',{day:'2-digit',month:'short',year:'numeric'});
@@ -5557,7 +5561,7 @@ async function loadBranchBreakdown(list){
     const onHand={}; (stockRes.data||[]).forEach(r=>onHand[r.item_id]=Number(r.on_hand||0));
     const stockValue=items.reduce((a,i)=>a+(onHand[i.id]||0)*Number(i.cost_price||0),0);
     const lowCount=items.filter(i=>(onHand[i.id]||0)<=Number(i.low_stock_threshold||0)).length;
-    const credit=(custRes.data||[]).reduce((a,c)=>a+Number(c.balance||0),0);
+    const credit=(custRes.data||[]).reduce((a,c)=>a+Math.max(0,Number(c.balance||0)),0);
     return {name:b.name, isThis:b.id===S.biz.id, todayRev:rev(dayS), monthRev:rev(sales), stockValue, lowCount, credit};
   }));
 
@@ -6897,7 +6901,9 @@ async function vSuppliers(v){
   if(!balErr) (balRows||[]).forEach(r=>S._supplierBalances[r.supplier_id]=Number(r.balance||0));
   S._supplierQ=S._supplierQ||'';
   const owingList=S.suppliers.filter(s=>supplierBalanceOf(s.id)>0);
-  const totalPayable=S.suppliers.reduce((a,s)=>a+supplierBalanceOf(s.id),0);
+  // only positive balances — a supplier the shop overpaid has a negative
+  // balance, which shouldn't cancel out what's genuinely owed elsewhere
+  const totalPayable=S.suppliers.reduce((a,s)=>a+Math.max(0,supplierBalanceOf(s.id)),0);
   let totalPaid=0;
   {
     const {data:paidRows}=await sb.from('supplier_transactions').select('amount').eq('business_id',S.biz.id).eq('type','payment');

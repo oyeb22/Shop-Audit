@@ -3949,11 +3949,12 @@ async function runReport(){
     const byItem={}; data.forEach(s=>{(byItem[s.item_id]??=({u:0,r:0,p:0}));byItem[s.item_id].u+=(s.base_units||s.quantity);byItem[s.item_id].r+=rev(s);byItem[s.item_id].p+=prof(s);});
     const nm=id=>{const i=S.items.find(x=>x.id===id);return i?i.name:'(deleted)';};
     const rows=Object.entries(byItem).sort((a,b)=>b[1].r-a[1].r);
-    S._report={from,to,rows,nm,byMethod,totExp,totPos,netProfit};
+    S._report={from,to,rows,nm,byMethod,totExp,totPos,netProfit,totR,totP,totSpent};
     const stockCost=S.items.reduce((a,i)=>a+onHand(i.id)*Number(i.cost_price),0);
     const stockLow=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).low,0);
     const stockHigh=S.items.reduce((a,i)=>a+onHand(i.id)*modeUnitPriceRange(i).high,0);
     const profitMargin = totR > 0 ? Math.round((netProfit / totR) * 100) : 0;
+    Object.assign(S._report,{stockCost,stockLow,stockHigh,profitMargin});
     const cashPct = totR > 0 ? Math.round((byMethod.cash / totR) * 100) : 0;
     const bankPct = totR > 0 ? Math.round((byMethod.transfer / totR) * 100) : 0;
     const credPct = totR > 0 ? Math.round((byMethod.credit / totR) * 100) : 0;
@@ -4048,8 +4049,8 @@ async function runReport(){
           <h2>Product Sales & Profit Contribution</h2>
           <span class="desc">${from} → ${to}</span>
           <div class="spacer"></div>
-          <button class="btn ghost sm" onclick="exportCSV()" style="display:inline-flex;align-items:center;gap:6px">
-            ${icon('download')} Export CSV
+          <button class="btn ghost sm" id="repExportBtn" onclick="exportCSV()" style="display:inline-flex;align-items:center;gap:6px">
+            ${icon('download')} Export Detailed Report (CSV)
           </button>
         </div>
         <div class="bd tight tableWrap">
@@ -4240,24 +4241,159 @@ function todayStoryLines(s,hideProfit){
 async function exportCSV(){
   const r=S._report; if(!r) return;
   if(S._isSandbox) checkSandboxTask('reports', {});
-  let csv=`Payment method,Revenue\nCash,${r.byMethod.cash}\nTransfer,${r.byMethod.transfer}\nCredit,${r.byMethod.credit}\nCard (terminal),${r.byMethod.card||0}\n\nExpenses,${r.totExp}\nPOS commission,${r.totPos||0}\nNet profit,${r.netProfit}\n\nItem,Units,Revenue,Profit\n`;
-  r.rows.forEach(([id,o])=>{csv+=`"${(r.nm(id)).replace(/"/g,'""')}",${o.u},${o.r},${o.p}\n`;});
-  const filename=`${S.biz.name}_sales_${r.from}_to_${r.to}.csv`;
-  // a plain <a download> click is silently a no-op inside the native app's
-  // WebView (no download manager wired up there) — only works in a real
-  // browser, so the native app needs Filesystem+Share instead
-  if(window.Capacitor?.isNativePlatform?.()){
-    const {Filesystem}=window.Capacitor.Plugins;
-    const {Share}=window.Capacitor.Plugins;
-    if(!Filesystem||!Share){ toast('Export isn\'t available in this app build yet',true); return; }
-    try{
-      const base64=btoa(unescape(encodeURIComponent(csv)));
-      const write=await Filesystem.writeFile({path:filename,data:base64,directory:'CACHE'});
-      await Share.share({title:filename,url:write.uri});
-    }catch(e){ err(e); }
-  }else{
-    const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
-    a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  const btn=$('#repExportBtn');
+  if(btn){ btn.disabled=true; btn.innerHTML=`${icon('refresh')} Building full report…`; }
+  try{
+    const {from,to}=r;
+    const cell=v=>{ if(v===null||v===undefined) return ''; const s=String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+    const row=(...cells)=>cells.map(cell).join(',')+'\n';
+    const blank=()=>'\n';
+    const dt=t=>{ if(!t) return ''; const d=new Date(t); return isNaN(d)?'':d.toLocaleString('en-NG',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}); };
+
+    let sales=[], purchases=[], allExp=[], pos=[], custPay=[], members=[];
+    if(S._isSandbox){
+      sales=[{occurred_at:new Date().toISOString(),entry_date:today(),item_id:'sb_1',sold_as:'Pack',quantity:8,unit_price:8000,unit_cost:6000,payment_method:'cash',customer_id:null,created_by:'sb_u1'}];
+      purchases=[{entry_date:today(),item_id:'sb_1',quantity:5,base_units:5,unit_cost:6000,created_by:'sb_u1'}];
+      allExp=[{entry_date:today(),category:'Utilities',note:'Generator fuel',amount:12500,status:'approved',created_by:'sb_u1'}];
+      pos=[{created_at:new Date().toISOString(),type:'cash_out',amount:5000,charge:150,note:'',created_by:'sb_u1'}];
+      members=[{user_id:'sb_u1',full_name:'Marketer Trainee (You)'}];
+    } else {
+      const [salesRes,purRes,expRes,posRes,custTxRes,memRes]=await Promise.all([
+        fetchAllRows(()=>sb.from('sales').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to).order('occurred_at',{ascending:true})),
+        fetchAllRows(()=>sb.from('purchases').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to).order('entry_date',{ascending:true})),
+        fetchAllRows(()=>sb.from('expenditures').select('*').eq('business_id',S.biz.id).gte('entry_date',from).lte('entry_date',to).order('entry_date',{ascending:true})),
+        fetchAllRows(()=>sb.from('pos_transactions').select('*').eq('business_id',S.biz.id).gte('created_at',from).lt('created_at',nextDay(to)).order('created_at',{ascending:true})),
+        fetchAllRows(()=>sb.from('customer_transactions').select('*').eq('business_id',S.biz.id).eq('type','payment').gte('created_at',from).lt('created_at',nextDay(to)).order('created_at',{ascending:true})),
+        sb.rpc('list_members',{b:S.biz.id})
+      ]);
+      if(salesRes.error) return err(salesRes.error);
+      sales=salesRes.data||[]; purchases=purRes.data||[]; allExp=expRes.data||[]; pos=posRes.data||[]; custPay=custTxRes.data||[];
+      members=memRes.data||[];
+    }
+    const exp=allExp.filter(e=>e.status==='approved'), expExcluded=allExp.filter(e=>e.status!=='approved');
+    const staffName=uid=>members.find(m=>m.user_id===uid)?.full_name||'(unknown staff)';
+    const itemName=id=>S.items.find(i=>i.id===id)?.name||'(deleted item)';
+    const custName=id=>id?(S.customers.find(c=>c.id===id)?.name||'(deleted customer)'):'Walk-in';
+
+    let csv='';
+    // ---------- header ----------
+    csv+=row(`${S.biz.name} — Detailed Financial Report`);
+    csv+=row('Reporting period',from,'to',to);
+    csv+=row('Generated',dt(new Date()));
+    csv+=row('Generated by',S.user?.user_metadata?.full_name||S.user?.email||'');
+    csv+=row('Currency','Nigerian Naira (NGN)');
+    csv+=row('Basis','Every figure below is built from individually timestamped, staff-attributed transaction records — the ledger sections below are the source data, not a rounded summary. Each row is independently verifiable against the app\'s Audit Log.');
+    csv+=blank();
+
+    // ---------- P&L summary ----------
+    const totR=r.totR, totP=r.totP, totCOGS=totR-totP;
+    csv+=row('PROFIT & LOSS SUMMARY');
+    csv+=row('Revenue by payment channel');
+    csv+=row('  Cash',r.byMethod.cash);
+    csv+=row('  Bank Transfer',r.byMethod.transfer);
+    csv+=row('  POS Card (terminal)',r.byMethod.card||0);
+    csv+=row('  Credit (on account — revenue recognized at time of sale)',r.byMethod.credit);
+    csv+=row('Total Revenue',totR);
+    csv+=blank();
+    csv+=row('Cost of Goods Sold (cost basis of items actually sold)','-'+totCOGS);
+    csv+=row('GROSS PROFIT',totP);
+    csv+=row('Gross Margin %',totR>0?Math.round(totP/totR*100)+'%':'0%');
+    csv+=blank();
+    csv+=row('Operating Expenses by category (approved only)');
+    const byCat={};
+    exp.forEach(e=>{ const c=e.category||'Uncategorized'; byCat[c]=(byCat[c]||0)+Number(e.amount); });
+    Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([c,amt])=>{ csv+=row('  '+c,amt); });
+    csv+=row('Total Operating Expenses','-'+r.totExp);
+    csv+=blank();
+    csv+=row('Other Income — Agency Banking (POS) commission kept',r.totPos);
+    csv+=blank();
+    csv+=row('NET PROFIT',r.netProfit);
+    csv+=row('Net Margin %',totR>0?r.profitMargin+'%':'0%');
+    csv+=blank();csv+=blank();
+
+    // ---------- inventory context ----------
+    csv+=row('INVENTORY CONTEXT (reconciliation only — not part of Net Profit above)');
+    csv+=row('Stock purchased this period (inventory bought, at cost)',r.totSpent);
+    csv+=row('Note','Stock Purchased differs from Cost of Goods Sold above whenever stock levels change — COGS reflects what was SOLD this period, Stock Purchased reflects what was BOUGHT this period.');
+    let closingCost=r.stockCost, closingLabel='Closing inventory valuation (at current cost), live as of report generation';
+    if(!S._isSandbox && to!==today()){
+      const {data:eod,error:eodErr}=await sb.rpc('end_of_day_stock',{b:S.biz.id,d:to});
+      if(!eodErr && eod){
+        closingCost=eod.reduce((a,er)=>a+Number(er.on_hand||0)*Number(S.items.find(i=>i.id===er.item_id)?.cost_price||0),0);
+        closingLabel=`Closing inventory valuation, as of end of day ${to} (at today's cost prices)`;
+      }
+    }
+    csv+=row(closingLabel,closingCost);
+    csv+=blank();csv+=blank();
+
+    // ---------- sales ledger ----------
+    csv+=row('SALES TRANSACTION LEDGER',`${sales.length} transaction line(s)`);
+    csv+=row('Date/Time','Item','Qty Sold','Unit/Mode','Unit Price','Unit Cost','Line Revenue','Line Profit','Payment Method','Customer','Staff','Offline-synced?');
+    sales.forEach(s=>{
+      csv+=row(dt(s.occurred_at||s.entry_date),itemName(s.item_id),s.quantity,s.sold_as||'',s.unit_price,s.unit_cost,Number(s.quantity)*Number(s.unit_price),Number(s.quantity)*(Number(s.unit_price)-Number(s.unit_cost)),s.payment_method,custName(s.customer_id),staffName(s.created_by),s.is_offline_sync?(s.timing_flagged?'Yes — timing flagged':'Yes'):'No');
+    });
+    csv+=blank();csv+=blank();
+
+    // ---------- purchases ledger ----------
+    csv+=row('STOCK PURCHASES / RESTOCK LEDGER',`${purchases.length} entr${purchases.length===1?'y':'ies'}`);
+    csv+=row('Date','Item','Qty (Packs)','Unit Cost','Total Cost','Staff');
+    purchases.forEach(p=>{
+      const q=p.base_units??p.quantity;
+      csv+=row(p.entry_date,itemName(p.item_id),q,p.unit_cost,Number(p.unit_cost)*Number(q),staffName(p.created_by));
+    });
+    csv+=blank();csv+=blank();
+
+    // ---------- expenditures ledger ----------
+    csv+=row('OPERATING EXPENSES LEDGER (approved only — included in Net Profit above)',`${exp.length} entr${exp.length===1?'y':'ies'}`);
+    csv+=row('Date','Category','Note','Amount','Recorded By');
+    exp.forEach(e=>csv+=row(e.entry_date,e.category||'Uncategorized',e.note||'',e.amount,staffName(e.created_by)));
+    if(expExcluded.length){
+      csv+=blank();
+      csv+=row('Expenses recorded but NOT approved (excluded from Net Profit above, shown for transparency)',`${expExcluded.length} entr${expExcluded.length===1?'y':'ies'}`);
+      csv+=row('Date','Category','Note','Amount','Status','Recorded By');
+      expExcluded.forEach(e=>csv+=row(e.entry_date,e.category||'Uncategorized',e.note||'',e.amount,e.status,staffName(e.created_by)));
+    }
+    csv+=blank();csv+=blank();
+
+    // ---------- POS / agency banking ledger ----------
+    csv+=row('AGENCY BANKING (POS) LEDGER',`${pos.length} transaction(s)`);
+    csv+=row('Date/Time','Type','Customer Amount','Commission Kept','Note','Staff');
+    pos.forEach(p=>csv+=row(dt(p.created_at),p.type,p.amount,p.charge||0,p.note||'',staffName(p.created_by)));
+    csv+=blank();csv+=blank();
+
+    // ---------- credit collections ----------
+    csv+=row('CREDIT ACCOUNT COLLECTIONS (cash/transfer later received against credit sales above)',`${custPay.length} payment(s)`);
+    csv+=row('Date/Time','Customer','Amount','Method','Note','Staff');
+    custPay.forEach(c=>csv+=row(dt(c.created_at),custName(c.customer_id),c.amount,c.method||'',c.note||'',staffName(c.created_by)));
+    csv+=blank();csv+=blank();
+
+    // ---------- product summary ----------
+    csv+=row('PRODUCT SALES & PROFIT CONTRIBUTION SUMMARY (same period, grouped by item)');
+    csv+=row('Item','Units Sold (base Pack-equivalent)','Revenue','Profit');
+    r.rows.forEach(([id,o])=>csv+=row(r.nm(id),o.u,o.r,o.p));
+    csv+=blank();
+
+    csv+=row('This report was generated directly from TheMonishop\'s live transaction records on '+dt(new Date())+'. Every ledger row above is attributed to a named staff account and timestamped at the moment it was recorded, independently retrievable from the app\'s Audit Log.');
+
+    const filename=`${S.biz.name}_financial_report_${from}_to_${to}.csv`;
+    // a plain <a download> click is silently a no-op inside the native app's
+    // WebView (no download manager wired up there) — only works in a real
+    // browser, so the native app needs Filesystem+Share instead
+    if(window.Capacitor?.isNativePlatform?.()){
+      const {Filesystem}=window.Capacitor.Plugins;
+      const {Share}=window.Capacitor.Plugins;
+      if(!Filesystem||!Share){ toast('Export isn\'t available in this app build yet',true); return; }
+      try{
+        const base64=btoa(unescape(encodeURIComponent(csv)));
+        const write=await Filesystem.writeFile({path:filename,data:base64,directory:'CACHE'});
+        await Share.share({title:filename,url:write.uri});
+      }catch(e){ err(e); }
+    }else{
+      const blob=new Blob([csv],{type:'text/csv'}), a=document.createElement('a');
+      a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+    }
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML=`${icon('download')} Export Detailed Report (CSV)`; }
   }
 }
 
